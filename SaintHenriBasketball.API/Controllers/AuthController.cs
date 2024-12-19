@@ -118,21 +118,26 @@ public class AuthController : ControllerBase
     /// <returns>Current user details</returns>
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public ActionResult<UserDto> GetCurrentUser()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var email = User.FindFirst(ClaimTypes.Email)?.Value;
-        var username = User.FindFirst(ClaimTypes.Name)?.Value;
-        var isAdmin = User.IsInRole("Admin");
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        var emailClaim = User.FindFirst(ClaimTypes.Email);
+        var usernameClaim = User.FindFirst(ClaimTypes.Name);
+        var roleClaim = User.FindFirst(ClaimTypes.Role);
+
+        if (userIdClaim == null || emailClaim == null || usernameClaim == null)
+        {
+            return Unauthorized("Invalid token claims");
+        }
 
         var userDto = new UserDto
         {
-            Id = Guid.Parse(userId),
-            Email = email,
-            Username = username,
-            IsAdmin = isAdmin
+            Id = Guid.Parse(userIdClaim.Value),
+            Email = emailClaim.Value,
+            Username = usernameClaim.Value,
+            IsAdmin = roleClaim?.Value == "Admin"
         };
 
         return Ok(userDto);

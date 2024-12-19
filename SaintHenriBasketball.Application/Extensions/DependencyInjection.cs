@@ -10,6 +10,8 @@ public static class DependencyInjection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddAutoMapper(Assembly.GetExecutingAssembly());
+
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPlayerService, PlayerService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
