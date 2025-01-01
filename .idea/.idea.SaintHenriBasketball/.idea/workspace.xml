@@ -27,7 +27,7 @@
     "node.js.selected.package.tslint": "(autodetect)"
   }
 }]]></component>
-  <component name="RunManager" selected="HTTP Request.SaintHenriBasketball.API | Login">
+  <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
     <configuration name="SaintHenriBasketball.API | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Login" index="2" runType="Run single request">
       <method v="2" />
     </configuration>
@@ -51,9 +51,9 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
         <item itemvalue="HTTP Request.SaintHenriBasketball.API | Login" />
         <item itemvalue="HTTP Request.SaintHenriBasketball.API | Me" />
-        <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
       </list>
     </recent_temporary>
   </component>

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using SaintHenriBasketball.Application.DTOs;
+using SaintHenriBasketball.Application.DTOs.Auth;
 using SaintHenriBasketball.Domain.Entities;
 
 namespace SaintHenriBasketball.Application.Mapping;
@@ -21,5 +22,7 @@ public class MappingProfile : Profile
                       opt => opt.MapFrom(src => src.Player.Name))
             .ForMember(dest => dest.SessionDate,
                       opt => opt.MapFrom(src => src.Session.SessionDate));
+
+        CreateMap<ApplicationUser, UserDto>();
     }
 }
