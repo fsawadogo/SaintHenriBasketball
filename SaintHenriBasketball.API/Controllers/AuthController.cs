@@ -142,4 +142,17 @@ public class AuthController : ControllerBase
 
         return Ok(userDto);
     }
+     /// <summary>
+        /// Get all users
+        /// </summary>
+        /// <returns>List of all users</returns>
+        [HttpGet("users")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(IEnumerable<UserDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
+        {
+            var users = await _authService.GetAllUsersAsync();
+            return Ok(users);
+        }
 }

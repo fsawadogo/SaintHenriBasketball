@@ -34,4 +34,8 @@ public class UserRepository : GenericRepository<ApplicationUser>, IUserRepositor
         return await _context.Set<ApplicationUser>()
             .AnyAsync(u => u.Username == username);
     }
+    public async Task<IEnumerable<ApplicationUser>> GetAllUsersAsync()
+    {
+        return await _context.Set<ApplicationUser>().ToListAsync();
+     }
 }

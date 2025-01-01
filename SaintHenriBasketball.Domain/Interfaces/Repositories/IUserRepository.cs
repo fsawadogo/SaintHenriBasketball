@@ -8,4 +8,6 @@ public interface IUserRepository : IGenericRepository<ApplicationUser>
     Task<ApplicationUser> GetByUsernameAsync(string username);
     Task<bool> EmailExistsAsync(string email);
     Task<bool> UsernameExistsAsync(string username);
+    Task<IEnumerable<ApplicationUser>> GetAllUsersAsync(); 
+
 }
