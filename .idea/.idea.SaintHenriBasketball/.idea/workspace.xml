@@ -14,15 +14,26 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="DpaMonitoringSettings">
+    <option name="firstShow" value="false" />
+  </component>
   <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="false" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     ".NET Launch Settings Profile.SaintHenriBasketball.API: http.executor": "Debug",
+    "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
+    "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
     "node.js.selected.package.tslint": "(autodetect)"
   }
 }]]></component>
-  <component name="RunManager">
+  <component name="RunManager" selected="HTTP Request.SaintHenriBasketball.API | Login">
+    <configuration name="SaintHenriBasketball.API | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Login" index="2" runType="Run single request">
+      <method v="2" />
+    </configuration>
+    <configuration name="SaintHenriBasketball.API | Me" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Me" index="3" runType="Run single request">
+      <method v="2" />
+    </configuration>
     <configuration name="SaintHenriBasketball.API: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile" temporary="true">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.csproj" />
       <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
@@ -40,6 +51,8 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="HTTP Request.SaintHenriBasketball.API | Login" />
+        <item itemvalue="HTTP Request.SaintHenriBasketball.API | Me" />
         <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
       </list>
     </recent_temporary>
