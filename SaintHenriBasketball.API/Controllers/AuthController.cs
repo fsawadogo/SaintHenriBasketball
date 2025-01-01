@@ -147,7 +147,7 @@ public class AuthController : ControllerBase
         /// </summary>
         /// <returns>List of all users</returns>
         [HttpGet("users")]
-        [Authorize(Roles = "Admin")]
+        // [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(IEnumerable<UserDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
