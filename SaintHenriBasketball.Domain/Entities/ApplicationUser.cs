@@ -1,17 +1,23 @@
-﻿namespace SaintHenriBasketball.Domain.Entities;
+﻿using SaintHenriBasketball.Domain.Enums;
 
-public class ApplicationUser : BaseEntity
+namespace SaintHenriBasketball.Domain.Entities;
+
+public class ApplicationUser
 {
-    public string Username { get; private set; }
-    public string Email { get; private set; }
+    public Guid Id { get; private set; }
+    public string Username { get; set; }
+    public string Email { get; set; }
     public string PasswordHash { get; private set; }
-    public string FirstName { get; private set; }
-    public string LastName { get; private set; }
-    public bool IsAdmin { get; private set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public bool IsAdmin { get; set; }
+    public PaymentPlan PaymentPlan { get; set; }
+    public DateTime CreatedOn { get; private set; }
+    public ICollection<SessionRegistration> SessionRegistrations { get; private set; }
 
     private ApplicationUser() { } // For EF Core
 
-    public ApplicationUser(string username, string email, string passwordHash, string firstName, string lastName, bool isAdmin = false)
+    public ApplicationUser(string username, string email, string passwordHash, string firstName, string lastName, PaymentPlan paymentPlan)
     {
         Id = Guid.NewGuid();
         Username = username;
@@ -19,14 +25,9 @@ public class ApplicationUser : BaseEntity
         PasswordHash = passwordHash;
         FirstName = firstName;
         LastName = lastName;
-        IsAdmin = isAdmin;
+        PaymentPlan = paymentPlan;
         CreatedOn = DateTime.UtcNow;
-    }
-
-    public void UpdateProfile(string firstName, string lastName)
-    {
-        FirstName = firstName;
-        LastName = lastName;
-        ModifiedOn = DateTime.UtcNow;
+        IsAdmin = false;
+        SessionRegistrations = new List<SessionRegistration>();
     }
 }

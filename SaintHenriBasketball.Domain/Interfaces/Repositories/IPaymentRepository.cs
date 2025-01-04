@@ -2,8 +2,10 @@
 
 namespace SaintHenriBasketball.Domain.Interfaces.Repositories;
 
-public interface IPaymentRepository : IGenericRepository<Payment>
+public interface IPaymentRepository
 {
-    Task<IReadOnlyList<Payment>> GetPaymentsByPlayerAsync(Guid playerId);
-    Task<IReadOnlyList<Payment>> GetPaymentsBySessionAsync(Guid sessionId);
+    Task<IReadOnlyList<Payment>> GetPaymentsByUserAsync(Guid userId);
+    Task<Payment> GetByIdAsync(Guid id);
+    Task AddAsync(Payment payment);
+    Task UpdateAsync(Payment payment);
 }

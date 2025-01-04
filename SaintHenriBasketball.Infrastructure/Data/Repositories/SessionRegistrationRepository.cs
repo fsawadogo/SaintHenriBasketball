@@ -5,26 +5,45 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Repositories;
 
-public class SessionRegistrationRepository : GenericRepository<SessionRegistration>, ISessionRegistrationRepository
+public class SessionRegistrationRepository : ISessionRegistrationRepository
 {
-    public SessionRegistrationRepository(ApplicationDbContext context) : base(context)
+    private readonly ApplicationDbContext _context;
+
+    public SessionRegistrationRepository(ApplicationDbContext context)
     {
+        _context = context;
     }
 
-    public async Task<SessionRegistration> GetRegistrationByPlayerAndSessionAsync(Guid playerId, Guid sessionId)
+    public async Task<bool> ExistsAsync(Guid userId, Guid sessionId)
     {
         return await _context.SessionRegistrations
-            .Include(sr => sr.Player)
-            .Include(sr => sr.Session)
-            .FirstOrDefaultAsync(sr => sr.PlayerId == playerId && sr.SessionId == sessionId);
+            .AnyAsync(r => r.UserId == userId && r.SessionId == sessionId);
     }
 
-    public async Task<IReadOnlyList<SessionRegistration>> GetRegistrationsByPlayerAsync(Guid playerId)
+    public async Task AddAsync(SessionRegistration registration)
+    {
+        await _context.SessionRegistrations.AddAsync(registration);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(Guid userId, Guid sessionId)
+    {
+        var registration = await _context.SessionRegistrations
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.SessionId == sessionId);
+
+        if (registration != null)
+        {
+            _context.SessionRegistrations.Remove(registration);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<IReadOnlyList<SessionRegistration>> GetByUserIdAsync(Guid userId)
     {
         return await _context.SessionRegistrations
-            .Include(sr => sr.Session)
-            .Where(sr => sr.PlayerId == playerId)
-            .OrderBy(sr => sr.Session.SessionDate)
+            .Include(r => r.Session)
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.Session.SessionDate)
             .ToListAsync();
     }
 }

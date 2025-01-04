@@ -5,27 +5,39 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Repositories;
 
-public class PaymentRepository : GenericRepository<Payment>, IPaymentRepository
+public class PaymentRepository : IPaymentRepository
 {
-    public PaymentRepository(ApplicationDbContext context) : base(context)
+    private readonly ApplicationDbContext _context;
+
+    public PaymentRepository(ApplicationDbContext context)
     {
+        _context = context;
     }
 
-    public async Task<IReadOnlyList<Payment>> GetPaymentsByPlayerAsync(Guid playerId)
+    public async Task<IReadOnlyList<Payment>> GetPaymentsByUserAsync(Guid userId)
     {
         return await _context.Payments
-            .Include(p => p.Session)
-            .Where(p => p.PlayerId == playerId)
-            .OrderByDescending(p => p.CreatedOn)
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
     }
 
-    public async Task<IReadOnlyList<Payment>> GetPaymentsBySessionAsync(Guid sessionId)
+    public async Task<Payment> GetByIdAsync(Guid id)
     {
         return await _context.Payments
-            .Include(p => p.Player)
-            .Where(p => p.SessionId == sessionId)
-            .OrderByDescending(p => p.CreatedOn)
-            .ToListAsync();
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    public async Task AddAsync(Payment payment)
+    {
+        await _context.Payments.AddAsync(payment);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(Payment payment)
+    {
+        _context.Payments.Update(payment);
+        await _context.SaveChangesAsync();
     }
 }

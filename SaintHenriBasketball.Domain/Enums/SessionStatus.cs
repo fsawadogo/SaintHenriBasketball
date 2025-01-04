@@ -2,8 +2,8 @@
 
 public enum SessionStatus
 {
-    Scheduled,
-    InProgress,
-    Completed,
-    Cancelled
+    Open,
+    Full,
+    Cancelled,
+    Completed
 }

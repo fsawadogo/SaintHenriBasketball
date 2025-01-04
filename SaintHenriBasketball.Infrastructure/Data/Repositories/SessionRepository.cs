@@ -6,35 +6,62 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Repositories;
 
-public class SessionRepository : GenericRepository<TrainingSession>, ISessionRepository
+public class SessionRepository : ISessionRepository
 {
-    public SessionRepository(ApplicationDbContext context) : base(context)
+    private readonly ApplicationDbContext _context;
+
+    public SessionRepository(ApplicationDbContext context)
     {
+        _context = context;
     }
 
-    public async Task<TrainingSession> GetSessionWithRegistrationsAsync(Guid id)
+    public async Task<Session> GetByIdAsync(Guid id)
     {
-        return await _context.TrainingSessions
+        return await _context.Sessions
             .Include(s => s.Registrations)
-            .ThenInclude(sr => sr.Player)
+                .ThenInclude(r => r.User)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
-    public async Task<IReadOnlyList<TrainingSession>> GetUpcomingSessionsAsync()
+    public async Task AddAsync(Session session)
     {
-        return await _context.TrainingSessions
+        await _context.Sessions.AddAsync(session);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(Session session)
+    {
+        _context.Sessions.Update(session);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<IReadOnlyList<Session>> GetUpcomingSessionsAsync()
+    {
+        return await _context.Sessions
             .Include(s => s.Registrations)
-            .Where(s => s.SessionDate > DateTime.UtcNow && s.Status == SessionStatus.Scheduled)
+            .Where(s => s.SessionDate > DateTime.UtcNow)
             .OrderBy(s => s.SessionDate)
             .ToListAsync();
     }
 
-    public async Task<bool> IsSessionAvailableAsync(Guid sessionId)
+    public async Task<IReadOnlyList<Session>> GetAvailableSessionsAsync()
     {
-        var session = await _context.TrainingSessions
+        return await _context.Sessions
             .Include(s => s.Registrations)
-            .FirstOrDefaultAsync(s => s.Id == sessionId);
+            .Where(s =>
+                s.SessionDate > DateTime.UtcNow &&
+                s.Status == SessionStatus.Open &&
+                s.RegisteredPlayersCount < s.MaxCapacity)
+            .OrderBy(s => s.SessionDate)
+            .ToListAsync();
+    }
 
-        return session?.CanRegister() ?? false;
+    public async Task<IEnumerable<Session>> GetUserSessionsAsync(Guid userId)
+    {
+        return await _context.Sessions
+            .Include(s => s.Registrations)
+            .Where(s => s.Registrations.Any(r => r.UserId == userId))
+            .OrderBy(s => s.SessionDate)
+            .ToListAsync();
     }
 }

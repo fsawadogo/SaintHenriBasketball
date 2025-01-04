@@ -5,45 +5,69 @@ namespace SaintHenriBasketball.Infrastructure.Data.Context;
 
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
     {
     }
 
-    public DbSet<Player> Players { get; set; }
-    public DbSet<TrainingSession> TrainingSessions { get; set; }
+    public DbSet<ApplicationUser> Users { get; set; }
+    public DbSet<Session> Sessions { get; set; }
     public DbSet<SessionRegistration> SessionRegistrations { get; set; }
     public DbSet<Payment> Payments { get; set; }
-    public DbSet<ApplicationUser> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Existing configurations
-        modelBuilder.Entity<Player>()
-            .HasMany(p => p.SessionRegistrations)
-            .WithOne(sr => sr.Player)
-            .HasForeignKey(sr => sr.PlayerId);
-
-        modelBuilder.Entity<TrainingSession>()
-            .HasMany(s => s.Registrations)
-            .WithOne(sr => sr.Session)
-            .HasForeignKey(sr => sr.SessionId);
-
-        // Add ApplicationUser configuration
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.PasswordHash).IsRequired();
-            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.LastName).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.IsAdmin).HasDefaultValue(false);
-
-            // Add unique constraints
+            entity.Property(e => e.Email).IsRequired();
+            entity.Property(e => e.Username).IsRequired();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<Session>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SessionDate).IsRequired();
+            entity.Property(e => e.MaxCapacity).IsRequired();
+            entity.Property(e => e.DropInPrice).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<SessionRegistration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(sr => sr.User)
+                .WithMany(u => u.SessionRegistrations)
+                .HasForeignKey(sr => sr.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(sr => sr.Session)
+                .WithMany(s => s.Registrations)
+                .HasForeignKey(sr => sr.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+            entity.Property(e => e.Plan)
+                .IsRequired();
+            entity.Property(e => e.Status)
+                .IsRequired();
+            entity.Property(e => e.PaymentDate)
+                .IsRequired();
+
+            entity.HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

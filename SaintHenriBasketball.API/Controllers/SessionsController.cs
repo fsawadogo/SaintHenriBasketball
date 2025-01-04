@@ -70,7 +70,7 @@ public class SessionsController : BaseApiController
     {
         try
         {
-            var registration = await _registrationService.RegisterPlayerForSessionAsync(playerId, sessionId);
+            var registration = await _registrationService.RegisterUserForSessionAsync(playerId, sessionId);
             return Ok(registration);
         }
         catch (NotFoundException ex)

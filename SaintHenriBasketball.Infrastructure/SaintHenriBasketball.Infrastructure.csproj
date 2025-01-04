@@ -27,6 +27,7 @@
   <ItemGroup>
     <Folder Include="Data\Configurations\" />
     <Folder Include="Identity\" />
+    <Folder Include="Migrations\" />
     <Folder Include="Services\" />
   </ItemGroup>
 

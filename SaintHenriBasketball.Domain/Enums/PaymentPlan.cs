@@ -2,6 +2,6 @@
 
 public enum PaymentPlan
 {
-    Seasonal,
+    Season,
     DropIn
 }

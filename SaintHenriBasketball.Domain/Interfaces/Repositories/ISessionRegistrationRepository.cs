@@ -2,8 +2,10 @@
 
 namespace SaintHenriBasketball.Domain.Interfaces.Repositories;
 
-public interface ISessionRegistrationRepository : IGenericRepository<SessionRegistration>
+public interface ISessionRegistrationRepository
 {
-    Task<SessionRegistration> GetRegistrationByPlayerAndSessionAsync(Guid playerId, Guid sessionId);
-    Task<IReadOnlyList<SessionRegistration>> GetRegistrationsByPlayerAsync(Guid playerId);
+    Task<bool> ExistsAsync(Guid userId, Guid sessionId);
+    Task AddAsync(SessionRegistration registration);
+    Task DeleteAsync(Guid userId, Guid sessionId);
+    Task<IReadOnlyList<SessionRegistration>> GetByUserIdAsync(Guid userId);
 }

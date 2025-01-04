@@ -2,28 +2,24 @@
 
 namespace SaintHenriBasketball.Domain.Entities;
 
-public class SessionRegistration : BaseEntity
+public class SessionRegistration
 {
-    public Guid PlayerId { get; private set; }
-    public Guid SessionId { get; private set; }
-    public RegistrationStatus Status { get; private set; }
-    public Player Player { get; private set; }
-    public TrainingSession Session { get; private set; }
+    public Guid Id { get; private set; }
+    public Guid UserId { get; set; }
+    public Guid SessionId { get; set; }
+    public DateTime RegistrationDate { get; set; }
+    public PaymentPlan PaymentPlan { get; set; }
+    public ApplicationUser User { get; set; }
+    public Session Session { get; set; }
 
     private SessionRegistration() { } // For EF Core
 
-    public SessionRegistration(Guid playerId, Guid sessionId)
+    public SessionRegistration(Guid userId, Guid sessionId, PaymentPlan paymentPlan)
     {
         Id = Guid.NewGuid();
-        PlayerId = playerId;
+        UserId = userId;
         SessionId = sessionId;
-        Status = RegistrationStatus.Pending;
-        CreatedOn = DateTime.UtcNow;
-    }
-
-    public void UpdateStatus(RegistrationStatus newStatus)
-    {
-        Status = newStatus;
-        ModifiedOn = DateTime.UtcNow;
+        RegistrationDate = DateTime.UtcNow;
+        PaymentPlan = paymentPlan;
     }
 }

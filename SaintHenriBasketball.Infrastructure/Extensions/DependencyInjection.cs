@@ -4,6 +4,7 @@ using SaintHenriBasketball.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SaintHenriBasketball.Application.Mapping;
 
 namespace SaintHenriBasketball.Infrastructure.Extensions;
 
@@ -15,11 +16,15 @@ public static class DependencyInjection
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-        services.AddScoped<IPlayerRepository, PlayerRepository>();
+        //services.AddScoped<IPaymentRepository, PaymentRepository>();
+
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ISessionRepository, SessionRepository>();
         services.AddScoped<ISessionRegistrationRepository, SessionRegistrationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
-        services.AddScoped<IUserRepository, UserRepository>();
+
+        // Add AutoMapper
+        services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
         return services;
     }

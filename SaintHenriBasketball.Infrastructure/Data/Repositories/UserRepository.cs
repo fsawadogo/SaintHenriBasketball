@@ -5,37 +5,69 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Repositories;
 
-public class UserRepository : GenericRepository<ApplicationUser>, IUserRepository
+public class UserRepository : IUserRepository
 {
-    public UserRepository(ApplicationDbContext context) : base(context)
+    private readonly ApplicationDbContext _context;
+
+    public UserRepository(ApplicationDbContext context)
     {
+        _context = context;
+    }
+
+    public async Task<ApplicationUser> GetByIdAsync(Guid id)
+    {
+        return await _context.Users
+            .Include(u => u.SessionRegistrations)
+                .ThenInclude(sr => sr.Session)
+            .FirstOrDefaultAsync(u => u.Id == id);
     }
 
     public async Task<ApplicationUser> GetByEmailAsync(string email)
     {
-        return await _context.Set<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.Email == email);
+        return await _context.Users
+            .Include(u => u.SessionRegistrations)
+                .ThenInclude(sr => sr.Session)
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
     }
 
     public async Task<ApplicationUser> GetByUsernameAsync(string username)
     {
-        return await _context.Set<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.Username == username);
+        return await _context.Users
+            .Include(u => u.SessionRegistrations)
+                .ThenInclude(sr => sr.Session)
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
     }
 
     public async Task<bool> EmailExistsAsync(string email)
     {
-        return await _context.Set<ApplicationUser>()
-            .AnyAsync(u => u.Email == email);
+        return await _context.Users
+            .AnyAsync(u => u.Email.ToLower() == email.ToLower());
     }
 
     public async Task<bool> UsernameExistsAsync(string username)
     {
-        return await _context.Set<ApplicationUser>()
-            .AnyAsync(u => u.Username == username);
+        return await _context.Users
+            .AnyAsync(u => u.Username.ToLower() == username.ToLower());
     }
+
     public async Task<IEnumerable<ApplicationUser>> GetAllUsersAsync()
     {
-        return await _context.Set<ApplicationUser>().ToListAsync();
-     }
+        return await _context.Users
+            .Include(u => u.SessionRegistrations)
+                .ThenInclude(sr => sr.Session)
+            .OrderBy(u => u.Username)
+            .ToListAsync();
+    }
+
+    public async Task AddAsync(ApplicationUser user)
+    {
+        await _context.Users.AddAsync(user);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(ApplicationUser user)
+    {
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
+    }
 }

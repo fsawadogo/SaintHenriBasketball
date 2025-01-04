@@ -4,7 +4,7 @@ namespace SaintHenriBasketball.Application.Services.Interfaces;
 
 public interface IRegistrationService
 {
-    Task<SessionRegistrationDto> RegisterPlayerForSessionAsync(Guid playerId, Guid sessionId);
-    Task CancelRegistrationAsync(Guid playerId, Guid sessionId);
-    Task<IReadOnlyList<SessionRegistrationDto>> GetPlayerRegistrationsAsync(Guid playerId);
+    Task<SessionRegistrationResponseDto> RegisterUserForSessionAsync(Guid userId, Guid sessionId);
+    Task CancelRegistrationAsync(Guid userId, Guid sessionId);
+    Task<IReadOnlyList<SessionRegistrationResponseDto>> GetUserRegistrationsAsync(Guid userId);
 }

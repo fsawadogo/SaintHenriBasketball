@@ -12,7 +12,6 @@ public static class DependencyInjection
         services.AddAutoMapper(Assembly.GetExecutingAssembly());
 
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IPlayerService, PlayerService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
 

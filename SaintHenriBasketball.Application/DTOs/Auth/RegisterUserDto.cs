@@ -1,4 +1,6 @@
-﻿namespace SaintHenriBasketball.Application.DTOs.Auth;
+﻿using SaintHenriBasketball.Domain.Enums;
+
+namespace SaintHenriBasketball.Application.DTOs.Auth;
 
 public class RegisterUserDto
 {
@@ -7,4 +9,5 @@ public class RegisterUserDto
     public string Password { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
+    public PaymentPlan PaymentPlan { get; set; }
 }

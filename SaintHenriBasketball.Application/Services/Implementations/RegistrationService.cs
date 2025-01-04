@@ -13,78 +13,99 @@ public class RegistrationService : IRegistrationService
 {
     private readonly ISessionRegistrationRepository _registrationRepository;
     private readonly ISessionRepository _sessionRepository;
-    private readonly IPlayerRepository _playerRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<RegistrationService> _logger;
 
     public RegistrationService(
         ISessionRegistrationRepository registrationRepository,
         ISessionRepository sessionRepository,
-        IPlayerRepository playerRepository,
+        IUserRepository userRepository,
         IMapper mapper,
         ILogger<RegistrationService> logger)
     {
         _registrationRepository = registrationRepository;
         _sessionRepository = sessionRepository;
-        _playerRepository = playerRepository;
+        _userRepository = userRepository;
         _mapper = mapper;
         _logger = logger;
     }
 
-    public async Task<SessionRegistrationDto> RegisterPlayerForSessionAsync(Guid playerId, Guid sessionId)
+    public async Task<SessionRegistrationResponseDto> RegisterUserForSessionAsync(Guid userId, Guid sessionId)
     {
-        var session = await _sessionRepository.GetSessionWithRegistrationsAsync(sessionId);
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
         if (session == null)
         {
-            throw new NotFoundException(nameof(TrainingSession), sessionId);
+            throw new NotFoundException(nameof(Session), sessionId);
         }
 
-        var player = await _playerRepository.GetByIdAsync(playerId);
-        if (player == null)
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
         {
-            throw new NotFoundException(nameof(Player), playerId);
+            throw new NotFoundException(nameof(ApplicationUser), userId);
         }
 
-        // Check if player is already registered
-        var existingRegistration = await _registrationRepository
-            .GetRegistrationByPlayerAndSessionAsync(playerId, sessionId);
-        if (existingRegistration != null)
+        // Check if user is already registered
+        if (await _registrationRepository.ExistsAsync(userId, sessionId))
         {
-            throw new ValidationException("Player is already registered for this session");
+            throw new ValidationException("User is already registered for this session");
         }
 
-        if (!session.CanRegister())
+        if (session.Status != SessionStatus.Open)
         {
-            throw new ValidationException("Cannot register for this session");
+            throw new ValidationException("Session is not open for registration");
         }
 
-        var registration = new SessionRegistration(playerId, sessionId);
+        if (session.RegisteredPlayersCount >= session.MaxCapacity)
+        {
+            throw new ValidationException("Session is at maximum capacity");
+        }
+
+        var registration = new SessionRegistration(userId, sessionId, user.PaymentPlan);
         await _registrationRepository.AddAsync(registration);
 
-        _logger.LogInformation("Player {PlayerId} registered for session {SessionId}", playerId, sessionId);
+        // Update session's registered players count
+        session.RegisteredPlayersCount++;
+        await _sessionRepository.UpdateAsync(session);
 
-        return _mapper.Map<SessionRegistrationDto>(registration);
+        _logger.LogInformation("User {UserId} registered for session {SessionId}", userId, sessionId);
+
+        return _mapper.Map<SessionRegistrationResponseDto>(registration);
     }
 
-    public async Task CancelRegistrationAsync(Guid playerId, Guid sessionId)
+    public async Task CancelRegistrationAsync(Guid userId, Guid sessionId)
     {
-        var registration = await _registrationRepository
-            .GetRegistrationByPlayerAndSessionAsync(playerId, sessionId);
-        if (registration == null)
+        var registration = await _registrationRepository.ExistsAsync(userId, sessionId);
+        if (!registration)
         {
-            throw new NotFoundException("Registration", $"Player: {playerId}, Session: {sessionId}");
+            throw new NotFoundException("Registration", $"User: {userId}, Session: {sessionId}");
         }
 
-        registration.UpdateStatus(RegistrationStatus.Cancelled);
-        await _registrationRepository.UpdateAsync(registration);
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            throw new NotFoundException(nameof(Session), sessionId);
+        }
 
-        _logger.LogInformation("Registration cancelled for player {PlayerId} in session {SessionId}",
-            playerId, sessionId);
+        await _registrationRepository.DeleteAsync(userId, sessionId);
+
+        // Update session's registered players count
+        session.RegisteredPlayersCount--;
+        await _sessionRepository.UpdateAsync(session);
+
+        _logger.LogInformation("Registration cancelled for user {UserId} in session {SessionId}",
+            userId, sessionId);
     }
 
-    public async Task<IReadOnlyList<SessionRegistrationDto>> GetPlayerRegistrationsAsync(Guid playerId)
+    public async Task<IReadOnlyList<SessionRegistrationResponseDto>> GetUserRegistrationsAsync(Guid userId)
     {
-        var registrations = await _registrationRepository.GetRegistrationsByPlayerAsync(playerId);
-        return _mapper.Map<IReadOnlyList<SessionRegistrationDto>>(registrations);
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new NotFoundException(nameof(ApplicationUser), userId);
+        }
+
+        var registrations = await _registrationRepository.GetByUserIdAsync(userId);
+        return _mapper.Map<IReadOnlyList<SessionRegistrationResponseDto>>(registrations);
     }
 }
