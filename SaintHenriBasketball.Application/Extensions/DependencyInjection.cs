@@ -14,6 +14,9 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddAutoMapper(typeof(AuthService).Assembly);
+        services.AddLogging();
 
         return services;
     }

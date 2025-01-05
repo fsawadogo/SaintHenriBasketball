@@ -7,12 +7,16 @@ public class ApplicationUser
     public Guid Id { get; private set; }
     public string Username { get; set; }
     public string Email { get; set; }
-    public string PasswordHash { get; private set; }
+    public string PasswordHash { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public bool IsAdmin { get; set; }
     public PaymentPlan PaymentPlan { get; set; }
     public DateTime CreatedOn { get; private set; }
+    public string EmailConfirmationToken { get; set; }
+    public bool EmailConfirmed { get; set; }
+    public string PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiry { get; set; }
     public ICollection<SessionRegistration> SessionRegistrations { get; private set; }
 
     private ApplicationUser() { } // For EF Core
@@ -28,6 +32,7 @@ public class ApplicationUser
         PaymentPlan = paymentPlan;
         CreatedOn = DateTime.UtcNow;
         IsAdmin = false;
+        EmailConfirmed = false;
         SessionRegistrations = new List<SessionRegistration>();
     }
 }

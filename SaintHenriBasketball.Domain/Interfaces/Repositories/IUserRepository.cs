@@ -12,4 +12,6 @@ public interface IUserRepository
     Task<IEnumerable<ApplicationUser>> GetAllUsersAsync();
     Task AddAsync(ApplicationUser user);
     Task UpdateAsync(ApplicationUser user);
+    Task DeleteAsync(ApplicationUser user);
+
 }

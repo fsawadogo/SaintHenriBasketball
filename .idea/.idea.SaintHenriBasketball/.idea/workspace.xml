@@ -8,7 +8,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="" />
+    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Auth/ForgotPasswordDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Auth/ResetPasswordDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/CreatePaymentDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/PaymentDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/PaymentSummaryDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/UpdatePaymentStatusDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IPaymentService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AuthController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AuthController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.Development.json" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.Development.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.json" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Extensions/DependencyInjection.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Extensions/DependencyInjection.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AuthService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAuthService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -17,14 +42,48 @@
   <component name="DpaMonitoringSettings">
     <option name="firstShow" value="false" />
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "fsawadogo"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/fsawadogo/SaintHenriBasketball.git",
+    "accountId": "9e43e38f-99f5-4c86-89ad-afe40c65e159"
+  }
+}]]></component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Controllers/AuthController.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ce37be1a06b16c6faa02038d2cc477dd3bca5b217ceeb41c5f2ad45c1bf9/ServiceProvider.cs" root0="FORCE_HIGHLIGHTING" />
+  </component>
   <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="false" />
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 0
+}]]></component>
+  <component name="ProjectId" id="2rBybD58xsNCxdAt4fE8H7XzFv8" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     ".NET Launch Settings Profile.SaintHenriBasketball.API: http.executor": "Debug",
     "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
     "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
-    "node.js.selected.package.tslint": "(autodetect)"
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
@@ -57,9 +116,24 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="" />
+      <created>1736046832718</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1736046832718</updated>
+      <workItem from="1736046834070" duration="8216000" />
+    </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
   <component name="UnityCheckinConfiguration" checkUnsavedScenes="false" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
+  <component name="VcsManagerConfiguration">
+    <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+  </component>
 </project>

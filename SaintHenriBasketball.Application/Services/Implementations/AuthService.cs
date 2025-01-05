@@ -7,6 +7,7 @@ using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Auth;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.DTOs;
@@ -19,21 +20,21 @@ public class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly IMapper _mapper;
     private readonly IUserRepository _userRepository;
-    private readonly ISessionRepository _sessionRepository;
-    private readonly ISessionRegistrationRepository _sessionRegistrationRepository;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IConfiguration configuration,
         IMapper mapper,
         IUserRepository userRepository,
-        ISessionRepository sessionRepository,
-        ISessionRegistrationRepository sessionRegistrationRepository)
+        IEmailService emailService,
+        ILogger<AuthService> logger)
     {
         _configuration = configuration;
         _mapper = mapper;
         _userRepository = userRepository;
-        _sessionRepository = sessionRepository;
-        _sessionRegistrationRepository = sessionRegistrationRepository;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterUserDto registerDto)
@@ -59,7 +60,14 @@ public class AuthService : IAuthService
             registerDto.PaymentPlan
         );
 
+        // Generate and set email confirmation token
+        user.EmailConfirmationToken = Guid.NewGuid().ToString("N");
+
         await _userRepository.AddAsync(user);
+
+        // Send confirmation email
+        var confirmationLink = $"{_configuration["AppUrl"]}/confirm-email?token={user.EmailConfirmationToken}&email={user.Email}";
+        await _emailService.SendConfirmationEmailAsync(user.Email, confirmationLink);
 
         return new AuthResponseDto
         {
@@ -85,6 +93,11 @@ public class AuthService : IAuthService
         if (!BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
         {
             throw new ValidationException("Invalid credentials");
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            throw new ValidationException("Please confirm your email before logging in");
         }
 
         return new AuthResponseDto
@@ -150,7 +163,7 @@ public class AuthService : IAuthService
         return _mapper.Map<IEnumerable<UserDto>>(users);
     }
 
-    public async Task<SessionRegistrationResponseDto> RegisterForSessionAsync(Guid userId, SessionRegistrationDto registrationDto)
+    public async Task DeleteUserAsync(Guid userId)
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
@@ -158,46 +171,78 @@ public class AuthService : IAuthService
             throw new NotFoundException("User not found");
         }
 
-        var session = await _sessionRepository.GetByIdAsync(registrationDto.SessionId);
-        if (session == null)
-        {
-            throw new NotFoundException("Session not found");
-        }
-
-        if (session.Status != SessionStatus.Open)
-        {
-            throw new ValidationException("Session is not open for registration");
-        }
-
-        if (session.RegisteredPlayersCount >= session.MaxCapacity)
-        {
-            throw new ValidationException("Session is at maximum capacity");
-        }
-
-        if (await _sessionRegistrationRepository.ExistsAsync(userId, registrationDto.SessionId))
-        {
-            throw new ValidationException("User is already registered for this session");
-        }
-
-        var registration = new SessionRegistration(userId, registrationDto.SessionId, user.PaymentPlan);
-        
-        await _sessionRegistrationRepository.AddAsync(registration);
-
-        session.RegisteredPlayersCount++;
-        await _sessionRepository.UpdateAsync(session);
-
-        return _mapper.Map<SessionRegistrationResponseDto>(registration);
+        await _userRepository.DeleteAsync(user);
     }
 
-    public async Task<IEnumerable<SessionDto>> GetUserSessionsAsync(Guid userId)
+    public async Task ConfirmEmailAsync(string email, string token)
     {
-        var sessions = await _sessionRepository.GetUserSessionsAsync(userId);
-        return _mapper.Map<IEnumerable<SessionDto>>(sessions);
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+        {
+            throw new ValidationException("Invalid email");
+        }
+
+        if (user.EmailConfirmationToken != token)
+        {
+            throw new ValidationException("Invalid confirmation token");
+        }
+
+        if (user.EmailConfirmed)
+        {
+            throw new ValidationException("Email already confirmed");
+        }
+
+        user.EmailConfirmed = true;
+        user.EmailConfirmationToken = null;
+        
+        await _userRepository.UpdateAsync(user);
+    }
+
+    public async Task ForgotPasswordAsync(string email)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+        {
+            // Don't reveal user existence
+            return;
+        }
+
+        user.PasswordResetToken = Guid.NewGuid().ToString("N");
+        user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+
+        await _userRepository.UpdateAsync(user);
+
+        var resetLink = $"{_configuration["AppUrl"]}/reset-password?token={user.PasswordResetToken}&email={user.Email}";
+        await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
+    {
+        var user = await _userRepository.GetByEmailAsync(resetPasswordDto.Email);
+        if (user == null)
+        {
+            throw new ValidationException("Invalid email");
+        }
+
+        if (user.PasswordResetToken != resetPasswordDto.Token)
+        {
+            throw new ValidationException("Invalid reset token");
+        }
+
+        if (user.PasswordResetTokenExpiry < DateTime.UtcNow)
+        {
+            throw new ValidationException("Reset token has expired");
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetTokenExpiry = null;
+
+        await _userRepository.UpdateAsync(user);
     }
 
     private string GenerateJwtToken(ApplicationUser user)
     {
-        // Existing implementation remains the same
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -218,30 +263,5 @@ public class AuthService : IAuthService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-    public async Task CancelSessionRegistrationAsync(Guid userId, Guid sessionId)
-    {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-        {
-            throw new NotFoundException("User not found");
-        }
-
-        var session = await _sessionRepository.GetByIdAsync(sessionId);
-        if (session == null)
-        {
-            throw new NotFoundException("Session not found");
-        }
-
-        if (!await _sessionRegistrationRepository.ExistsAsync(userId, sessionId))
-        {
-            throw new NotFoundException("Registration not found");
-        }
-
-        await _sessionRegistrationRepository.DeleteAsync(userId, sessionId);
-
-        // Update session's registered players count
-        session.RegisteredPlayersCount--;
-        await _sessionRepository.UpdateAsync(session);
     }
 }

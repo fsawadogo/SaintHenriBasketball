@@ -2,6 +2,7 @@
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Repositories;
 
@@ -17,6 +18,7 @@ public class PaymentRepository : IPaymentRepository
     public async Task<IReadOnlyList<Payment>> GetPaymentsByUserAsync(Guid userId)
     {
         return await _context.Payments
+            .Include(p => p.User)
             .Where(p => p.UserId == userId)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
@@ -27,6 +29,32 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    public async Task<IReadOnlyList<Payment>> GetAllAsync()
+    {
+        return await _context.Payments
+            .Include(p => p.User)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<Payment>> GetPaymentsByStatusAsync(PaymentStatus status)
+    {
+        return await _context.Payments
+            .Include(p => p.User)
+            .Where(p => p.Status == status)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<Payment>> GetPaymentsByTypeAsync(PaymentPlan plan)
+    {
+        return await _context.Payments
+            .Include(p => p.User)
+            .Where(p => p.Plan == plan)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
     }
 
     public async Task AddAsync(Payment payment)

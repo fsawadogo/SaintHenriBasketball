@@ -10,9 +10,9 @@ public interface IAuthService
     Task<UserDto> GetUserAsync(Guid userId);
     Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserDto updateDto);
     Task<IEnumerable<UserDto>> GetAllUsersAsync();
-    Task<SessionRegistrationResponseDto> RegisterForSessionAsync(Guid userId, SessionRegistrationDto registrationDto);
-    Task<IEnumerable<SessionDto>> GetUserSessionsAsync(Guid userId);
-    Task CancelSessionRegistrationAsync(Guid userId, Guid sessionId);
-
+    Task DeleteUserAsync(Guid userId);
+    Task ConfirmEmailAsync(string email, string token);
+    Task ForgotPasswordAsync(string email);
+    Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
 }
 
