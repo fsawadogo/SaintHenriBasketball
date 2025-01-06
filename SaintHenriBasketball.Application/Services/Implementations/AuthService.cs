@@ -12,6 +12,7 @@ using SaintHenriBasketball.Application.DTOs.Auth;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Domain.Enums;
+using Microsoft.AspNetCore.Identity;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -65,9 +66,17 @@ public class AuthService : IAuthService
 
         await _userRepository.AddAsync(user);
 
-        // Send confirmation email
-        var confirmationLink = $"{_configuration["AppUrl"]}/confirm-email?token={user.EmailConfirmationToken}&email={user.Email}";
-        await _emailService.SendConfirmationEmailAsync(user.Email, confirmationLink);
+        try
+        {
+            // Send confirmation email
+            var confirmationLink = $"{_configuration["AppUrl"]}/confirm-email?token={user.EmailConfirmationToken}&email={user.Email}";
+            await _emailService.SendConfirmationEmailAsync(user.Email, confirmationLink);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send confirmation email to {Email}", user.Email);
+            // Continue with registration even if email fails
+        }
 
         return new AuthResponseDto
         {

@@ -5,12 +5,14 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "username": "fsawadogo",
-  "email": "fsawadogo@gmail.com",
-  "password": "Admin@123",
+  "username": "afsawadogo",
+  "email": "afaicals@gmail.com",
+  "password": "Admin@2025",
   "firstName": "Abdoul",
-  "lastName": "Sawadogo"
+  "lastName": "Sawadogo",
+  "paymentPlan": 0
 }
+
 ### Login
 
 POST {{SaintHenriBasketball.API_HostAddress}}/api/auth/login
@@ -19,7 +21,7 @@ Content-Type: application/json
 
 {
   "email": "faycalsawadogo@gmail.com",
-  "password": "Admin@1234"
+  "password": "Admin@12345"
 }
 
 ### Me

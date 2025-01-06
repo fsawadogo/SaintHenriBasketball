@@ -22,8 +22,48 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Email).IsRequired();
-            entity.Property(e => e.Username).IsRequired();
+
+            // Required fields
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(e => e.Username)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(e => e.PasswordHash)
+                .IsRequired();
+
+            entity.Property(e => e.FirstName)
+                .IsRequired();
+
+            entity.Property(e => e.LastName)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedOn)
+                .IsRequired();
+
+            entity.Property(e => e.PaymentPlan)
+                .IsRequired();
+
+            // Nullable fields for email confirmation and password reset
+            entity.Property(e => e.EmailConfirmationToken)
+                .HasMaxLength(450)
+                .IsRequired(false);
+
+            entity.Property(e => e.EmailConfirmed)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.PasswordResetToken)
+                .HasMaxLength(450)
+                .IsRequired(false);
+
+            entity.Property(e => e.PasswordResetTokenExpiry)
+                .IsRequired(false);
+
+            // Unique indexes
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Username).IsUnique();
         });
@@ -34,11 +74,17 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.SessionDate).IsRequired();
             entity.Property(e => e.MaxCapacity).IsRequired();
             entity.Property(e => e.DropInPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.RegisteredPlayersCount).IsRequired();
+            entity.Property(e => e.CreatedOn).IsRequired();
         });
 
         modelBuilder.Entity<SessionRegistration>(entity =>
         {
             entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.PaymentPlan).IsRequired();
+            entity.Property(e => e.RegistrationDate).IsRequired();
 
             entity.HasOne(sr => sr.User)
                 .WithMany(u => u.SessionRegistrations)
@@ -54,13 +100,17 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Payment>(entity =>
         {
             entity.HasKey(e => e.Id);
+
             entity.Property(e => e.Amount)
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
+
             entity.Property(e => e.Plan)
                 .IsRequired();
+
             entity.Property(e => e.Status)
                 .IsRequired();
+
             entity.Property(e => e.PaymentDate)
                 .IsRequired();
 
