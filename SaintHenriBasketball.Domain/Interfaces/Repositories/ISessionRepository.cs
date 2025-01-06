@@ -10,6 +10,9 @@ public interface ISessionRepository
     Task<IReadOnlyList<Session>> GetUpcomingSessionsAsync();
     Task<IReadOnlyList<Session>> GetAvailableSessionsAsync();
     Task<IEnumerable<Session>> GetUserSessionsAsync(Guid userId);
+    Task<IReadOnlyList<Session>> GetByIdsAsync(IEnumerable<Guid> ids);
+    Task<int> GetRegistrationCountAsync(Guid sessionId);
+    Task<bool> ExistsAsync(Guid id);
 }
 
 

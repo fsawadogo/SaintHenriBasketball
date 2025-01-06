@@ -46,4 +46,24 @@ public class SessionRegistrationRepository : ISessionRegistrationRepository
             .OrderByDescending(r => r.Session.SessionDate)
             .ToListAsync();
     }
+
+    public async Task<IReadOnlyList<SessionRegistration>> GetBySessionIdAsync(Guid sessionId)
+    {
+        return await _context.SessionRegistrations
+            .Include(r => r.User)
+            .Where(r => r.SessionId == sessionId)
+            .OrderBy(r => r.RegistrationDate)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetRegistrationCountForSessionAsync(Guid sessionId)
+    {
+        return await _context.SessionRegistrations
+            .CountAsync(r => r.SessionId == sessionId);
+    }
+
+    public async Task<bool> IsUserRegisteredAsync(Guid userId, Guid sessionId)
+    {
+        return await ExistsAsync(userId, sessionId);
+    }
 }

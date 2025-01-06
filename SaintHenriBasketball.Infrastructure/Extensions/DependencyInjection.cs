@@ -22,7 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ISessionRepository, SessionRepository>();
         services.AddScoped<ISessionRegistrationRepository, SessionRegistrationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
-
+        services.AddScoped<ISeasonSubscriptionRepository, SeasonSubscriptionRepository>();
         // Add AutoMapper
         services.AddAutoMapper(typeof(MappingProfile).Assembly);
 

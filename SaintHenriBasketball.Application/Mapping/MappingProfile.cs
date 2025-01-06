@@ -15,13 +15,21 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
             .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.Username))
-            .ForMember(dest => dest.IsAdmin, opt => opt.MapFrom(src => src.IsAdmin));
+            .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
+            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
+            .ForMember(dest => dest.IsAdmin, opt => opt.MapFrom(src => src.IsAdmin))
+            .ForMember(dest => dest.PaymentPlan, opt => opt.MapFrom(src => src.PaymentPlan))
+            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn));
 
         CreateMap<RegisterUserDto, ApplicationUser>()
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
-            .ForMember(dest => dest.SessionRegistrations, opt => opt.Ignore());
+            .ForMember(dest => dest.SessionRegistrations, opt => opt.Ignore())
+            .ForMember(dest => dest.EmailConfirmed, opt => opt.Ignore())
+            .ForMember(dest => dest.EmailConfirmationToken, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordResetToken, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordResetTokenExpiry, opt => opt.Ignore());
 
         CreateMap<ApplicationUser, AuthResponseDto>()
             .ForMember(dest => dest.Token, opt => opt.Ignore())
@@ -56,21 +64,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.PaymentPlan, opt => opt.MapFrom(src => src.PaymentPlan))
             .ForMember(dest => dest.RegistrationDate, opt => opt.MapFrom(src => src.RegistrationDate));
 
-        CreateMap<SessionRegistrationDto, SessionRegistration>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore())
-            .ForMember(dest => dest.User, opt => opt.Ignore())
-            .ForMember(dest => dest.Session, opt => opt.Ignore())
-            .ForMember(dest => dest.RegistrationDate, opt => opt.MapFrom(src => DateTime.UtcNow));
-
-        // Extended User mappings
-        CreateMap<ApplicationUser, UserDto>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
-            .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.Username))
-            .ForMember(dest => dest.IsAdmin, opt => opt.MapFrom(src => src.IsAdmin))
-            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn));
-
-        // Session with registration details
+        // Session detail mapping with registered players
         CreateMap<Session, SessionDetailDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.SessionDate, opt => opt.MapFrom(src => src.SessionDate))
@@ -86,5 +80,33 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Registrations, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
             .ForMember(dest => dest.RegisteredPlayersCount, opt => opt.Ignore());
+
+        // Season Subscription mappings
+        CreateMap<SeasonSubscription, SeasonSubscriptionDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User.Email))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src =>
+                $"{src.User.FirstName} {src.User.LastName}"))
+            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price))
+            .ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => src.PaymentStatus))
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
+
+        CreateMap<CreateSeasonSubscriptionDto, SeasonSubscription>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => DateTime.UtcNow))
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+            .ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => PaymentStatus.Pending));
+
+        CreateMap<UpdateSessionDto, Session>()
+        .ForMember(dest => dest.Id, opt => opt.Ignore())
+        .ForMember(dest => dest.Registrations, opt => opt.Ignore())
+        .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
+        .ForMember(dest => dest.RegisteredPlayersCount, opt => opt.Ignore())
+        .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
     }
 }

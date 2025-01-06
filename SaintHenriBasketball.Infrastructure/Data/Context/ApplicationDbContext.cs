@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ApplicationUser> Users { get; set; }
     public DbSet<Session> Sessions { get; set; }
     public DbSet<SessionRegistration> SessionRegistrations { get; set; }
+    public DbSet<SeasonSubscription> SeasonSubscriptions { get; set; }
     public DbSet<Payment> Payments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -96,28 +97,53 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(sr => sr.SessionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
-
-        modelBuilder.Entity<Payment>(entity =>
+        modelBuilder.Entity<SeasonSubscription>(entity =>
         {
             entity.HasKey(e => e.Id);
 
-            entity.Property(e => e.Amount)
+            entity.Property(e => e.Price)
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
 
-            entity.Property(e => e.Plan)
+            entity.Property(e => e.StartDate)
                 .IsRequired();
 
-            entity.Property(e => e.Status)
+            entity.Property(e => e.EndDate)
                 .IsRequired();
 
-            entity.Property(e => e.PaymentDate)
+            entity.Property(e => e.CreatedOn)
                 .IsRequired();
 
-            entity.HasOne(p => p.User)
+            entity.Property(e => e.IsActive)
+                .IsRequired();
+
+            entity.HasOne(e => e.User)
                 .WithMany()
-                .HasForeignKey(p => p.UserId)
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<Payment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Amount)
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+
+                entity.Property(e => e.Plan)
+                    .IsRequired();
+
+                entity.Property(e => e.Status)
+                    .IsRequired();
+
+                entity.Property(e => e.PaymentDate)
+                    .IsRequired();
+
+                entity.HasOne(p => p.User)
+                    .WithMany()
+                    .HasForeignKey(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
     }
 }

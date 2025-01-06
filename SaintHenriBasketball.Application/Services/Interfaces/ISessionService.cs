@@ -10,4 +10,8 @@ public interface ISessionService
     Task UpdateSessionAsync(Guid id, UpdateSessionDto updateSessionDto);
     Task CancelSessionAsync(Guid id);
     Task<IReadOnlyList<SessionDto>> GetAvailableSessionsAsync();
+    Task<SessionRegistrationResponseDto> RegisterForSessionAsync(Guid sessionId, Guid userId);
+    Task UnregisterFromSessionAsync(Guid sessionId, Guid userId);
+    Task<IReadOnlyList<SessionDto>> GetUserSessionsAsync(Guid userId);
+    Task<bool> IsUserRegisteredForSessionAsync(Guid sessionId, Guid userId);
 }

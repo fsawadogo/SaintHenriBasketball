@@ -24,4 +24,5 @@ public class UpdateSessionDto
     public DateTime SessionDate { get; set; }
     public int MaxCapacity { get; set; }
     public decimal DropInPrice { get; set; }
+    public SessionStatus Status { get; set; }
 }
