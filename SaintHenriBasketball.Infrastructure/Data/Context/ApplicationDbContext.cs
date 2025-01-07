@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SessionRegistration> SessionRegistrations { get; set; }
     public DbSet<SeasonSubscription> SeasonSubscriptions { get; set; }
     public DbSet<Payment> Payments { get; set; }
+    public DbSet<SessionAttendance> SessionAttendances { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -145,5 +146,32 @@ public class ApplicationDbContext : DbContext
                     .HasForeignKey(p => p.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+        modelBuilder.Entity<SessionAttendance>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.CreatedOn)
+                .IsRequired();
+
+            entity.Property(e => e.IsPresent)
+                .IsRequired();
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(500);
+
+            entity.HasOne(e => e.Session)
+                .WithMany()
+                .HasForeignKey(e => e.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.SessionId, e.UserId })
+                .IsUnique();
+        });
     }
 }
