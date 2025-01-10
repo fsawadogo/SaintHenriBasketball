@@ -151,7 +151,7 @@ public class EmailService : IEmailService
                             <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.StartTime:dddd, MMMM dd, yyyy}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Time:</strong> {attendance.Session.StartTime:hh:mm tt} - {attendance.Session.EndTime:hh:mm tt}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Location:</strong> {attendance.Session.Location}</p>
-                            <p style='margin: 5px 0; color: #444;'><strong>Status:</strong> {(attendance.IsPresent ? "Present" : "Absent")}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Status:</strong> {(attendance.IsAttending ? "Present" : "Absent")}</p>
                             {(!string.IsNullOrEmpty(attendance.Notes) ? $"<p style='margin: 5px 0; color: #444;'><strong>Notes:</strong> {attendance.Notes}</p>" : "")}
                         </div>
                         <p style='color: #666; font-size: 14px;'>If you believe this was recorded in error, please contact the administrator.</p>

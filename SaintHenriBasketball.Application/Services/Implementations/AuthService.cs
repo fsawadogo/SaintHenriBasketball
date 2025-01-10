@@ -161,6 +161,7 @@ public class AuthService : IAuthService
         user.FirstName = updateDto.FirstName ?? user.FirstName;
         user.LastName = updateDto.LastName ?? user.LastName;
         user.PaymentPlan = updateDto.PaymentPlan;
+        user.IsAdmin = updateDto.IsAdmin;
 
         await _userRepository.UpdateAsync(user);
         return _mapper.Map<UserDto>(user);

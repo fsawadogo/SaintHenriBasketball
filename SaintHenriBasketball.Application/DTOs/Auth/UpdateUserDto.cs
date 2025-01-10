@@ -9,4 +9,6 @@ public class UpdateUserDto
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public PaymentPlan PaymentPlan { get; set; }
+    
+    public bool IsAdmin { get; set; }
 }

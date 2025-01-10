@@ -28,5 +28,7 @@ public class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
 
         RuleFor(x => x.PaymentPlan)
             .IsInEnum();
+        
+        RuleFor(x => x.IsAdmin).NotNull();
     }
 }
