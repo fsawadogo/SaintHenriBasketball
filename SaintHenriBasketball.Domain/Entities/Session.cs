@@ -13,10 +13,13 @@ public class Session
     public int RegisteredPlayersCount { get; set; }
     public ICollection<SessionRegistration> Registrations { get; set; }
     public DateTime CreatedOn { get; private set; }
+    public string StartTime { get; set; }
+    public string EndTime { get; set; }
+    public string Location { get; set; }
 
     private Session() { } // For EF Core
 
-    public Session(DateTime sessionDate, int maxCapacity, decimal dropInPrice)
+    public Session(DateTime sessionDate, int maxCapacity, decimal dropInPrice, string startTime, string endTime, string location)
     {
         Id = Guid.NewGuid();
         SessionDate = sessionDate;
@@ -26,5 +29,8 @@ public class Session
         RegisteredPlayersCount = 0;
         Registrations = new List<SessionRegistration>();
         CreatedOn = DateTime.UtcNow;
+        StartTime = startTime ?? throw new ArgumentNullException(nameof(startTime));
+        EndTime = endTime ?? throw new ArgumentNullException(nameof(endTime));
+        Location = location ?? throw new ArgumentNullException(nameof(location));
     }
 }

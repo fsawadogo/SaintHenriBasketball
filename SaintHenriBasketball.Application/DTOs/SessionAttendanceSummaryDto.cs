@@ -4,7 +4,9 @@ public class SessionAttendanceSummaryDto
 {
     public Guid SessionId { get; set; }
     public DateTime SessionDate { get; set; }
-    public int TotalRegistered { get; set; }
-    public int TotalPresent { get; set; }
-    public List<AttendanceDto> Attendances { get; set; }
+    public int TotalAttendees { get; set; }
+    public int RegisteredCount { get; set; }
+    public int ConfirmedCount { get; set; }
+    public decimal AttendanceRate { get; set; }
+    public List<AttendanceResponseDto> Attendances { get; set; }
 }

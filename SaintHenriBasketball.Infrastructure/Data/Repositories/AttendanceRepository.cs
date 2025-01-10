@@ -22,7 +22,7 @@ public class AttendanceRepository : IAttendanceRepository
             .FirstOrDefaultAsync(a => a.SessionId == sessionId && a.UserId == userId);
     }
 
-    public async Task<IReadOnlyList<SessionAttendance>> GetSessionAttendancesAsync(Guid sessionId)
+    public async Task<IEnumerable<SessionAttendance>> GetSessionAttendancesAsync(Guid sessionId)
     {
         return await _context.SessionAttendances
             .Include(a => a.User)
@@ -32,22 +32,12 @@ public class AttendanceRepository : IAttendanceRepository
             .ToListAsync();
     }
 
-    public async Task<IReadOnlyList<SessionAttendance>> GetUserAttendancesAsync(Guid userId)
+    public async Task<IEnumerable<SessionAttendance>> GetUserAttendanceHistoryAsync(Guid userId)
     {
         return await _context.SessionAttendances
             .Include(a => a.User)
             .Include(a => a.Session)
             .Where(a => a.UserId == userId)
-            .OrderByDescending(a => a.Session.SessionDate)
-            .ToListAsync();
-    }
-
-    public async Task<IReadOnlyList<SessionAttendance>> GetAttendancesByDateRangeAsync(DateTime startDate, DateTime endDate)
-    {
-        return await _context.SessionAttendances
-            .Include(a => a.User)
-            .Include(a => a.Session)
-            .Where(a => a.Session.SessionDate >= startDate && a.Session.SessionDate <= endDate)
             .OrderByDescending(a => a.Session.SessionDate)
             .ToListAsync();
     }

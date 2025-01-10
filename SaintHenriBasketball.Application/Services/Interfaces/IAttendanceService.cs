@@ -4,8 +4,8 @@ namespace SaintHenriBasketball.Application.Services.Interfaces;
 
 public interface IAttendanceService
 {
-    Task<AttendanceDto> MarkAttendanceAsync(Guid sessionId, Guid userId, bool isPresent, string? notes);
+    Task<AttendanceResponseDto> MarkAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes);
+    Task<AttendanceResponseDto> UpdateAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes, string? updateReason);
+    Task<IEnumerable<AttendanceResponseDto>> GetUserAttendanceHistoryAsync(Guid userId);
     Task<SessionAttendanceSummaryDto> GetSessionAttendanceSummaryAsync(Guid sessionId);
-    Task<IReadOnlyList<AttendanceDto>> GetUserAttendanceHistoryAsync(Guid userId);
-    Task<AttendanceStatsDto> GetAttendanceStatsAsync(DateTime startDate, DateTime endDate);
 }

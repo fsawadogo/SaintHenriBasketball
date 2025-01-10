@@ -3,6 +3,7 @@ using SendGrid.Helpers.Mail;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using SaintHenriBasketball.Domain.Entities;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -128,6 +129,82 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send password reset email to {Email}", to);
+            throw;
+        }
+    }
+
+        public async Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing attendance confirmation email for session {SessionId} and user {UserId}", 
+                attendance.SessionId, attendance.UserId);
+
+            var subject = "Basketball Session Attendance Confirmation";
+            var htmlContent = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                        <h1 style='color: #333; text-align: center;'>Attendance Confirmation</h1>
+                        <p style='color: #666; font-size: 16px;'>Your attendance has been recorded for the following session:</p>
+                        <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.StartTime:dddd, MMMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Time:</strong> {attendance.Session.StartTime:hh:mm tt} - {attendance.Session.EndTime:hh:mm tt}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Location:</strong> {attendance.Session.Location}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Status:</strong> {(attendance.IsPresent ? "Present" : "Absent")}</p>
+                            {(!string.IsNullOrEmpty(attendance.Notes) ? $"<p style='margin: 5px 0; color: #444;'><strong>Notes:</strong> {attendance.Notes}</p>" : "")}
+                        </div>
+                        <p style='color: #666; font-size: 14px;'>If you believe this was recorded in error, please contact the administrator.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                        <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                    </div>
+                </body>
+                </html>";
+
+            await SendEmailAsync(attendance.User.Email, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send attendance confirmation email for session {SessionId} and user {UserId}", 
+                attendance.SessionId, attendance.UserId);
+            throw;
+        }
+    }
+
+        public async Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing attendance update email for session {SessionId} and user {UserId}", 
+                attendance.SessionId, attendance.UserId);
+
+            var subject = "Basketball Session Attendance Update";
+            var htmlContent = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                        <h1 style='color: #333; text-align: center;'>Attendance Update</h1>
+                        <p style='color: #666; font-size: 16px;'>Your attendance status has been updated for the following session:</p>
+                        <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.StartTime:dddd, MMMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Time:</strong> {attendance.Session.StartTime:hh:mm tt} - {attendance.Session.EndTime:hh:mm tt}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Location:</strong> {attendance.Session.Location}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Updated Status:</strong> {(attendance.IsPresent ? "Present" : "Absent")}</p>
+                            {(!string.IsNullOrEmpty(attendance.Notes) ? $"<p style='margin: 5px 0; color: #444;'><strong>Notes:</strong> {attendance.Notes}</p>" : "")}
+                        </div>
+                        <p style='color: #666; font-size: 14px;'>If you believe this update was made in error, please contact the administrator.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                        <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                    </div>
+                </body>
+                </html>";
+
+            await SendEmailAsync(attendance.User.Email, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send attendance update email for session {SessionId} and user {UserId}", 
+                attendance.SessionId, attendance.UserId);
             throw;
         }
     }

@@ -160,6 +160,14 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<decimal>("DropInPrice")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("EndTime")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("MaxCapacity")
                         .HasColumnType("int");
 
@@ -168,6 +176,10 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
 
                     b.Property<DateTime>("SessionDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StartTime")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -189,8 +201,14 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsAttending")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsPresent")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
@@ -198,6 +216,9 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
 
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UpdateReason")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");

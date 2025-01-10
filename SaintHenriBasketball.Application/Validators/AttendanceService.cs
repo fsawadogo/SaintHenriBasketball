@@ -4,6 +4,7 @@ using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.Application.Validators;
@@ -12,70 +13,146 @@ public class AttendanceService : IAttendanceService
 {
     private readonly IAttendanceRepository _attendanceRepository;
     private readonly ISessionRepository _sessionRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
     private readonly IMapper _mapper;
     private readonly ILogger<AttendanceService> _logger;
 
     public AttendanceService(
         IAttendanceRepository attendanceRepository,
         ISessionRepository sessionRepository,
-        IUserRepository userRepository,
+        IEmailService emailService,
         IMapper mapper,
         ILogger<AttendanceService> logger)
     {
         _attendanceRepository = attendanceRepository;
         _sessionRepository = sessionRepository;
-        _userRepository = userRepository;
+        _emailService = emailService;
         _mapper = mapper;
         _logger = logger;
     }
 
-    public async Task<AttendanceDto> MarkAttendanceAsync(Guid sessionId, Guid userId, bool isPresent, string? notes)
+    public async Task<AttendanceResponseDto> MarkAttendanceAsync(
+        Guid sessionId, 
+        Guid userId, 
+        bool isAttending, 
+        string? notes)
     {
         var session = await _sessionRepository.GetByIdAsync(sessionId);
         if (session == null)
         {
-            throw new NotFoundException(nameof(Session), sessionId);
+            throw new NotFoundException($"Session {sessionId} not found");
         }
 
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
+        // Validate session date
+        if (session.SessionDate < DateTime.UtcNow.AddDays(7))
         {
-            throw new NotFoundException(nameof(ApplicationUser), userId);
+            throw new ValidationException("Attendance can only be marked within 7 days before the session");
         }
 
-        if (session.SessionDate.Date > DateTime.UtcNow.Date)
+        // Check for existing attendance
+        var existingAttendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
+        if (existingAttendance != null)
         {
-            throw new ValidationException("Cannot mark attendance for future sessions");
+            throw new ValidationException("Attendance already marked for this session");
         }
 
+        var attendance = new SessionAttendance
+        {
+            SessionId = sessionId,
+            UserId = userId,
+            IsAttending = isAttending,
+            Notes = notes,
+            CheckInTime = isAttending ? DateTime.UtcNow : null,
+            CreatedOn = DateTime.UtcNow
+        };
+
+        // Update session spots if attending
+        if (isAttending)
+        {
+            session.RegisteredPlayersCount++;
+            if (session.RegisteredPlayersCount >= session.MaxCapacity)
+            {
+                session.Status = SessionStatus.Full;
+            }
+            await _sessionRepository.UpdateAsync(session);
+        }
+
+        await _attendanceRepository.AddAsync(attendance);
+
+        // Send confirmation email
+        await _emailService.SendAttendanceConfirmationEmailAsync(attendance);
+
+        return _mapper.Map<AttendanceResponseDto>(attendance);
+    }
+
+    public async Task<AttendanceResponseDto> UpdateAttendanceAsync(
+        Guid sessionId, 
+        Guid userId, 
+        bool isAttending, 
+        string? notes, 
+        string? updateReason)
+    {
         var attendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
         if (attendance == null)
         {
-            attendance = new SessionAttendance
-            {
-                SessionId = sessionId,
-                UserId = userId,
-                IsPresent = isPresent,
-                CheckInTime = isPresent ? DateTime.UtcNow : null,
-                Notes = notes,
-                CreatedOn = DateTime.UtcNow
-            };
-            await _attendanceRepository.AddAsync(attendance);
+            throw new NotFoundException("Attendance record not found");
         }
-        else
+
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
         {
-            attendance.IsPresent = isPresent;
-            attendance.CheckInTime = isPresent ? DateTime.UtcNow : null;
-            attendance.Notes = notes;
-            await _attendanceRepository.UpdateAsync(attendance);
+            throw new NotFoundException($"Session {sessionId} not found");
         }
 
-        _logger.LogInformation(
-            "Attendance marked for User {UserId} in Session {SessionId}. Present: {IsPresent}",
-            userId, sessionId, isPresent);
+        if (session.SessionDate < DateTime.UtcNow.AddDays(7))
+        {
+            throw new ValidationException("Attendance can only be updated within 7 days before the session");
+        }
 
-        return _mapper.Map<AttendanceDto>(attendance);
+        // Track previous status for session count update
+        var wasAttending = attendance.IsAttending;
+
+        // Update attendance
+        attendance.IsAttending = isAttending;
+        attendance.Notes = notes;
+        attendance.UpdateReason = updateReason;
+        attendance.LastUpdated = DateTime.UtcNow;
+        attendance.CheckInTime = isAttending ? DateTime.UtcNow : null;
+
+        // Update session spots if status changed
+        if (wasAttending != isAttending)
+        {
+            if (isAttending)
+            {
+                session.RegisteredPlayersCount++;
+                if (session.RegisteredPlayersCount >= session.MaxCapacity)
+                {
+                    session.Status = SessionStatus.Full;
+                }
+            }
+            else
+            {
+                session.RegisteredPlayersCount--;
+                if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
+                {
+                    session.Status = SessionStatus.Open;
+                }
+            }
+            await _sessionRepository.UpdateAsync(session);
+        }
+
+        await _attendanceRepository.UpdateAsync(attendance);
+
+        // Send update confirmation email
+        await _emailService.SendAttendanceUpdateEmailAsync(attendance);
+
+        return _mapper.Map<AttendanceResponseDto>(attendance);
+    }
+
+    public async Task<IEnumerable<AttendanceResponseDto>> GetUserAttendanceHistoryAsync(Guid userId)
+    {
+        var attendances = await _attendanceRepository.GetUserAttendanceHistoryAsync(userId);
+        return _mapper.Map<IEnumerable<AttendanceResponseDto>>(attendances);
     }
 
     public async Task<SessionAttendanceSummaryDto> GetSessionAttendanceSummaryAsync(Guid sessionId)
@@ -83,59 +160,22 @@ public class AttendanceService : IAttendanceService
         var session = await _sessionRepository.GetByIdAsync(sessionId);
         if (session == null)
         {
-            throw new NotFoundException(nameof(Session), sessionId);
+            throw new NotFoundException($"Session {sessionId} not found");
         }
 
         var attendances = await _attendanceRepository.GetSessionAttendancesAsync(sessionId);
 
-        var summary = new SessionAttendanceSummaryDto
+        return new SessionAttendanceSummaryDto
         {
             SessionId = sessionId,
             SessionDate = session.SessionDate,
-            TotalRegistered = session.RegisteredPlayersCount,
-            TotalPresent = attendances.Count(a => a.IsPresent),
-            Attendances = _mapper.Map<List<AttendanceDto>>(attendances)
-        };
-
-        return summary;
-    }
-
-    public async Task<IReadOnlyList<AttendanceDto>> GetUserAttendanceHistoryAsync(Guid userId)
-    {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-        {
-            throw new NotFoundException(nameof(ApplicationUser), userId);
-        }
-
-        var attendances = await _attendanceRepository.GetUserAttendancesAsync(userId);
-        return _mapper.Map<IReadOnlyList<AttendanceDto>>(attendances);
-    }
-
-    public async Task<AttendanceStatsDto> GetAttendanceStatsAsync(DateTime startDate, DateTime endDate)
-    {
-        var attendances = await _attendanceRepository.GetAttendancesByDateRangeAsync(startDate, endDate);
-
-        return new AttendanceStatsDto
-        {
-            StartDate = startDate,
-            EndDate = endDate,
-            TotalSessions = attendances.Select(a => a.SessionId).Distinct().Count(),
-            TotalAttendees = attendances.Where(a => a.IsPresent).Count(),
-            AverageAttendanceRate = attendances.Any()
-                ? (double)attendances.Count(a => a.IsPresent) / attendances.Count * 100
+            TotalAttendees = attendances.Count(),
+            RegisteredCount = session.RegisteredPlayersCount,
+            ConfirmedCount = attendances.Count(a => a.IsAttending),
+            AttendanceRate = session.RegisteredPlayersCount > 0 
+                ? (decimal)attendances.Count(a => a.IsAttending) / session.RegisteredPlayersCount * 100 
                 : 0,
-            SessionStats = attendances
-                .GroupBy(a => a.SessionId)
-                .Select(g => new SessionStatsDto
-                {
-                    SessionId = g.Key,
-                    SessionDate = g.First().Session.SessionDate,
-                    TotalRegistered = g.Count(),
-                    TotalPresent = g.Count(a => a.IsPresent),
-                    AttendanceRate = (double)g.Count(a => a.IsPresent) / g.Count() * 100
-                })
-                .ToList()
+            Attendances = _mapper.Map<List<AttendanceResponseDto>>(attendances)
         };
     }
 }

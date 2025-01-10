@@ -9,30 +9,28 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Auth/ForgotPasswordDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Auth/ResetPasswordDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/CreatePaymentDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/PaymentDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/PaymentSummaryDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/UpdatePaymentStatusDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IPaymentService.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/AttendanceResponseDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/MarkAttendanceRequest.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/UpdateAttendanceRequest.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AuthController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AuthController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.Development.json" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.Development.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.json" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/appsettings.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Extensions/DependencyInjection.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Extensions/DependencyInjection.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AuthService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAuthService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AttendanceController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AttendanceController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/SessionAttendanceSummaryDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/SessionAttendanceSummaryDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/SessionDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/SessionDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/SessionService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/SessionService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAttendanceService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAttendanceService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/ISessionService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/ISessionService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/AttendanceService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/AttendanceService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/CreateSessionDtoValidator.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/CreateSessionDtoValidator.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/UpdateSessionDtoValidator.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/UpdateSessionDtoValidator.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Session.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Session.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/SessionAttendance.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/SessionAttendance.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IAttendanceRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IAttendanceRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/AttendanceRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/AttendanceRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,47 +43,52 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "fsawadogo"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;fsawadogo&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/fsawadogo/SaintHenriBasketball.git",
-    "accountId": "9e43e38f-99f5-4c86-89ad-afe40c65e159"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/fsawadogo/SaintHenriBasketball.git&quot;,
+    &quot;accountId&quot;: &quot;9e43e38f-99f5-4c86-89ad-afe40c65e159&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Controllers/AuthController.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ce37be1a06b16c6faa02038d2cc477dd3bca5b217ceeb41c5f2ad45c1bf9/ServiceProvider.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/db7395f4add94e6d10e515b3e55373f2821f8323de7dc8e314d78feefacf5584/ActionMethodExecutor.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ead6614bb1135d7d61e33ab3a33f17abb3e4f07240e1ae2f5641235738ab7/ServiceProviderEngineScope.cs" root0="FORCE_HIGHLIGHTING" />
   </component>
-  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="false" />
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 0
+  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
 }]]></component>
+  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="false" />
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
   <component name="ProjectId" id="2rBybD58xsNCxdAt4fE8H7XzFv8" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    ".NET Launch Settings Profile.SaintHenriBasketball.API: http.executor": "Debug",
-    "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
-    "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;.NET Launch Settings Profile.SaintHenriBasketball.API: http.executor&quot;: &quot;Debug&quot;,
+    &quot;HTTP Request.SaintHenriBasketball.API | Login.executor&quot;: &quot;Run&quot;,
+    &quot;HTTP Request.SaintHenriBasketball.API | Me.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
     <configuration name="SaintHenriBasketball.API | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Login" index="2" runType="Run single request">
       <method v="2" />
@@ -124,8 +127,18 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1736046832718</updated>
-      <workItem from="1736046834070" duration="8216000" />
+      <workItem from="1736046834070" duration="10148000" />
+      <workItem from="1736466106907" duration="8357000" />
     </task>
+    <task id="LOCAL-00001" summary="Add email cnfirmation and passport reset">
+      <option name="closed" value="true" />
+      <created>1736118684346</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1736118684347</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -135,5 +148,26 @@
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+    <MESSAGE value="Add email cnfirmation and passport reset" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add email cnfirmation and passport reset" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AttendanceController.cs</url>
+          <line>147</line>
+          <properties documentPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AttendanceController.cs" containingFunctionPresentation="Method 'GetSessionAttendanceSummary'">
+            <startOffsets>
+              <option value="5212" />
+            </startOffsets>
+            <endOffsets>
+              <option value="5295" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

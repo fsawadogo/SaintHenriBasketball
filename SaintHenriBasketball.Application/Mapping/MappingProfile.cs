@@ -108,5 +108,16 @@ public class MappingProfile : Profile
         .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
         .ForMember(dest => dest.RegisteredPlayersCount, opt => opt.Ignore())
         .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
+        
+        CreateMap<SessionAttendance, AttendanceResponseDto>()
+            .ForMember(dest => dest.UserName, opt => 
+                opt.MapFrom(src => $"{src.User.FirstName} {src.User.LastName}"))
+            .ForMember(dest => dest.UserEmail, opt => 
+                opt.MapFrom(src => src.User.Email));
+        
+        CreateMap<Session, SessionDto>();
+        CreateMap<CreateSessionDto, Session>();
+        CreateMap<UpdateSessionDto, Session>()
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
     }
 }

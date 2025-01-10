@@ -12,4 +12,7 @@ public class SessionAttendance
 
     public virtual Session Session { get; set; }
     public virtual ApplicationUser User { get; set; }
+    public bool IsAttending { get; set; }
+    public string? UpdateReason { get; set; }
+    public DateTime LastUpdated { get; set; }
 }

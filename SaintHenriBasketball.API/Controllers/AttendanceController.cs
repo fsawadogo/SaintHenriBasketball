@@ -13,70 +13,117 @@ namespace SaintHenriBasketball.API.Controllers;
 public class AttendanceController : BaseApiController
 {
     private readonly IAttendanceService _attendanceService;
+    private readonly IEmailService _emailService;
+    private readonly ISessionService _sessionService;
     private readonly ILogger<AttendanceController> _logger;
 
     public AttendanceController(
         IAttendanceService attendanceService,
+        IEmailService emailService,
+        ISessionService sessionService,
         ILogger<AttendanceController> logger)
     {
         _attendanceService = attendanceService;
+        _emailService = emailService;
+        _sessionService = sessionService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Mark user attendance for a session (Admin only)
+    /// Mark user's attendance for a session
     /// </summary>
-    [HttpPost("sessions/{sessionId}/users/{userId}")]
-    [Authorize(Roles = "Admin")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [HttpPost("sessions/{sessionId}")]
+    [ProducesResponseType(typeof(AttendanceResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AttendanceDto>> MarkAttendance(
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AttendanceResponseDto>> MarkAttendance(
         Guid sessionId,
-        Guid userId,
-        [FromBody] bool isPresent,
-        [FromQuery] string? notes = null)
+        [FromBody] MarkAttendanceRequest request)
     {
         try
         {
-            var attendance = await _attendanceService.MarkAttendanceAsync(sessionId, userId, isPresent, notes);
-            return Ok(attendance);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var response = await _attendanceService.MarkAttendanceAsync(
+                sessionId,
+                Guid.Parse(userId),
+                request.IsAttending,
+                request.Notes);
+
+            return Ok(response);
         }
         catch (ValidationException ex)
         {
+            _logger.LogWarning(ex, "Attendance marking failed for session {SessionId}", sessionId);
             return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Session not found {SessionId}", sessionId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking attendance for session {SessionId}", sessionId);
+            return StatusCode(500, "An unexpected error occurred while marking attendance");
         }
     }
 
     /// <summary>
-    /// Get attendance summary for a session
+    /// Update attendance for a session
     /// </summary>
-    [HttpGet("sessions/{sessionId}")]
-    [Authorize(Roles = "Admin")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<SessionAttendanceSummaryDto>> GetSessionAttendance(Guid sessionId)
+    [HttpPut("sessions/{sessionId}")]
+    [ProducesResponseType(typeof(AttendanceResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AttendanceResponseDto>> UpdateAttendance(
+        Guid sessionId,
+        [FromBody] UpdateAttendanceRequest request)
     {
-        var summary = await _attendanceService.GetSessionAttendanceSummaryAsync(sessionId);
-        return Ok(summary);
-    }
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
 
-    /// <summary>
-    /// Get attendance history for a user
-    /// </summary>
-    [HttpGet("users/{userId}")]
-    [Authorize(Roles = "Admin")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetUserAttendanceHistory(Guid userId)
-    {
-        var history = await _attendanceService.GetUserAttendanceHistoryAsync(userId);
-        return Ok(history);
+            var response = await _attendanceService.UpdateAttendanceAsync(
+                sessionId,
+                Guid.Parse(userId),
+                request.IsAttending,
+                request.Notes,
+                request.UpdateReason);
+
+            return Ok(response);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Attendance update failed for session {SessionId}", sessionId);
+            return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Attendance record not found for session {SessionId}", sessionId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating attendance for session {SessionId}", sessionId);
+            return StatusCode(500, "An unexpected error occurred while updating attendance");
+        }
     }
 
     /// <summary>
     /// Get my attendance history
     /// </summary>
     [HttpGet("me")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetMyAttendanceHistory()
+    [ProducesResponseType(typeof(IEnumerable<AttendanceResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<AttendanceResponseDto>>> GetMyAttendanceHistory()
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -89,16 +136,21 @@ public class AttendanceController : BaseApiController
     }
 
     /// <summary>
-    /// Get attendance statistics for a date range (Admin only)
+    /// Get session attendance summary
     /// </summary>
-    [HttpGet("stats")]
-    [Authorize(Roles = "Admin")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<AttendanceStatsDto>> GetAttendanceStats(
-        [FromQuery] DateTime startDate,
-        [FromQuery] DateTime endDate)
+    [HttpGet("sessions/{sessionId}/summary")]
+    [ProducesResponseType(typeof(SessionAttendanceSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionAttendanceSummaryDto>> GetSessionAttendanceSummary(Guid sessionId)
     {
-        var stats = await _attendanceService.GetAttendanceStatsAsync(startDate, endDate);
-        return Ok(stats);
+        try
+        {
+            var summary = await _attendanceService.GetSessionAttendanceSummaryAsync(sessionId);
+            return Ok(summary);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
     }
 }
