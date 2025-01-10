@@ -1,4 +1,4 @@
-﻿using SaintHenriBasketball.Application.DTOs;
+﻿using SaintHenriBasketball.Application.DTOs.Attendance;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
 

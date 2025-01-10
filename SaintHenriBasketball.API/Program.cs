@@ -112,7 +112,7 @@ app.UseSwaggerUI(c =>
 
 app.UseHttpsRedirection();
 
-// Use CORS before Auth
+// Use CORS before Users
 app.UseCors("AllowAll");
 
 // Add authentication & authorization

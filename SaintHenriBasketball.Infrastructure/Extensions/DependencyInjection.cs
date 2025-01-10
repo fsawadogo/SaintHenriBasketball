@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ISessionRegistrationRepository, SessionRegistrationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISeasonSubscriptionRepository, SeasonSubscriptionRepository>();
+        services.AddScoped<ISeasonRepository, SeasonRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 
         // Add AutoMapper

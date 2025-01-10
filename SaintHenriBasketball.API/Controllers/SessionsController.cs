@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using SaintHenriBasketball.Domain.Enums;
+using SaintHenriBasketball.Application.DTOs.Session;
 
 namespace SaintHenriBasketball.API.Controllers;
 

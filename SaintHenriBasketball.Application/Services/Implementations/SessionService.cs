@@ -6,6 +6,7 @@ using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using Microsoft.Extensions.Logging;
+using SaintHenriBasketball.Application.DTOs.Session;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -31,22 +32,38 @@ public class SessionService : ISessionService
         _logger = logger;
     }
 
-public async Task<SessionDto> CreateSessionAsync(CreateSessionDto dto)
+    public async Task<SessionDto> CreateSessionAsync(CreateSessionDto createSessionDto)
     {
+        if (createSessionDto.SessionDate < DateTime.UtcNow)
+        {
+            throw new ValidationException("Session date cannot be in the past");
+        }
+
+        if (createSessionDto.MaxCapacity <= 0)
+        {
+            throw new ValidationException("Maximum capacity must be greater than zero");
+        }
+
+        if (createSessionDto.DropInPrice < 0)
+        {
+            throw new ValidationException("Drop-in price cannot be negative");
+        }
+
         var session = new Session(
-            dto.SessionDate,
-            dto.MaxCapacity,
-            dto.DropInPrice,
-            dto.StartTime,
-            dto.EndTime,
-            dto.Location
-        );
+            createSessionDto.SessionDate,
+            createSessionDto.MaxCapacity,
+            createSessionDto.DropInPrice,
+            createSessionDto.StartTime,
+            createSessionDto.EndTime,
+            createSessionDto.Location);
 
         await _sessionRepository.AddAsync(session);
+        _logger.LogInformation("Session created successfully. ID: {SessionId}", session.Id);
 
         return _mapper.Map<SessionDto>(session);
     }
-    public async Task<SessionDto> GetSessionAsync(Guid id)
+
+    public async Task<SessionDetailDto> GetSessionAsync(Guid id)
     {
         var session = await _sessionRepository.GetByIdAsync(id);
         if (session == null)
@@ -54,7 +71,7 @@ public async Task<SessionDto> CreateSessionAsync(CreateSessionDto dto)
             throw new NotFoundException(nameof(Session), id);
         }
 
-        return _mapper.Map<SessionDto>(session);
+        return _mapper.Map<SessionDetailDto>(session);
     }
 
     public async Task<IReadOnlyList<SessionDto>> GetUpcomingSessionsAsync()
@@ -63,30 +80,44 @@ public async Task<SessionDto> CreateSessionAsync(CreateSessionDto dto)
         return _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
     }
 
-    public async Task UpdateSessionAsync(Guid id, UpdateSessionDto dto)
+    public async Task UpdateSessionAsync(Guid id, UpdateSessionDto updateDto)
     {
         var session = await _sessionRepository.GetByIdAsync(id);
         if (session == null)
-            throw new NotFoundException($"Session with ID {id} not found");
+        {
+            throw new NotFoundException(nameof(Session), id);
+        }
 
-        if (dto.SessionDate.HasValue)
-            session.SessionDate = dto.SessionDate.Value;
-        if (dto.MaxCapacity.HasValue)
-            session.MaxCapacity = dto.MaxCapacity.Value;
-        if (dto.DropInPrice.HasValue)
-            session.DropInPrice = dto.DropInPrice.Value;
-        if (!string.IsNullOrEmpty(dto.StartTime))
-            session.StartTime = dto.StartTime;
-        if (!string.IsNullOrEmpty(dto.EndTime))
-            session.EndTime = dto.EndTime;
-        if (!string.IsNullOrEmpty(dto.Location))
-            session.Location = dto.Location;
+        if (updateDto.SessionDate < DateTime.UtcNow)
+        {
+            throw new ValidationException("Session date cannot be in the past");
+        }
 
-        session.Status = dto.Status;
+        if (updateDto.MaxCapacity < session.RegisteredPlayersCount)
+        {
+            throw new ValidationException("New capacity cannot be less than current number of registered players");
+        }
+
+        // If changing from Open to other status, validate
+        if (session.Status == SessionStatus.Open && updateDto.Status != SessionStatus.Open)
+        {
+            // Check if there are any registered players before cancelling or completing
+            if (session.RegisteredPlayersCount > 0 && updateDto.Status == SessionStatus.Cancelled)
+            {
+                throw new ValidationException("Cannot cancel session with registered players");
+            }
+        }
+
+        _mapper.Map(updateDto, session);
+
+        if (session.RegisteredPlayersCount >= session.MaxCapacity)
+        {
+            session.Status = SessionStatus.Full;
+        }
 
         await _sessionRepository.UpdateAsync(session);
-    }    
-    
+        _logger.LogInformation("Session {SessionId} updated. New status: {Status}", id, session.Status);
+    }
     public async Task CancelSessionAsync(Guid id)
     {
         var session = await _sessionRepository.GetByIdAsync(id);

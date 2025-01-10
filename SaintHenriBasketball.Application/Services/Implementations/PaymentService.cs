@@ -1,6 +1,6 @@
 using AutoMapper;
 using Microsoft.Extensions.Logging;
-using SaintHenriBasketball.Application.DTOs;
+using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;

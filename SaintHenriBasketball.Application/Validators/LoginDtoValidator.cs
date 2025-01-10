@@ -1,5 +1,5 @@
 ﻿using FluentValidation;
-using SaintHenriBasketball.Application.DTOs.Auth;
+using SaintHenriBasketball.Application.DTOs.Users;
 
 namespace SaintHenriBasketball.Application.Validators;
 

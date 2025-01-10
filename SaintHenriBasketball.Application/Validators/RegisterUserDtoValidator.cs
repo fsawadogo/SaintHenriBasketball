@@ -1,4 +1,4 @@
-﻿using SaintHenriBasketball.Application.DTOs.Auth;
+﻿using SaintHenriBasketball.Application.DTOs.Users;
 using FluentValidation;
 
 namespace SaintHenriBasketball.Application.Validators;

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SaintHenriBasketball.Application.DTOs;
+using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
 

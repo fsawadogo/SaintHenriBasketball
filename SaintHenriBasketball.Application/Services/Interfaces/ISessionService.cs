@@ -1,11 +1,12 @@
 ﻿using SaintHenriBasketball.Application.DTOs;
+using SaintHenriBasketball.Application.DTOs.Session;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
 
 public interface ISessionService
 {
     Task<SessionDto> CreateSessionAsync(CreateSessionDto createSessionDto);
-    Task<SessionDto> GetSessionAsync(Guid id);
+    Task<SessionDetailDto> GetSessionAsync(Guid id);
     Task<IReadOnlyList<SessionDto>> GetUpcomingSessionsAsync();
     Task UpdateSessionAsync(Guid id, UpdateSessionDto updateSessionDto);
     Task CancelSessionAsync(Guid id);

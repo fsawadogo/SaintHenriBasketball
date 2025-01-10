@@ -16,6 +16,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<SeasonSubscription> SeasonSubscriptions { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<SessionAttendance> SessionAttendances { get; set; }
+    public DbSet<Season> Seasons { get; set; }
+    public DbSet<SeasonRegistration> SeasonRegistrations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -172,6 +174,28 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.SessionId, e.UserId })
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<Season>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Price).HasPrecision(10, 2);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<SeasonRegistration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.Season)
+                .WithMany(s => s.Registrations)
+                .HasForeignKey(e => e.SeasonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

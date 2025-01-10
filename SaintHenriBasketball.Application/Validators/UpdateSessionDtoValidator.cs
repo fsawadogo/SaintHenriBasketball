@@ -1,5 +1,5 @@
 ﻿using FluentValidation;
-using SaintHenriBasketball.Application.DTOs;
+using SaintHenriBasketball.Application.DTOs.Session;
 using System.Text.RegularExpressions;
 
 namespace SaintHenriBasketball.Application.Validators;

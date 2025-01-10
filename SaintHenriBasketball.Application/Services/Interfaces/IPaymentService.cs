@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Application.DTOs;
+using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;

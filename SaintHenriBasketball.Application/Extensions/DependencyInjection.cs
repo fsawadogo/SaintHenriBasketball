@@ -12,13 +12,16 @@ public static class DependencyInjection
     {
         services.AddAutoMapper(Assembly.GetExecutingAssembly());
 
-        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<ISeasonSubscriptionService, SeasonSubscriptionService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
-        services.AddAutoMapper(typeof(AuthService).Assembly);
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<ISeasonService, SeasonService>();
+
+        services.AddAutoMapper(typeof(UserService).Assembly);
         services.AddLogging();
 
         return services;

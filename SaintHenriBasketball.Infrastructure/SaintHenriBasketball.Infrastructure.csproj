@@ -7,6 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Data\Configurations\**" />
+    <Compile Remove="Identity\**" />
+    <Compile Remove="Services\**" />
+    <EmbeddedResource Remove="Data\Configurations\**" />
+    <EmbeddedResource Remove="Identity\**" />
+    <EmbeddedResource Remove="Services\**" />
+    <None Remove="Data\Configurations\**" />
+    <None Remove="Identity\**" />
+    <None Remove="Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.2">
       <PrivateAssets>all</PrivateAssets>
@@ -25,10 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Configurations\" />
-    <Folder Include="Identity\" />
     <Folder Include="Migrations\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>
