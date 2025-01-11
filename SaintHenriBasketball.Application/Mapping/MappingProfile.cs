@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.DTOs.Attendance;
+using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Session;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Domain.Entities;
@@ -83,6 +84,34 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
             .ForMember(dest => dest.RegisteredPlayersCount, opt => opt.Ignore());
 
+        // Season mappings
+        CreateMap<Season, SeasonDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
+            .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
+            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn))
+            .ForMember(dest => dest.RegisteredUsersCount, opt => opt.MapFrom(src => src.Registrations.Count))
+            .ForMember(dest => dest.RegisteredUsers, opt => opt.MapFrom(src => src.Registrations));
+
+        CreateMap<CreateSeasonDto, Season>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
+            .ForMember(dest => dest.Registrations, opt => opt.Ignore());
+
+        CreateMap<UpdateSeasonDto, Season>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedOn, opt => opt.Ignore())
+            .ForMember(dest => dest.Registrations, opt => opt.Ignore());
+
+        CreateMap<SeasonRegistration, SeasonUserDto>()
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.User.FirstName))
+            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.User.LastName))
+            .ForMember(dest => dest.RegisteredOn, opt => opt.MapFrom(src => src.RegisteredOn));
+
         // Season Subscription mappings
         CreateMap<SeasonSubscription, SeasonSubscriptionDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -109,7 +138,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.SessionId, opt => opt.MapFrom(src => src.SessionId))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src =>
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => 
                 $"{src.User.FirstName} {src.User.LastName}"))
             .ForMember(dest => dest.IsPresent, opt => opt.MapFrom(src => src.IsPresent))
             .ForMember(dest => dest.CheckInTime, opt => opt.MapFrom(src => src.CheckInTime))
