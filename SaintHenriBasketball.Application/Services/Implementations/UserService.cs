@@ -92,7 +92,7 @@ public class UserService : IUserService
 
     public async Task<UserResponseDto> LoginAsync(LoginDto loginDto)
     {
-        var user = await _userRepository.GetByEmailAsync(loginDto.Email);
+        var user = await _userRepository.GetByUsernameAsync(loginDto.UserName);
 
         if (user == null)
         {

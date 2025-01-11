@@ -7,7 +7,7 @@ public class LoginDtoValidator : AbstractValidator<LoginDto>
 {
     public LoginDtoValidator()
     {
-        RuleFor(x => x.Email)
+        RuleFor(x => x.UserName)
             .NotEmpty()
             .EmailAddress()
             .MaximumLength(100);

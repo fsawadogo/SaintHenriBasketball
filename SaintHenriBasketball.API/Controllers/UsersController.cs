@@ -90,25 +90,25 @@ public class UsersController : ControllerBase
             }
 
             // Validate email format
-            if (!new EmailAddressAttribute().IsValid(loginDto.Email))
+            if (string.IsNullOrEmpty(loginDto.UserName))
             {
-                return BadRequest("Invalid email format");
+                return BadRequest("Invalid username");
             }
 
             var result = await _authService.LoginAsync(loginDto);
 
-            _logger.LogInformation("User logged in successfully: {Email}", loginDto.Email);
+            _logger.LogInformation("User logged in successfully: {UserName}", loginDto.UserName);
 
             return Ok(result);
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning("Login failed for {Email}: {Message}", loginDto.Email, ex.Message);
+            _logger.LogWarning("Login failed for {Email}: {Message}", loginDto.UserName, ex.Message);
             return Unauthorized(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during login for {Email}", loginDto.Email);
+            _logger.LogError(ex, "Unexpected error during login for {Email}", loginDto.UserName);
             return StatusCode(500, "An unexpected error occurred during login");
         }
     }

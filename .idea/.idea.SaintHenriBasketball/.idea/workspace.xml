@@ -8,12 +8,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="Updated Attendance controller">
+    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="app.http">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Auth/UpdateUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Auth/UpdateUserDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AuthService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/UpdateUserDtoValidator.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/UpdateUserDtoValidator.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/LoginDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/LoginDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/LoginDtoValidator.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/LoginDtoValidator.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,22 +40,15 @@
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/SessionService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/SessionService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Domain/Entities/Session.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ce37be1a06b16c6faa02038d2cc477dd3bca5b217ceeb41c5f2ad45c1bf9/ServiceProvider.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/db7395f4add94e6d10e515b3e55373f2821f8323de7dc8e314d78feefacf5584/ActionMethodExecutor.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ead6614bb1135d7d61e33ab3a33f17abb3e4f07240e1ae2f5641235738ab7/ServiceProviderEngineScope.cs" root0="FORCE_HIGHLIGHTING" />
   </component>
-  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
-  <component name="KubernetesApiProvider"><![CDATA[{
-  "isMigrated": true
-}]]></component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
   <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="false" />
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
@@ -65,26 +59,35 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;.NET Launch Settings Profile.SaintHenriBasketball.API: http.executor&quot;: &quot;Debug&quot;,
-    &quot;HTTP Request.SaintHenriBasketball.API | Login.executor&quot;: &quot;Run&quot;,
-    &quot;HTTP Request.SaintHenriBasketball.API | Me.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    ".NET Launch Settings Profile.SaintHenriBasketball.API: http.executor": "Debug",
+    "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
+    "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
+    "HTTP Request.app | Admin login.executor": "Run",
+    "HTTP Request.app | Create new season.executor": "Run",
+    "HTTP Request.app | Get current user.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
     <configuration name="SaintHenriBasketball.API | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Login" index="2" runType="Run single request">
       <method v="2" />
     </configuration>
-    <configuration name="SaintHenriBasketball.API | Me" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Me" index="3" runType="Run single request">
+    <configuration name="app | Admin login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Admin login" index="3" runType="Run single request">
+      <method v="2" />
+    </configuration>
+    <configuration name="app | Create new season" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Create new season" index="40" runType="Run single request">
+      <method v="2" />
+    </configuration>
+    <configuration name="app | Get current user" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Get current user" index="4" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="SaintHenriBasketball.API: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile" temporary="true">
@@ -105,8 +108,10 @@
     <recent_temporary>
       <list>
         <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
+        <item itemvalue="HTTP Request.app | Create new season" />
+        <item itemvalue="HTTP Request.app | Admin login" />
+        <item itemvalue="HTTP Request.app | Get current user" />
         <item itemvalue="HTTP Request.SaintHenriBasketball.API | Login" />
-        <item itemvalue="HTTP Request.SaintHenriBasketball.API | Me" />
       </list>
     </recent_temporary>
   </component>
@@ -119,7 +124,8 @@
       <option name="presentableId" value="Default" />
       <updated>1736046832718</updated>
       <workItem from="1736046834070" duration="10148000" />
-      <workItem from="1736466106907" duration="14081000" />
+      <workItem from="1736466106907" duration="20551000" />
+      <workItem from="1736621307786" duration="2422000" />
     </task>
     <task id="LOCAL-00001" summary="Add email cnfirmation and passport reset">
       <option name="closed" value="true" />
@@ -137,7 +143,31 @@
       <option name="project" value="LOCAL" />
       <updated>1736475221231</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Update user update and EmailService.cs">
+      <option name="closed" value="true" />
+      <created>1736525964954</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1736525964954</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Update the mapping profile for the season entity">
+      <option name="closed" value="true" />
+      <created>1736621727355</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1736621727355</updated>
+    </task>
+    <task id="LOCAL-00005" summary="app.http">
+      <option name="closed" value="true" />
+      <created>1736621778870</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1736621778870</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -145,10 +175,40 @@
   </component>
   <component name="UnityCheckinConfiguration" checkUnsavedScenes="false" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
+  <component name="UnknownFeatures">
+    <option featureType="dependencySupport" implementationName="executable:docker" />
+    <option featureType="dependencySupport" implementationName="dotnet:Microsoft.Identity.Client" />
+    <option featureType="dependencySupport" implementationName="executable:kubectl" />
+    <option featureType="dependencySupport" implementationName="dotnet:Microsoft.EntityFrameworkCore.Abstractions" />
+    <option featureType="dependencySupport" implementationName="dotnet:Microsoft.EntityFrameworkCore.Relational" />
+    <option featureType="dependencySupport" implementationName="dotnet:Microsoft.EntityFrameworkCore" />
+  </component>
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
     <MESSAGE value="Add email cnfirmation and passport reset" />
     <MESSAGE value="Updated Attendance controller" />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated Attendance controller" />
+    <MESSAGE value="Update user update and EmailService.cs" />
+    <MESSAGE value="Update the mapping profile for the season entity" />
+    <MESSAGE value="app.http" />
+    <option name="LAST_COMMIT_MESSAGE" value="app.http" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/SeasonsController.cs</url>
+          <line>36</line>
+          <properties documentPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/SeasonsController.cs" containingFunctionPresentation="Method 'CreateSeason'">
+            <startOffsets>
+              <option value="1113" />
+            </startOffsets>
+            <endOffsets>
+              <option value="1182" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
