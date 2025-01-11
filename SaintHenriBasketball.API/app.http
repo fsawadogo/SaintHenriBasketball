@@ -1,8 +1,10 @@
-@baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEyYmY1MDA2LWYzNjEtNDNiYy1iZjRiLTliMDQ1ZmUxNmU3OCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImpvaG5AZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiam9obmRvZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJleHAiOjE3MzY5ODU1MjAsImlzcyI6IlNhaW50SGVucmlCYXNrZXRiYWxsIiwiYXVkIjoiU2FpbnRIZW5yaUJhc2tldGJhbGxDbGllbnQifQ.sb6QXqsvOCP47X0trTQjbudflozX7U7gpoz_jdUE09w
-@userId = a2bf5006-f361-43bc-bf4b-9b045fe16e78
-@adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM2OTkwNzQyLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.NZzttSgJpqGcq8H1ZKtzKpOLF0DHKvUxflXKHb8vYY8
-@emailToken = 5b6c781a86c340c69dc271f8ff7a6050
+#@baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
+#@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEyYmY1MDA2LWYzNjEtNDNiYy1iZjRiLTliMDQ1ZmUxNmU3OCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImpvaG5AZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiam9obmRvZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJleHAiOjE3MzY5ODU1MjAsImlzcyI6IlNhaW50SGVucmlCYXNrZXRiYWxsIiwiYXVkIjoiU2FpbnRIZW5yaUJhc2tldGJhbGxDbGllbnQifQ.sb6QXqsvOCP47X0trTQjbudflozX7U7gpoz_jdUE09w
+#@userId = a2bf5006-f361-43bc-bf4b-9b045fe16e78
+#@adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM2OTkwNzQyLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.NZzttSgJpqGcq8H1ZKtzKpOLF0DHKvUxflXKHb8vYY8
+#@emailToken = 5b6c781a86c340c69dc271f8ff7a6050
+@baseUrl = http://localhost:5004
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM3MjI2MjgzLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Cw1IH8KOckoEMAil68xfZWardEpE8IYawfvV_7SEslE
 ### Auth Endpoints ###
 
 ### Register new user
@@ -28,7 +30,7 @@ Content-Type: application/json
 }
 
 ### Admin login
-POST {{baseUrl}}/api/Auth/login
+POST {{baseUrl}}/api/Users/login
 Content-Type: application/json
 
 {
@@ -37,7 +39,7 @@ Content-Type: application/json
 }
 
 ### Get current user
-GET {{baseUrl}}/api/Auth/me
+GET {{baseUrl}}/api/Users/me
 Authorization: Bearer {{token}}
 
 ### Update current user
@@ -54,7 +56,7 @@ Content-Type: application/json
 }
 
 ### Get all users
-GET {{baseUrl}}/api/Auth/users
+GET {{baseUrl}}/api/Users/users
 Authorization: Bearer {{token}}
 
 ### Update specific user
@@ -258,3 +260,17 @@ Content-Type: application/json
 ### Check active subscription
 GET {{baseUrl}}/api/SeasonSubscriptions/check-active
 Authorization: Bearer {{adminToken}}
+
+### Create new season
+POST {{baseUrl}}/api/Seasons
+Authorization: Bearer {{token}}
+accept: text/plain
+Content-Type: application/json
+
+{
+  "startDate": "2025-01-25T00:00:00.000Z",
+  "endDate": "2025-05-03T00:00:00.000Z",
+  "price": 100,
+  "status": 0,
+  "notes": ""
+}
