@@ -15,4 +15,5 @@ public interface ISeasonRepository
     Task UpdateAsync(Season season);
     Task DeleteAsync(Season season);
     Task DeleteRegistrationAsync(SeasonRegistration registration);
+    Task AddRegistrationAsync(SeasonRegistration registration); // Add this new method
 }

@@ -109,7 +109,6 @@ public class SeasonRepository : ISeasonRepository
             throw;
         }
     }
-
     public async Task UpdateAsync(Season season)
     {
         try
