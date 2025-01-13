@@ -50,29 +50,16 @@ public class SeasonRepository : ISeasonRepository
             .ToListAsync();
     }
 
-    public async Task<bool> ExistsAsync(Guid id)
+    public async Task<Season?> GetCurrentSeasonAsync()
     {
+        var now = DateTime.UtcNow;
         return await _context.Seasons
-            .AnyAsync(s => s.Id == id);
-    }
-
-    public async Task<Season> AddAsync(Season season)
-    {
-        await _context.Seasons.AddAsync(season);
-        await _context.SaveChangesAsync();
-        return season;
-    }
-
-    public async Task UpdateAsync(Season season)
-    {
-        _context.Entry(season).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(Season season)
-    {
-        _context.Seasons.Remove(season);
-        await _context.SaveChangesAsync();
+            .Include(s => s.Registrations)
+                .ThenInclude(r => r.User)
+            .FirstOrDefaultAsync(s => s.Status == SeasonStatus.Open);
+                //s.Status == SeasonStatus.Open &&
+                //s.StartDate <= now &&
+                //s.EndDate >= now);
     }
 
     public async Task<bool> HasUserRegisteredAsync(Guid seasonId, Guid userId)
@@ -84,31 +71,90 @@ public class SeasonRepository : ISeasonRepository
     public async Task<SeasonRegistration?> GetRegistrationAsync(Guid seasonId, Guid userId)
     {
         return await _context.SeasonRegistrations
+            .Include(r => r.Season)
+            .Include(r => r.User)
             .FirstOrDefaultAsync(r => r.SeasonId == seasonId && r.UserId == userId);
+    }
+
+    public async Task<Season> AddAsync(Season season)
+    {
+        try
+        {
+            _logger.LogInformation("Adding new season with start date {StartDate}", season.StartDate);
+            await _context.Seasons.AddAsync(season);
+            await _context.SaveChangesAsync();
+            return season;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding season with start date {StartDate}", season.StartDate);
+            throw;
+        }
+    }
+
+    public async Task AddRegistrationAsync(SeasonRegistration registration)
+    {
+        try
+        {
+            _logger.LogInformation("Adding registration for user {UserId} to season {SeasonId}",
+                registration.UserId, registration.SeasonId);
+
+            await _context.SeasonRegistrations.AddAsync(registration);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding registration for user {UserId} to season {SeasonId}",
+                registration.UserId, registration.SeasonId);
+            throw;
+        }
+    }
+
+    public async Task UpdateAsync(Season season)
+    {
+        try
+        {
+            _logger.LogInformation("Updating season {SeasonId}", season.Id);
+            _context.Entry(season).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating season {SeasonId}", season.Id);
+            throw;
+        }
+    }
+
+    public async Task DeleteAsync(Season season)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting season {SeasonId}", season.Id);
+            _context.Seasons.Remove(season);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting season {SeasonId}", season.Id);
+            throw;
+        }
     }
 
     public async Task DeleteRegistrationAsync(SeasonRegistration registration)
     {
         try
         {
+            _logger.LogInformation("Deleting season registration for user {UserId} in season {SeasonId}",
+                registration.UserId, registration.SeasonId);
+
             _context.SeasonRegistrations.Remove(registration);
             await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting registration for Season {SeasonId} and User {UserId}",
-                registration.SeasonId, registration.UserId);
+            _logger.LogError(ex, "Error deleting season registration for user {UserId} in season {SeasonId}",
+                registration.UserId, registration.SeasonId);
             throw;
         }
-    }
-
-    public async Task<List<Season>> GetActiveSeasonsByDateRangeAsync(DateTime startDate, DateTime endDate)
-    {
-        return await _context.Seasons
-            .Where(s => s.Status == SeasonStatus.Open &&
-                       s.StartDate <= endDate &&
-                       s.EndDate >= startDate)
-            .OrderBy(s => s.StartDate)
-            .ToListAsync();
     }
 }

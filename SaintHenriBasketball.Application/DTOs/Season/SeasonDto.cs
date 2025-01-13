@@ -13,4 +13,5 @@ public class SeasonDto
     public DateTime CreatedOn { get; set; }
     public int RegisteredUsersCount { get; set; }
     public List<SeasonUserDto> RegisteredUsers { get; set; } = new();
+    public bool IsCurrentSeason { get; set; }
 }

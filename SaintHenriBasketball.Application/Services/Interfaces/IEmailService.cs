@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Domain.Entities;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
@@ -9,4 +10,9 @@ public interface IEmailService
     Task SendPasswordResetEmailAsync(string to, string resetLink);
     Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance);
     Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance);
+    Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration);
+    Task SendSeasonRegistrationCancelledEmailAsync(string userEmail, Season season);
+    Task SendSeasonStatusUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers);
+    Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers, string[] changedProperties);
+    Task SendSeasonPaymentReminderEmailAsync(SeasonRegistration registration);
 }

@@ -1,276 +1,83 @@
-#@baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
-#@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEyYmY1MDA2LWYzNjEtNDNiYy1iZjRiLTliMDQ1ZmUxNmU3OCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImpvaG5AZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiam9obmRvZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJleHAiOjE3MzY5ODU1MjAsImlzcyI6IlNhaW50SGVucmlCYXNrZXRiYWxsIiwiYXVkIjoiU2FpbnRIZW5yaUJhc2tldGJhbGxDbGllbnQifQ.sb6QXqsvOCP47X0trTQjbudflozX7U7gpoz_jdUE09w
-#@userId = a2bf5006-f361-43bc-bf4b-9b045fe16e78
-#@adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM2OTkwNzQyLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.NZzttSgJpqGcq8H1ZKtzKpOLF0DHKvUxflXKHb8vYY8
-#@emailToken = 5b6c781a86c340c69dc271f8ff7a6050
-@baseUrl = http://localhost:5004
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM3MjI2MjgzLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Cw1IH8KOckoEMAil68xfZWardEpE8IYawfvV_7SEslE
-### Auth Endpoints ###
-
-### Register new user
-POST {{baseUrl}}/api/Auth/register
-Content-Type: application/json
-
-{
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "securePassword123!",
-    "firstName": "John",
-    "lastName": "Doe",
-    "paymentPlan": 0
-}
-
+# @baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEyYmY1MDA2LWYzNjEtNDNiYy1iZjRiLTliMDQ1ZmUxNmU3OCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImpvaG5AZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiam9obmRvZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJleHAiOjE3MzY5ODU1MjAsImlzcyI6IlNhaW50SGVucmlCYXNrZXRiYWxsIiwiYXVkIjoiU2FpbnRIZW5yaUJhc2tldGJhbGxDbGllbnQifQ.sb6QXqsvOCP47X0trTQjbudflozX7U7gpoz_jdUE09w
+@userId = a2bf5006-f361-43bc-bf4b-9b045fe16e78
+@adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM3Mzk1MDU5LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.N0bBjVnH5VUKAaYqLZrF-LxQvUPJiHnzLJzbxxa-8WQ
+@baseUrl = https://localhost:7000
 ### Login
-POST {{baseUrl}}/api/Auth/login
+POST {{baseUrl}}/api/users/login
+Accept: application/json
 Content-Type: application/json
 
 {
-    "email": "john@example.com",
-    "password": "securePassword123!"
+  "userName": "admin",
+  "password": "Admin@2025"
 }
 
-### Admin login
-POST {{baseUrl}}/api/Users/login
-Content-Type: application/json
-
-{
-    "email": "admin@sainthenribasketball.com",
-    "password": "Admin@2025"
-}
-
-### Get current user
-GET {{baseUrl}}/api/Users/me
-Authorization: Bearer {{token}}
-
-### Update current user
-PUT {{baseUrl}}/api/Auth/me
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "username": "johndoe_updated",
-    "email": "john_new@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "paymentPlan": 0
-}
-
-### Get all users
-GET {{baseUrl}}/api/Users/users
-Authorization: Bearer {{token}}
-
-### Update specific user
-PUT {{baseUrl}}/api/Auth/users/{{userId}}
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "username": "updated_username",
-    "email": "updated@example.com",
-    "firstName": "Updated",
-    "lastName": "User",
-    "paymentPlan": 1
-}
-
-### Delete user
-DELETE {{baseUrl}}/api/Auth/users/{{userId}}
-Authorization: Bearer {{token}}
-
-### Confirm email
-POST {{baseUrl}}/api/Auth/confirm-email?token={{emailToken}}&email=john@example.com
-
-### Forgot password
-POST {{baseUrl}}/api/Auth/forgot-password
-Content-Type: application/json
-
-{
-    "email": "afaicals@gmail.com"
-}
-
-### Reset password
-POST {{baseUrl}}/api/Auth/reset-password
-Content-Type: application/json
-
-{
-    "email": "john@example.com",
-    "token": "reset_token",
-    "newPassword": "newSecurePassword123!"
-}
-
-### Sessions Endpoints ###
-
-### Create new session
-POST {{baseUrl}}/api/Sessions
+### Season
+POST {{baseUrl}}/api/seasons
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-    "sessionDate": "2025-01-15T18:00:00Z",
-    "maxCapacity": 20,
-    "dropInPrice": 15.00
+  "startDate": "2025-07-14T10:00:00.000Z",
+  "endDate": "2025-10-27T12:00:00.000Z",
+  "price": 110,
+  "status": 0,
+  "notes": "Let's hoop"
 }
 
-### Get all sessions
-GET {{baseUrl}}/api/Sessions
-Authorization: Bearer {{token}}
+### Get all seasons
+GET {{baseUrl}}/api/seasons
+Authorization: Bearer {{adminToken}}
 
-### Get specific session
-GET {{baseUrl}}/api/Sessions/{{sessionId}}
-Authorization: Bearer {{token}}
+### Get a season by id
+@seasonId = 3d18f4a5-aa56-412e-bb5c-bf6b9bafc2fa
+GET {{baseUrl}}/api/seasons/{{seasonId}}
+Authorization: Bearer {{adminToken}}
 
-### Update session
-@sessionId = 01c46a49-526d-4cb7-94fe-ff6d63493d19
-PUT {{baseUrl}}/api/Sessions/{{sessionId}}
+### Update a season
+PUT {{baseUrl}}/api/seasons/{{seasonId}}
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-    "sessionDate": "2025-01-15T19:00:00Z",
-    "maxCapacity": 25,
-    "dropInPrice": 20.00,
-    "status": 0
+  "startDate": "2025-06-14T10:00:00.000Z",
+  "endDate": "2025-09-27T12:00:00.000Z",
+  "price": 85,
+  "status": 0,
+  "notes": "Let's hoop"
 }
 
-### Get available sessions
-GET {{baseUrl}}/api/Sessions/available
-Authorization: Bearer {{token}}
-
-### Register for session
-@sessionId = 01c46a49-526d-4cb7-94fe-ff6d63493d19
-
-POST {{baseUrl}}/api/Sessions/{{sessionId}}/register
-Authorization: Bearer {{token}}
-
-### Unregister from session
-DELETE {{baseUrl}}/api/Sessions/{{sessionId}}/register
-Authorization: Bearer {{token}}
-
-### Get my sessions
-GET {{baseUrl}}/api/Sessions/my-sessions
-Authorization: Bearer {{token}}
-
-### Cancel session
-POST {{baseUrl}}/api/Sessions/{{sessionId}}/cancel
+### Get current season
+GET {{baseUrl}}/api/seasons/current
 Authorization: Bearer {{adminToken}}
 
-### Attendance Endpoints ###
-
-### Mark attendance
-@sessionId = 01c46a49-526d-4cb7-94fe-ff6d63493d19
-POST {{baseUrl}}/api/Attendance/sessions/{{sessionId}}/users/{{userId}}
-Authorization: Bearer {{adminToken}}
-Content-Type: application/json
-
-true
-
-### Get session attendance
-GET {{baseUrl}}/api/Attendance/sessions/{{sessionId}}
-Authorization: Bearer {{adminToken}}
-
-### Get user attendance
-GET {{baseUrl}}/api/Attendance/users/{{userId}}
-Authorization: Bearer {{adminToken}}
-
-### Get my attendance
-GET {{baseUrl}}/api/Attendance/me
-Authorization: Bearer {{adminToken}}
-
-### Get attendance stats
-GET {{baseUrl}}/api/Attendance/stats?startDate=2025-01-01T00:00:00Z&endDate=2025-12-31T23:59:59Z
-Authorization: Bearer {{adminToken}}
-
-### Payments Endpoints ###
-
-### Create payment
-POST {{baseUrl}}/api/Payments
+### Update season
+PUT {{baseUrl}}/api/seasons/{{seasonId}}
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-    "userId": "{{userId}}",
-    "amount": 50.00,
-    "plan": 0
+  "startDate": "2025-07-14T10:00:00",
+  "endDate": "2025-10-27T12:00:00",
+  "price": 100,
+  "notes": "Let's have some fun on the court. Let's gooo"
 }
 
-### Get specific payment
-GET {{baseUrl}}/api/Payments/{{paymentId}}
-Authorization: Bearer {{token}}
-
-### Get user payments
-GET {{baseUrl}}/api/Payments/user/{{userId}}
-Authorization: Bearer {{token}}
-
-### Update payment status
-PUT {{baseUrl}}/api/Payments/{{paymentId}}/status
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "status": 1
-}
-
-### Get payment summary
-GET {{baseUrl}}/api/Payments/summary
+### DELETE 
+DELETE {{baseUrl}}/api/seasons/{{seasonId}}
 Authorization: Bearer {{adminToken}}
 
-### Get pending payments
-GET {{baseUrl}}/api/Payments/pending
-Authorization: Bearer {{token}}
-
-### Season Subscriptions Endpoints ###
-@subscriptionId = bdf46379-655b-4805-b3fa-4608081dba93
-### Create season subscription
-POST {{baseUrl}}/api/SeasonSubscriptions
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "startDate": "2025-01-10T00:00:00Z",
-    "endDate": "2025-12-31T23:59:59Z",
-    "price": 500.00
-}
-
-### Get all subscriptions
-GET {{baseUrl}}/api/SeasonSubscriptions
-Authorization: Bearer {{adminToken}}
-
-### Get my subscription
-GET {{baseUrl}}/api/SeasonSubscriptions/my-subscription
-Authorization: Bearer {{token}}
-
-### Get active subscriptions
-GET {{baseUrl}}/api/SeasonSubscriptions/active
-Authorization: Bearer {{token}}
-
-### Cancel subscription
-POST {{baseUrl}}/api/SeasonSubscriptions/{{subscriptionId}}/cancel
-Authorization: Bearer {{adminToken}}
-
-### Get specific subscription
-GET {{baseUrl}}/api/SeasonSubscriptions/{{subscriptionId}}
-Authorization: Bearer {{adminToken}}
-
-### Update subscription payment status
-PUT {{baseUrl}}/api/SeasonSubscriptions/{{subscriptionId}}/payment-status
+### GET status
+PATCH {{baseUrl}}/api/seasons/{{seasonId}}/status
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 0
 
-### Check active subscription
-GET {{baseUrl}}/api/SeasonSubscriptions/check-active
+### Register
+POST {{baseUrl}}/api/seasons/{{seasonId}}/register
 Authorization: Bearer {{adminToken}}
-
-### Create new season
-POST {{baseUrl}}/api/Seasons
-Authorization: Bearer {{token}}
-accept: text/plain
 Content-Type: application/json
 
-{
-  "startDate": "2025-01-25T00:00:00.000Z",
-  "endDate": "2025-05-03T00:00:00.000Z",
-  "price": 100,
-  "status": 0,
-  "notes": ""
-}
+{}

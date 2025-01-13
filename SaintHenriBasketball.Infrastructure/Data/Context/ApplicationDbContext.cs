@@ -180,6 +180,8 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Price).HasPrecision(10, 2);
+            entity.Property(e => e.StartDate).IsRequired();
+            entity.Property(e => e.EndDate).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(500);
         });
 
@@ -196,6 +198,9 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.RegisteredOn)
+                .IsRequired();
         });
     }
 }

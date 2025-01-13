@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Application.DTOs.Season;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -133,11 +135,11 @@ public class EmailService : IEmailService
         }
     }
 
-        public async Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance)
+    public async Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance)
     {
         try
         {
-            _logger.LogInformation("Preparing attendance confirmation email for session {SessionId} and user {UserId}", 
+            _logger.LogInformation("Preparing attendance confirmation email for session {SessionId} and user {UserId}",
                 attendance.SessionId, attendance.UserId);
 
             var subject = "Basketball Session Attendance Confirmation";
@@ -165,17 +167,17 @@ public class EmailService : IEmailService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send attendance confirmation email for session {SessionId} and user {UserId}", 
+            _logger.LogError(ex, "Failed to send attendance confirmation email for session {SessionId} and user {UserId}",
                 attendance.SessionId, attendance.UserId);
             throw;
         }
     }
 
-        public async Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance)
+    public async Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance)
     {
         try
         {
-            _logger.LogInformation("Preparing attendance update email for session {SessionId} and user {UserId}", 
+            _logger.LogInformation("Preparing attendance update email for session {SessionId} and user {UserId}",
                 attendance.SessionId, attendance.UserId);
 
             var subject = "Basketball Session Attendance Update";
@@ -203,8 +205,189 @@ public class EmailService : IEmailService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send attendance update email for session {SessionId} and user {UserId}", 
+            _logger.LogError(ex, "Failed to send attendance update email for session {SessionId} and user {UserId}",
                 attendance.SessionId, attendance.UserId);
+            throw;
+        }
+    }
+
+    public async Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing season registration confirmation email for user {UserId}",
+                registration.UserId);
+
+            var subject = "Season Registration Confirmation - Saint Henri Basketball";
+            var htmlContent = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                        <h1 style='color: #333; text-align: center;'>Season Registration Confirmed!</h1>
+                        <p style='color: #666; font-size: 16px;'>Thank you for registering for the basketball season!</p>
+                        <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {registration.Season.StartDate:MMM dd, yyyy} - {registration.Season.EndDate:MMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Registration Date:</strong> {registration.RegisteredOn:MMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Season Price:</strong> ${registration.Season.Price}</p>
+                        </div>
+                        <p style='color: #666; font-size: 14px;'>Please ensure your payment is completed to secure your spot.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                        <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                    </div>
+                </body>
+                </html>";
+
+            await SendEmailAsync(registration.User.Email, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send season registration confirmation email for user {UserId}",
+                registration.UserId);
+            throw;
+        }
+    }
+
+    public async Task SendSeasonRegistrationCancelledEmailAsync(string userEmail, Season season)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing season registration cancellation email for {Email}", userEmail);
+
+            var subject = "Season Registration Cancelled - Saint Henri Basketball";
+            var htmlContent = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                        <h1 style='color: #333; text-align: center;'>Season Registration Cancelled</h1>
+                        <p style='color: #666; font-size: 16px;'>Your registration for the following season has been cancelled:</p>
+                        <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {season.StartDate:MMM dd, yyyy} - {season.EndDate:MMM dd, yyyy}</p>
+                        </div>
+                        <p style='color: #666; font-size: 14px;'>If you believe this was done in error, please contact us.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                        <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                    </div>
+                </body>
+                </html>";
+
+            await SendEmailAsync(userEmail, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send season registration cancellation email to {Email}", userEmail);
+            throw;
+        }
+    }
+
+    public async Task SendSeasonStatusUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers)
+    {
+        try
+        {
+            var subject = $"Season Status Update - Saint Henri Basketball";
+            var statusMessage = season.Status == SeasonStatus.Open ? "opened" : "closed";
+
+            foreach (var user in registeredUsers)
+            {
+                var htmlContent = $@"
+                    <html>
+                    <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                        <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                            <h1 style='color: #333; text-align: center;'>Season Status Update</h1>
+                            <p style='color: #666; font-size: 16px;'>The basketball season has been {statusMessage}:</p>
+                            <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                                <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {season.StartDate:MMM dd, yyyy} - {season.EndDate:MMM dd, yyyy}</p>
+                                <p style='margin: 5px 0; color: #444;'><strong>Status:</strong> {season.Status}</p>
+                                <p style='margin: 5px 0; color: #444;'><strong>Price:</strong> ${season.Price}</p>
+                            </div>
+                            {(season.Status == SeasonStatus.Open ?
+                                "<p style='color: #666; font-size: 14px;'>You can now register for sessions.</p>" :
+                                "<p style='color: #666; font-size: 14px;'>Registration for new sessions is now closed.</p>")}
+                            <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                            <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                        </div>
+                    </body>
+                    </html>";
+
+                await SendEmailAsync(user.Email, subject, htmlContent);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send season status update emails");
+            throw;
+        }
+    }
+
+    public async Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers, string[] changedProperties)
+    {
+        try
+        {
+            var subject = "Season Update - Saint Henri Basketball";
+            var changes = string.Join(", ", changedProperties.Select(p => p.ToLower()));
+
+            foreach (var user in registeredUsers)
+            {
+                var htmlContent = $@"
+                    <html>
+                    <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                        <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                            <h1 style='color: #333; text-align: center;'>Season Update</h1>
+                            <p style='color: #666; font-size: 16px;'>The following details have been updated: {changes}</p>
+                            <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                                <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {season.StartDate:MMM dd, yyyy} - {season.EndDate:MMM dd, yyyy}</p>
+                                <p style='margin: 5px 0; color: #444;'><strong>Price:</strong> ${season.Price}</p>
+                                {(!string.IsNullOrEmpty(season.Notes) ?
+                                    $"<p style='margin: 5px 0; color: #444;'><strong>Notes:</strong> {season.Notes}</p>" : "")}
+                            </div>
+                            <p style='color: #666; font-size: 14px;'>If you have any questions about these changes, please contact us.</p>
+                            <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                            <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                        </div>
+                    </body>
+                    </html>";
+
+                await SendEmailAsync(user.Email, subject, htmlContent);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send season update emails");
+            throw;
+        }
+    }
+
+    public async Task SendSeasonPaymentReminderEmailAsync(SeasonRegistration registration)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing season payment reminder email for user {UserId}",
+                registration.UserId);
+
+            var subject = "Payment Reminder - Saint Henri Basketball Season";
+            var htmlContent = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                        <h1 style='color: #333; text-align: center;'>Payment Reminder</h1>
+                        <p style='color: #666; font-size: 16px;'>This is a friendly reminder about your season registration payment:</p>
+                        <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {registration.Season.StartDate:MMM dd, yyyy} - {registration.Season.EndDate:MMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Amount Due:</strong> ${registration.Season.Price}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Registration Date:</strong> {registration.RegisteredOn:MMM dd, yyyy}</p>
+                        </div>
+                        <p style='color: #666; font-size: 14px;'>Please complete your payment to secure your spot in the season.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                        <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                    </div>
+                </body>
+                </html>";
+
+            await SendEmailAsync(registration.User.Email, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send season payment reminder email for user {UserId}",
+                registration.UserId);
             throw;
         }
     }

@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SaintHenriBasketball.Application.DTOs.Season;
-using SaintHenriBasketball.Application.Exceptions;
-using SaintHenriBasketball.Application.Services.Interfaces;
 using System.Security.Claims;
+using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Domain.Enums;
+using SaintHenriBasketball.Application.DTOs.Season;
+using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -41,10 +42,35 @@ public class SeasonsController : BaseApiController
         {
             return BadRequest(ex.Message);
         }
-        catch (Exception ex)
+    }
+
+    /// <summary>
+    /// Get all seasons
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<SeasonDto>>> GetAllSeasons()
+    {
+        var seasons = await _seasonService.GetAllSeasonsAsync();
+        return Ok(seasons);
+    }
+
+    /// <summary>
+    /// Get current active season
+    /// </summary>
+    [HttpGet("current")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SeasonDto>> GetCurrentSeason()
+    {
+        try
         {
-            _logger.LogError(ex, "Error creating season");
-            return StatusCode(500, "An error occurred while creating the season");
+            var season = await _seasonService.GetCurrentSeasonAsync();
+            return Ok(season);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
         }
     }
 
@@ -65,29 +91,30 @@ public class SeasonsController : BaseApiController
         {
             return NotFound(ex.Message);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting season {SeasonId}", id);
-            return StatusCode(500, "An error occurred while retrieving the season");
-        }
     }
 
     /// <summary>
-    /// Get all seasons
+    /// Update season status (Admin only)
     /// </summary>
-    [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<SeasonDto>>> GetAllSeasons()
+    [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSeasonStatus(Guid id, [FromBody] SeasonStatus status)
     {
         try
         {
-            var seasons = await _seasonService.GetAllSeasonsAsync();
-            return Ok(seasons);
+            await _seasonService.UpdateSeasonStatusAsync(id, status);
+            return NoContent();
         }
-        catch (Exception ex)
+        catch (ValidationException ex)
         {
-            _logger.LogError(ex, "Error getting all seasons");
-            return StatusCode(500, "An error occurred while retrieving the seasons");
+            return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
         }
     }
 
@@ -114,11 +141,6 @@ public class SeasonsController : BaseApiController
         {
             return NotFound(ex.Message);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating season {SeasonId}", id);
-            return StatusCode(500, "An error occurred while updating the season");
-        }
     }
 
     /// <summary>
@@ -138,11 +160,6 @@ public class SeasonsController : BaseApiController
         catch (NotFoundException ex)
         {
             return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting season {SeasonId}", id);
-            return StatusCode(500, "An error occurred while deleting the season");
         }
     }
 
@@ -174,10 +191,25 @@ public class SeasonsController : BaseApiController
         {
             return NotFound(ex.Message);
         }
-        catch (Exception ex)
+    }
+
+    /// <summary>
+    /// Get all users registered for a season (Admin only)
+    /// </summary>
+    [HttpGet("{seasonId}/users")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IEnumerable<SeasonUserDto>>> GetRegisteredUsers(Guid seasonId)
+    {
+        try
         {
-            _logger.LogError(ex, "Error registering for season {SeasonId}", seasonId);
-            return StatusCode(500, "An error occurred while registering for the season");
+            var users = await _seasonService.GetRegisteredUsersAsync(seasonId);
+            return Ok(users);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
         }
     }
 
@@ -203,11 +235,6 @@ public class SeasonsController : BaseApiController
         catch (NotFoundException ex)
         {
             return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error unregistering from season {SeasonId}", seasonId);
-            return StatusCode(500, "An error occurred while unregistering from the season");
         }
     }
 }
