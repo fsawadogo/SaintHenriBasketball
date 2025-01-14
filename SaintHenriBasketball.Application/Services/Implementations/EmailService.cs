@@ -403,4 +403,9 @@ public class EmailService : IEmailService
             throw;
         }
     }
+
+    public Task SendPaymentPlanUpdateEmailAsync(string userEmail, string userName, PaymentPlan paymentPlan)
+    {
+        throw new NotImplementedException();
+    }
 }

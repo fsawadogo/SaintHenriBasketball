@@ -252,11 +252,96 @@ public async Task<IActionResult> UpdateCurrentUser([FromBody] UpdateUserDto upda
     }
 }
 
-/// <summary>
-/// Delete a user
-/// </summary>
-/// <param name="userId">The ID of the user to delete</param>
-[HttpDelete("users/{userId}")]
+    /// <summary>
+    /// Update user's payment plan (Admin only)
+    /// </summary>
+    /// <param name="userId">The ID of the user</param>
+    /// <param name="paymentPlan">The new payment plan</param>
+    [HttpPatch("users/{userId}/payment-plan")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUserPaymentPlan(Guid userId, [FromBody] UpdatePaymentPlanDto updatePaymentPlanDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            await _authService.UpdateUserPaymentPlanAsync(userId, updatePaymentPlanDto.PaymentPlan);
+
+            _logger.LogInformation("Payment plan updated successfully for user: {UserId}", userId);
+
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning("Payment plan update failed - user not found: {UserId}", userId);
+            return NotFound(ex.Message);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("Payment plan update failed for {UserId}: {Message}", userId, ex.Message);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error updating payment plan for user {UserId}", userId);
+            return StatusCode(500, "An unexpected error occurred while updating payment plan");
+        }
+    }
+
+    /// <summary>
+    /// Update current user's payment plan
+    /// </summary>
+    /// <param name="paymentPlan">The new payment plan</param>
+    [HttpPatch("me/payment-plan")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateCurrentUserPaymentPlan([FromBody] UpdatePaymentPlanDto updatePaymentPlanDto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Unauthorized("Invalid token claims");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            await _authService.UpdateUserPaymentPlanAsync(Guid.Parse(userIdClaim.Value), updatePaymentPlanDto.PaymentPlan);
+
+            _logger.LogInformation("User updated their payment plan successfully: {UserId}", userIdClaim.Value);
+
+            return NoContent();
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("Payment plan update failed: {Message}", ex.Message);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during payment plan update");
+            return StatusCode(500, "An unexpected error occurred while updating payment plan");
+        }
+    }
+
+    /// <summary>
+    /// Delete a user
+    /// </summary>
+    /// <param name="userId">The ID of the user to delete</param>
+    [HttpDelete("users/{userId}")]
 [Authorize(Roles = "Admin")]
 [ProducesResponseType(StatusCodes.Status204NoContent)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -1,5 +1,6 @@
 ﻿using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.DTOs.Users;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
 
@@ -14,5 +15,6 @@ public interface IUserService
     Task ConfirmEmailAsync(string email, string token);
     Task ForgotPasswordAsync(string email);
     Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+    Task UpdateUserPaymentPlanAsync(Guid userId, PaymentPlan paymentPlan);
 }
 

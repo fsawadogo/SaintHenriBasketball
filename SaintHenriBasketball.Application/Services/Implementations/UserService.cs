@@ -10,9 +10,7 @@ using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
-using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Domain.Enums;
-using Microsoft.AspNetCore.Identity;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -272,5 +270,52 @@ public class UserService : IUserService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public async Task UpdateUserPaymentPlanAsync(Guid userId, PaymentPlan paymentPlan)
+    {
+        try
+        {
+            _logger.LogInformation("Attempting to update payment plan for user {UserId}", userId);
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new NotFoundException($"User with ID {userId} not found");
+            }
+
+            // Check if the payment plan is actually changing
+            if (user.PaymentPlan == paymentPlan)
+            {
+                _logger.LogInformation("Payment plan unchanged for user {UserId}", userId);
+                return;
+            }
+
+            // Update the payment plan
+            user.PaymentPlan = paymentPlan;
+            await _userRepository.UpdateAsync(user);
+
+            // Send email notification
+            try
+            {
+                await _emailService.SendPaymentPlanUpdateEmailAsync(
+                    user.Email,
+                    $"{user.FirstName} {user.LastName}",
+                    paymentPlan);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw - email notification is not critical
+                _logger.LogWarning(ex, "Failed to send payment plan update email to user {UserId}", userId);
+            }
+
+            _logger.LogInformation("Successfully updated payment plan for user {UserId} to {PaymentPlan}",
+                userId, paymentPlan);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating payment plan for user {UserId}", userId);
+            throw;
+        }
     }
 }

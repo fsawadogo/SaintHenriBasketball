@@ -1,5 +1,6 @@
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
 
@@ -15,4 +16,5 @@ public interface IEmailService
     Task SendSeasonStatusUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers);
     Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers, string[] changedProperties);
     Task SendSeasonPaymentReminderEmailAsync(SeasonRegistration registration);
+    Task SendPaymentPlanUpdateEmailAsync(string userEmail, string userName, PaymentPlan paymentPlan);
 }
