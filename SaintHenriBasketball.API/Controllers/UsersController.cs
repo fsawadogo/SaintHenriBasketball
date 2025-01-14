@@ -13,20 +13,19 @@ namespace SaintHenriBasketball.API.Controllers;
 [ApiController]
 public class UsersController : ControllerBase
 {
-    private readonly IUserService _authService;
+    private readonly IUserService _userService;
     private readonly ILogger<UsersController> _logger;
 
-    public UsersController(IUserService authService, ILogger<UsersController> logger)
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
     {
-        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #region Authentication
     /// <summary>
     /// Register a new user
     /// </summary>
-    /// <param name="registerDto">The registration details</param>
-    /// <returns>Authentication result including JWT token</returns>
     [HttpPost("register")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
@@ -36,27 +35,18 @@ public class UsersController : ControllerBase
         try
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            // Validate email format
             if (!new EmailAddressAttribute().IsValid(registerDto.Email))
-            {
                 return BadRequest("Invalid email format");
-            }
 
-            // Validate password strength
             if (string.IsNullOrWhiteSpace(registerDto.Password) || registerDto.Password.Length < 6)
-            {
                 return BadRequest("Password must be at least 6 characters long");
-            }
 
-            var result = await _authService.RegisterAsync(registerDto);
-
+            var result = await _userService.RegisterAsync(registerDto);
             _logger.LogInformation("User registered successfully: {Email}", registerDto.Email);
 
-            return CreatedAtAction(nameof(Register), new { email = result.Email }, result);
+            return CreatedAtAction(nameof(GetCurrentUser), new { email = result.Email }, result);
         }
         catch (ValidationException ex)
         {
@@ -73,8 +63,6 @@ public class UsersController : ControllerBase
     /// <summary>
     /// Authenticate a user
     /// </summary>
-    /// <param name="loginDto">The login credentials</param>
-    /// <returns>Authentication result including JWT token</returns>
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -85,38 +73,33 @@ public class UsersController : ControllerBase
         try
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            // Validate email format
             if (string.IsNullOrEmpty(loginDto.UserName))
-            {
                 return BadRequest("Invalid username");
-            }
 
-            var result = await _authService.LoginAsync(loginDto);
-
+            var result = await _userService.LoginAsync(loginDto);
             _logger.LogInformation("User logged in successfully: {UserName}", loginDto.UserName);
 
             return Ok(result);
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning("Login failed for {Email}: {Message}", loginDto.UserName, ex.Message);
+            _logger.LogWarning("Login failed for {UserName}: {Message}", loginDto.UserName, ex.Message);
             return Unauthorized(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during login for {Email}", loginDto.UserName);
+            _logger.LogError(ex, "Unexpected error during login for {UserName}", loginDto.UserName);
             return StatusCode(500, "An unexpected error occurred during login");
         }
     }
+    #endregion
 
+    #region Current User Operations
     /// <summary>
     /// Get current user information
     /// </summary>
-    /// <returns>Current user details</returns>
     [HttpGet("me")]
     [Authorize]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
@@ -129,9 +112,7 @@ public class UsersController : ControllerBase
         var roleClaim = User.FindFirst(ClaimTypes.Role);
 
         if (userIdClaim == null || emailClaim == null || usernameClaim == null)
-        {
             return Unauthorized("Invalid token claims");
-        }
 
         var userDto = new UserDto
         {
@@ -143,162 +124,49 @@ public class UsersController : ControllerBase
 
         return Ok(userDto);
     }
-     /// <summary>
-        /// Get all users
-        /// </summary>
-        /// <returns>List of all users</returns>
-        [HttpGet("users")]
-        // [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(IEnumerable<UserDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
-        {
-            var users = await _authService.GetAllUsersAsync();
-            return Ok(users);
-        }
-     
-     /// <summary>
-/// Update user profile
-/// </summary>
-/// <param name="userId">The ID of the user to update</param>
-/// <param name="updateUserDto">The updated user details</param>
-[HttpPut("users/{userId}")]
-[Authorize(Roles = "Admin")]
-[ProducesResponseType(StatusCodes.Status204NoContent)]
-[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserDto updateUserDto)
-{
-    try
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        if (!string.IsNullOrEmpty(updateUserDto.Email) && !new EmailAddressAttribute().IsValid(updateUserDto.Email))
-        {
-            return BadRequest("Invalid email format");
-        }
-
-        await _authService.UpdateUserAsync(userId, updateUserDto);
-        
-        _logger.LogInformation("User updated successfully: {UserId}", userId);
-        
-        return NoContent();
-    }
-    catch (NotFoundException ex)
-    {
-        _logger.LogWarning("User update failed - user not found: {UserId}", userId);
-        return NotFound(ex.Message);
-    }
-    catch (ValidationException ex)
-    {
-        _logger.LogWarning("User update failed for {UserId}: {Message}", userId, ex.Message);
-        return BadRequest(ex.Message);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Unexpected error updating user {UserId}", userId);
-        return StatusCode(500, "An unexpected error occurred during user update");
-    }
-}
-
-/// <summary>
-/// Update current user's profile
-/// </summary>
-/// <param name="updateUserDto">The updated user details</param>
-[HttpPut("me")]
-[Authorize]
-[ProducesResponseType(StatusCodes.Status204NoContent)]
-[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-public async Task<IActionResult> UpdateCurrentUser([FromBody] UpdateUserDto updateUserDto)
-{
-    try
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-        {
-            return Unauthorized("Invalid token claims");
-        }
-
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        if (!string.IsNullOrEmpty(updateUserDto.Email) && !new EmailAddressAttribute().IsValid(updateUserDto.Email))
-        {
-            return BadRequest("Invalid email format");
-        }
-
-        await _authService.UpdateUserAsync(Guid.Parse(userIdClaim.Value), updateUserDto);
-        
-        _logger.LogInformation("User updated their profile successfully: {UserId}", userIdClaim.Value);
-        
-        return NoContent();
-    }
-    catch (ValidationException ex)
-    {
-        _logger.LogWarning("User profile update failed: {Message}", ex.Message);
-        return BadRequest(ex.Message);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Unexpected error during profile update");
-        return StatusCode(500, "An unexpected error occurred during profile update");
-    }
-}
 
     /// <summary>
-    /// Update user's payment plan (Admin only)
+    /// Update current user's profile
     /// </summary>
-    /// <param name="userId">The ID of the user</param>
-    /// <param name="paymentPlan">The new payment plan</param>
-    [HttpPatch("users/{userId}/payment-plan")]
-    [Authorize(Roles = "Admin")]
+    [HttpPut("me")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateUserPaymentPlan(Guid userId, [FromBody] UpdatePaymentPlanDto updatePaymentPlanDto)
+    public async Task<IActionResult> UpdateCurrentUser([FromBody] UpdateUserDto updateUserDto)
     {
         try
         {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized("Invalid token claims");
+
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            await _authService.UpdateUserPaymentPlanAsync(userId, updatePaymentPlanDto.PaymentPlan);
+            if (!string.IsNullOrEmpty(updateUserDto.Email) && !new EmailAddressAttribute().IsValid(updateUserDto.Email))
+                return BadRequest("Invalid email format");
 
-            _logger.LogInformation("Payment plan updated successfully for user: {UserId}", userId);
+            await _userService.UpdateUserAsync(Guid.Parse(userIdClaim.Value), updateUserDto);
+            _logger.LogInformation("User updated their profile successfully: {UserId}", userIdClaim.Value);
 
             return NoContent();
         }
-        catch (NotFoundException ex)
-        {
-            _logger.LogWarning("Payment plan update failed - user not found: {UserId}", userId);
-            return NotFound(ex.Message);
-        }
         catch (ValidationException ex)
         {
-            _logger.LogWarning("Payment plan update failed for {UserId}: {Message}", userId, ex.Message);
+            _logger.LogWarning("User profile update failed: {Message}", ex.Message);
             return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error updating payment plan for user {UserId}", userId);
-            return StatusCode(500, "An unexpected error occurred while updating payment plan");
+            _logger.LogError(ex, "Unexpected error during profile update");
+            return StatusCode(500, "An unexpected error occurred during profile update");
         }
     }
 
     /// <summary>
     /// Update current user's payment plan
     /// </summary>
-    /// <param name="paymentPlan">The new payment plan</param>
     [HttpPatch("me/payment-plan")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -310,17 +178,12 @@ public async Task<IActionResult> UpdateCurrentUser([FromBody] UpdateUserDto upda
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
-            {
                 return Unauthorized("Invalid token claims");
-            }
 
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            await _authService.UpdateUserPaymentPlanAsync(Guid.Parse(userIdClaim.Value), updatePaymentPlanDto.PaymentPlan);
-
+            await _userService.UpdateUserPaymentPlanAsync(Guid.Parse(userIdClaim.Value), updatePaymentPlanDto.PaymentPlan);
             _logger.LogInformation("User updated their payment plan successfully: {UserId}", userIdClaim.Value);
 
             return NoContent();
@@ -336,87 +199,153 @@ public async Task<IActionResult> UpdateCurrentUser([FromBody] UpdateUserDto upda
             return StatusCode(500, "An unexpected error occurred while updating payment plan");
         }
     }
+    #endregion
+
+    #region Admin Operations
+    /// <summary>
+    /// Get all users (Admin only)
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
+    {
+        var users = await _userService.GetAllUsersAsync();
+        return Ok(users);
+    }
 
     /// <summary>
-    /// Delete a user
+    /// Update user profile (Admin only)
     /// </summary>
-    /// <param name="userId">The ID of the user to delete</param>
-    [HttpDelete("users/{userId}")]
-[Authorize(Roles = "Admin")]
-[ProducesResponseType(StatusCodes.Status204NoContent)]
-[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-public async Task<IActionResult> DeleteUser(Guid userId)
-{
-    try
+    [HttpPut("{userId}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserDto updateUserDto)
     {
-        await _authService.DeleteUserAsync(userId);
-        
-        _logger.LogInformation("User deleted successfully: {UserId}", userId);
-        
-        return NoContent();
-    }
-    catch (NotFoundException ex)
-    {
-        _logger.LogWarning("User deletion failed - user not found: {UserId}", userId);
-        return NotFound(ex.Message);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Unexpected error deleting user {UserId}", userId);
-        return StatusCode(500, "An unexpected error occurred during user deletion");
-    }
-}
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-[HttpPost("confirm-email")]
-[AllowAnonymous]
-[ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-public async Task<IActionResult> ConfirmEmail([FromQuery] string token, [FromQuery] string email)
-{
-    try
-    {
-        await _authService.ConfirmEmailAsync(email, token);
-        return Ok("Email confirmed successfully");
-    }
-    catch (ValidationException ex)
-    {
-        return BadRequest(ex.Message);
-    }
-}
+            if (!string.IsNullOrEmpty(updateUserDto.Email) && !new EmailAddressAttribute().IsValid(updateUserDto.Email))
+                return BadRequest("Invalid email format");
 
-[HttpPost("forgot-password")]
-[AllowAnonymous]
-[ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
-{
-    try
-    {
-        await _authService.ForgotPasswordAsync(forgotPasswordDto.Email);
-        return Ok("If the email exists, a password reset link has been sent");
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error in forgot password for {Email}", forgotPasswordDto.Email);
-        return Ok("If the email exists, a password reset link has been sent");
-    }
-}
+            await _userService.UpdateUserAsync(userId, updateUserDto);
+            _logger.LogInformation("User updated successfully: {UserId}", userId);
 
-[HttpPost("reset-password")]
-[AllowAnonymous]
-[ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
-{
-    try
-    {
-        await _authService.ResetPasswordAsync(resetPasswordDto);
-        return Ok("Password has been reset successfully");
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning("User update failed - user not found: {UserId}", userId);
+            return NotFound(ex.Message);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("User update failed for {UserId}: {Message}", userId, ex.Message);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error updating user {UserId}", userId);
+            return StatusCode(500, "An unexpected error occurred during user update");
+        }
     }
-    catch (ValidationException ex)
+
+    /// <summary>
+    /// Delete a user (Admin only)
+    /// </summary>
+    [HttpDelete("{userId}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteUser(Guid userId)
     {
-        return BadRequest(ex.Message);
+        try
+        {
+            await _userService.DeleteUserAsync(userId);
+            _logger.LogInformation("User deleted successfully: {UserId}", userId);
+
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning("User deletion failed - user not found: {UserId}", userId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error deleting user {UserId}", userId);
+            return StatusCode(500, "An unexpected error occurred during user deletion");
+        }
     }
-}
+    #endregion
+
+    #region Account Management
+    /// <summary>
+    /// Confirm user's email
+    /// </summary>
+    [HttpPost("confirm-email")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string token, [FromQuery] string email)
+    {
+        try
+        {
+            await _userService.ConfirmEmailAsync(email, token);
+            return Ok("Email confirmed successfully");
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Request password reset
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
+    {
+        try
+        {
+            await _userService.ForgotPasswordAsync(forgotPasswordDto.Email);
+            return Ok("If the email exists, a password reset link has been sent");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in forgot password for {Email}", forgotPasswordDto.Email);
+            return Ok("If the email exists, a password reset link has been sent");
+        }
+    }
+
+    /// <summary>
+    /// Reset password
+    /// </summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
+    {
+        try
+        {
+            await _userService.ResetPasswordAsync(resetPasswordDto);
+            return Ok("Password has been reset successfully");
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    #endregion
 }
