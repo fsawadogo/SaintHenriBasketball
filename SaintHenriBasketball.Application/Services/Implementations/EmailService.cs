@@ -220,23 +220,35 @@ public class EmailService : IEmailService
 
             var subject = "Season Registration Confirmation - Saint Henri Basketball";
             var htmlContent = $@"
-                <html>
-                <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
-                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
-                        <h1 style='color: #333; text-align: center;'>Season Registration Confirmed!</h1>
-                        <p style='color: #666; font-size: 16px;'>Thank you for registering for the basketball season!</p>
-                        <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                            <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {registration.Season.StartDate:MMM dd, yyyy} - {registration.Season.EndDate:MMM dd, yyyy}</p>
-                            <p style='margin: 5px 0; color: #444;'><strong>Registration Date:</strong> {registration.RegisteredOn:MMM dd, yyyy}</p>
-                            <p style='margin: 5px 0; color: #444;'><strong>Season Price:</strong> ${registration.Season.Price}</p>
-                        </div>
-                        <p style='color: #666; font-size: 14px;'>Please ensure your payment is completed to secure your spot.</p>
-                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                        <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+            <html>
+            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                    <h1 style='color: #333; text-align: center;'>Season Registration Confirmed!</h1>
+                    <p style='color: #666; font-size: 16px;'>Thank you for registering for the basketball season!</p>
+                    
+                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0; color: #444;'><strong>Season Period:</strong> {registration.Season.StartDate:MMM dd, yyyy} - {registration.Season.EndDate:MMM dd, yyyy}</p>
+                        <p style='margin: 5px 0; color: #444;'><strong>Registration Date:</strong> {registration.RegisteredOn:MMM dd, yyyy}</p>
+                        <p style='margin: 5px 0; color: #444;'><strong>Season Price:</strong> ${registration.Season.Price}</p>
                     </div>
-                </body>
-                </html>";
 
+                    <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <h2 style='color: #2e7d32; margin-top: 0;'>Payment Instructions</h2>
+                        <p style='color: #444; margin: 5px 0;'><strong>Please complete your payment using Interac e-Transfer:</strong></p>
+                        <ul style='color: #444; margin: 10px 0;'>
+                            <li>Send to: <strong>pay@sainthenribasketball.com</strong></li>
+                            <li>Amount: <strong>${registration.Season.Price}</strong></li>
+                            <li>Message: <strong>Season Registration - {registration.User.FirstName} {registration.User.LastName}</strong></li>
+                        </ul>
+                        <p style='color: #444; margin: 5px 0;'>Your spot will be secured once payment is received.</p>
+                    </div>
+
+                    <p style='color: #666; font-size: 14px;'>If you have any questions about payment or registration, please contact us.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                </div>
+            </body>
+            </html>";
             await SendEmailAsync(registration.User.Email, subject, htmlContent);
         }
         catch (Exception ex)
