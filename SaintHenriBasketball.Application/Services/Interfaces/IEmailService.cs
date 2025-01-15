@@ -17,4 +17,5 @@ public interface IEmailService
     Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers, string[] changedProperties);
     Task SendSeasonPaymentReminderEmailAsync(SeasonRegistration registration);
     Task SendPaymentPlanUpdateEmailAsync(string userEmail, string userName, PaymentPlan paymentPlan);
+    Task SendNewUserNotificationToAdminAsync(ApplicationUser newUser);
 }

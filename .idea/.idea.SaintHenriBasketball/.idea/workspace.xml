@@ -9,12 +9,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="app.http">
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/LoginDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/LoginDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/LoginDtoValidator.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Validators/LoginDtoValidator.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,24 +56,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    ".NET Launch Settings Profile.SaintHenriBasketball.API: http.executor": "Debug",
-    "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
-    "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
-    "HTTP Request.app | Admin login.executor": "Run",
-    "HTTP Request.app | Create new season.executor": "Run",
-    "HTTP Request.app | Get current user.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;.NET Launch Settings Profile.SaintHenriBasketball.API: http.executor&quot;: &quot;Debug&quot;,
+    &quot;HTTP Request.SaintHenriBasketball.API | Login.executor&quot;: &quot;Run&quot;,
+    &quot;HTTP Request.SaintHenriBasketball.API | Me.executor&quot;: &quot;Run&quot;,
+    &quot;HTTP Request.app | Admin login.executor&quot;: &quot;Run&quot;,
+    &quot;HTTP Request.app | Create new season.executor&quot;: &quot;Run&quot;,
+    &quot;HTTP Request.app | Get current user.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
     <configuration name="SaintHenriBasketball.API | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Login" index="2" runType="Run single request">
       <method v="2" />
@@ -191,24 +188,5 @@
     <MESSAGE value="Update the mapping profile for the season entity" />
     <MESSAGE value="app.http" />
     <option name="LAST_COMMIT_MESSAGE" value="app.http" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/SeasonsController.cs</url>
-          <line>36</line>
-          <properties documentPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/SeasonsController.cs" containingFunctionPresentation="Method 'CreateSeason'">
-            <startOffsets>
-              <option value="1113" />
-            </startOffsets>
-            <endOffsets>
-              <option value="1182" />
-            </endOffsets>
-          </properties>
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

@@ -50,7 +50,8 @@ public class EmailService : IEmailService
             {
                 _logger.LogError("Failed to send email. Status Code: {StatusCode}, Body: {Body}",
                     response.StatusCode, responseBody);
-                throw new Exception($"Failed to send email. Status Code: {response.StatusCode}, Response: {responseBody}");
+                throw new Exception(
+                    $"Failed to send email. Status Code: {response.StatusCode}, Response: {responseBody}");
             }
 
             _logger.LogInformation("Email sent successfully to {Email}", to);
@@ -167,7 +168,8 @@ public class EmailService : IEmailService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send attendance confirmation email for session {SessionId} and user {UserId}",
+            _logger.LogError(ex,
+                "Failed to send attendance confirmation email for session {SessionId} and user {UserId}",
                 attendance.SessionId, attendance.UserId);
             throw;
         }
@@ -330,7 +332,8 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers, string[] changedProperties)
+    public async Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers,
+        string[] changedProperties)
     {
         try
         {
@@ -404,8 +407,121 @@ public class EmailService : IEmailService
         }
     }
 
-    public Task SendPaymentPlanUpdateEmailAsync(string userEmail, string userName, PaymentPlan paymentPlan)
+    public async Task SendPaymentPlanUpdateEmailAsync(string userEmail, string userName, PaymentPlan paymentPlan)
     {
-        throw new NotImplementedException();
+        try
+        {
+            _logger.LogInformation("Preparing payment plan update email for user {Email}", userEmail);
+
+            var subject = "Payment Plan Updated - Saint Henri Basketball";
+            var htmlContent = $@"
+           <html>
+           <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+               <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                   <h1 style='color: #333; text-align: center;'>Payment Plan Update</h1>
+                   <p style='color: #666; font-size: 16px;'>Hi {userName}, your payment plan has been updated.</p>
+                   
+                   <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                       <p style='margin: 5px 0; color: #444;'><strong>New Payment Plan:</strong> {paymentPlan}</p>
+                       <p style='margin: 5px 0; color: #444;'><strong>Updated On:</strong> {DateTime.UtcNow:MMM dd, yyyy}</p>
+                   </div>
+
+                   <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                       <p style='color: #444; margin: 5px 0;'><strong>Payment Instructions:</strong></p>
+                       <ul style='color: #444; margin: 10px 0;'>
+                           <li>Send payment via Interac e-Transfer to: <strong>pay@sainthenribasketball.com</strong></li>
+                           <li>Include your full name and 'Payment Plan Update' in the message</li>
+                       </ul>
+                   </div>
+
+                   <p style='color: #666; font-size: 14px;'>If you have any questions about your payment plan or need assistance, please don't hesitate to contact us.</p>
+                   <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                   <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+               </div>
+           </body>
+           </html>";
+
+            await SendEmailAsync(userEmail, subject, htmlContent);
+
+            // Also notify admin about the payment plan change
+            await SendPaymentPlanChangeNotificationToAdminAsync(userEmail, userName, paymentPlan);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send payment plan update email to user {Email}", userEmail);
+            throw;
+        }
+    }
+
+    public async Task SendNewUserNotificationToAdminAsync(ApplicationUser newUser)
+    {
+        try
+        {
+            _logger.LogInformation("Sending new user notification email to admin for user {Email}", newUser.Email);
+
+            var subject = "New User Registration - Saint Henri Basketball";
+            var htmlContent = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                    <h1 style='color: #333; text-align: center;'>New User Registration</h1>
+                    <p style='color: #666; font-size: 16px;'>A new user has registered for Saint Henri Basketball.</p>
+                    
+                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0; color: #444;'><strong>Name:</strong> {newUser.FirstName} {newUser.LastName}</p>
+                        <p style='margin: 5px 0; color: #444;'><strong>Email:</strong> {newUser.Email}</p>
+                        <p style='margin: 5px 0; color: #444;'><strong>Username:</strong> {newUser.Username}</p>
+                        <p style='margin: 5px 0; color: #444;'><strong>Payment Plan:</strong> {newUser.PaymentPlan}</p>
+                        <p style='margin: 5px 0; color: #444;'><strong>Registration Date:</strong> {DateTime.UtcNow:MMM dd, yyyy HH:mm} UTC</p>
+                    </div>
+
+                    <p style='color: #666; font-size: 14px;'>You can manage users from the admin dashboard.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                </div>
+            </body>
+            </html>";
+
+            await SendEmailAsync("admin@sainthenribasketball.com", subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send admin notification email for new user {Email}", newUser.Email);
+            // Don't throw - this is a notification email, shouldn't block registration
+        }
+    }
+    
+    private async Task SendPaymentPlanChangeNotificationToAdminAsync(string userEmail, string userName, PaymentPlan paymentPlan)
+    {
+        try
+        {
+            var subject = "Payment Plan Change Notification - Saint Henri Basketball";
+            var htmlContent = $@"
+           <html>
+           <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+               <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                   <h1 style='color: #333; text-align: center;'>Payment Plan Change</h1>
+                   <p style='color: #666; font-size: 16px;'>A user has updated their payment plan.</p>
+                   
+                   <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                       <p style='margin: 5px 0; color: #444;'><strong>User:</strong> {userName}</p>
+                       <p style='margin: 5px 0; color: #444;'><strong>Email:</strong> {userEmail}</p>
+                       <p style='margin: 5px 0; color: #444;'><strong>New Payment Plan:</strong> {paymentPlan}</p>
+                       <p style='margin: 5px 0; color: #444;'><strong>Changed On:</strong> {DateTime.UtcNow:MMM dd, yyyy HH:mm} UTC</p>
+                   </div>
+
+                   <p style='color: #666; font-size: 14px;'>You can view more details in the admin dashboard.</p>
+                   <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                   <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+               </div>
+           </body>
+           </html>";
+
+            await SendEmailAsync("admin@sainthenribasketball.com", subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send admin notification for payment plan change. User: {Email}", userEmail);
+        }
     }
 }
