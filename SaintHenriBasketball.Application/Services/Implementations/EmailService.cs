@@ -6,6 +6,10 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Domain.Enums;
+using SaintHenriBasketball.Application.DTOs.Email;
+using SaintHenriBasketball.Domain.Interfaces.Repositories;
+using SaintHenriBasketball.Application.DTOs.Users;
+using System.ComponentModel.DataAnnotations;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -13,13 +17,15 @@ public class EmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailService> _logger;
+    private readonly IUserRepository _userRepository;
     private readonly bool _emailEnabled;
 
-    public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+    public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IUserRepository userRepository)
     {
         _configuration = configuration;
         _logger = logger;
         _emailEnabled = _configuration.GetValue<bool>("SendGrid:Enabled");
+        _userRepository = userRepository;
     }
 
     public async Task SendEmailAsync(string to, string subject, string htmlContent)
@@ -523,5 +529,433 @@ public class EmailService : IEmailService
         {
             _logger.LogWarning(ex, "Failed to send admin notification for payment plan change. User: {Email}", userEmail);
         }
+    }
+
+    public async Task SendAttendanceReminderEmailAsync(string userEmail, string userName, string? customMessage = null)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing attendance reminder email for user {Email}", userEmail);
+
+            var subject = "Session Attendance Reminder - Saint Henri Basketball";
+            var htmlContent = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                    <h1 style='color: #333; text-align: center;'>Session Attendance Reminder</h1>
+                    <p style='color: #666; font-size: 16px;'>Hi {userName},</p>
+
+                    {(!string.IsNullOrEmpty(customMessage) ? $@"
+                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0; color: #444;'>{customMessage}</p>
+                    </div>" : "")}
+
+                    <p style='color: #666; font-size: 14px;'>If you cannot attend, please let us know in advance.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                </div>
+            </body>
+            </html>";
+
+            await SendEmailAsync(userEmail, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send attendance reminder email to user {Email}", userEmail);
+            throw;
+        }
+    }
+
+    public async Task SendSeasonRegistrationReminderEmailAsync(string userEmail, string userName, string? customMessage = null)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing season registration reminder email for user {Email}", userEmail);
+
+            var subject = "Season Registration Reminder - Saint Henri Basketball";
+            var htmlContent = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                    <h1 style='color: #333; text-align: center;'>Season Registration Reminder</h1>
+                    <p style='color: #666; font-size: 16px;'>Hi {userName},</p>
+
+                    {(!string.IsNullOrEmpty(customMessage) ? $@"
+                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0; color: #444;'>{customMessage}</p>
+                    </div>" : "")}
+
+                    <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='color: #444; margin: 5px 0;'><strong>Payment Instructions:</strong></p>
+                        <ul style='color: #444; margin: 10px 0;'>
+                            <li>Send payment via Interac e-Transfer to: <strong>pay@sainthenribasketball.com</strong></li>
+                            <li>Include your full name in the message</li>
+                        </ul>
+                    </div>
+
+                    <p style='color: #666; font-size: 14px;'>If you have any questions, please don't hesitate to contact us.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                </div>
+            </body>
+            </html>";
+
+            await SendEmailAsync(userEmail, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send season registration reminder email to user {Email}", userEmail);
+            throw;
+        }
+    }
+
+    public async Task SendGeneralAnnouncementEmailAsync(string userEmail, string userName, string message)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing general announcement email for user {Email}", userEmail);
+
+            var subject = "Announcement - Saint Henri Basketball";
+            var htmlContent = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                    <h1 style='color: #333; text-align: center;'>Important Announcement</h1>
+                    <p style='color: #666; font-size: 16px;'>Hi {userName},</p>
+
+                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0; color: #444;'>{message}</p>
+                    </div>
+
+                    <p style='color: #666; font-size: 14px;'>If you have any questions, please don't hesitate to contact us.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                </div>
+            </body>
+            </html>";
+
+            await SendEmailAsync(userEmail, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send general announcement email to user {Email}", userEmail);
+            throw;
+        }
+    }
+
+    public async Task SendPaymentReminderEmailAsync(string userEmail, string userName, PaymentPlan paymentPlan, string? customMessage = null)
+    {
+        try
+        {
+            _logger.LogInformation("Preparing payment reminder email for user {Email}", userEmail);
+
+            var subject = "Payment Reminder - Saint Henri Basketball";
+            var htmlContent = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                    <h1 style='color: #333; text-align: center;'>Payment Reminder</h1>
+                    <p style='color: #666; font-size: 16px;'>Hi {userName},</p>
+                    
+                    {(!string.IsNullOrEmpty(customMessage) ? $@"
+                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='margin: 5px 0; color: #444;'>{customMessage}</p>
+                    </div>" : "")}
+
+                    <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                        <p style='color: #444; margin: 5px 0;'><strong>Payment Plan:</strong> {paymentPlan}</p>
+                        <p style='color: #444; margin: 15px 0;'><strong>Payment Instructions:</strong></p>
+                        <ul style='color: #444; margin: 10px 0;'>
+                            <li>Send payment via Interac e-Transfer to: <strong>pay@sainthenribasketball.com</strong></li>
+                            <li>Include your full name in the message</li>
+                        </ul>
+                    </div>
+
+                    <p style='color: #666; font-size: 14px;'>If you've already made your payment, please disregard this reminder. If you have any questions, please don't hesitate to contact us.</p>
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                </div>
+            </body>
+            </html>";
+
+            await SendEmailAsync(userEmail, subject, htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send payment reminder email to user {Email}", userEmail);
+            throw;
+        }
+    }
+
+    private Task<string> BuildEmailContentAsync(EmailType emailType, ApplicationUser user, EmailLanguage language, string? customMessage, string? customMessageFr)
+    {
+        var userName = $"{user.FirstName} {user.LastName}";
+
+        return Task.FromResult(language switch
+        {
+            EmailLanguage.English => BuildEnglishContent(emailType, userName, user.PaymentPlan, customMessage),
+            EmailLanguage.French => BuildFrenchContent(emailType, userName, user.PaymentPlan, customMessageFr ?? customMessage),
+            EmailLanguage.Bilingual => BuildBilingualContent(emailType, userName, user.PaymentPlan, customMessage, customMessageFr),
+            _ => BuildEnglishContent(emailType, userName, user.PaymentPlan, customMessage)
+        });
+    }
+
+    private string BuildEnglishContent(EmailType emailType, string userName, PaymentPlan paymentPlan, string? customMessage)
+    {
+        var messageContent = customMessage ?? GetDefaultEnglishMessage(emailType, userName, paymentPlan);
+
+        return $@"
+        <html>
+        <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                <h1 style='color: #333; text-align: center;'>{GetEmailTitle(emailType, EmailLanguage.English)}</h1>
+                <p style='color: #666; font-size: 16px;'>Hi {userName},</p>
+                <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                    <p style='margin: 5px 0; color: #444;'>{messageContent}</p>
+                </div>
+                {GetPaymentInstructions(EmailLanguage.English)}
+                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+            </div>
+        </body>
+        </html>";
+    }
+
+    private string BuildFrenchContent(EmailType emailType, string userName, PaymentPlan paymentPlan, string? customMessage)
+    {
+        var messageContent = customMessage ?? GetDefaultFrenchMessage(emailType, userName, paymentPlan);
+
+        return $@"
+        <html>
+        <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                <h1 style='color: #333; text-align: center;'>{GetEmailTitle(emailType, EmailLanguage.French)}</h1>
+                <p style='color: #666; font-size: 16px;'>Bonjour {userName},</p>
+                <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                    <p style='margin: 5px 0; color: #444;'>{messageContent}</p>
+                </div>
+                {GetPaymentInstructions(EmailLanguage.French)}
+                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+            </div>
+        </body>
+        </html>";
+    }
+
+    private string BuildBilingualContent(EmailType emailType, string userName, PaymentPlan paymentPlan, string? customMessageEn, string? customMessageFr)
+    {
+        var englishContent = customMessageEn ?? GetDefaultEnglishMessage(emailType, userName, paymentPlan);
+        var frenchContent = customMessageFr ?? GetDefaultFrenchMessage(emailType, userName, paymentPlan);
+
+        return $@"
+        <html>
+        <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                <h1 style='color: #333; text-align: center;'>{GetEmailTitle(emailType, EmailLanguage.English)} / {GetEmailTitle(emailType, EmailLanguage.French)}</h1>
+                <p style='color: #666; font-size: 16px;'>Hi/Bonjour {userName},</p>
+                
+                <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                    <h2 style='color: #333; margin-top: 0;'>English</h2>
+                    <p style='margin: 5px 0; color: #444;'>{englishContent}</p>
+                </div>
+
+                <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                    <h2 style='color: #333; margin-top: 0;'>Français</h2>
+                    <p style='margin: 5px 0; color: #444;'>{frenchContent}</p>
+                </div>
+
+                {GetPaymentInstructions(EmailLanguage.Bilingual)}
+                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+            </div>
+        </body>
+        </html>";
+    }
+
+    private object GetEmailTitle(EmailType emailType, EmailLanguage language)
+    {
+        return emailType switch
+        {
+            EmailType.PaymentReminder => language switch
+            {
+                EmailLanguage.English => "Payment Reminder",
+                EmailLanguage.French => "Rappel de paiement",
+                EmailLanguage.Bilingual => "Payment Reminder / Rappel de paiement",
+                _ => "Saint Henri Basketball"
+            },
+            EmailType.AttendanceReminder => language switch
+            {
+                EmailLanguage.English => "Attendance Reminder",
+                EmailLanguage.French => "Rappel de présence",
+                EmailLanguage.Bilingual => "Attendance Reminder / Rappel de présence",
+                _ => "Saint Henri Basketball"
+            },
+            EmailType.SeasonRegistrationReminder => language switch
+            {
+                EmailLanguage.English => "Season Registration Reminder",
+                EmailLanguage.French => "Rappel d'inscription à la saison",
+                EmailLanguage.Bilingual => "Season Registration Reminder / Rappel d'inscription",
+                _ => "Saint Henri Basketball"
+            },
+            EmailType.GeneralAnnouncement => language switch
+            {
+                EmailLanguage.English => "Announcement",
+                EmailLanguage.French => "Annonce",
+                EmailLanguage.Bilingual => "Announcement / Annonce",
+                _ => "Saint Henri Basketball"
+            },
+            _ => "Saint Henri Basketball"
+        };
+    }
+
+    private  string GetDefaultEnglishMessage(EmailType emailType, string userName, PaymentPlan paymentPlan) => emailType switch
+    {
+        EmailType.PaymentReminder => EmailMessagesEn.Payment.PaymentDue(GetPaymentAmount(paymentPlan)),
+        EmailType.AttendanceReminder => EmailMessagesEn.Attendance.ReminderMessage(DateTime.Now.ToShortDateString(), "10:00 AM"),
+        EmailType.SeasonRegistrationReminder => EmailMessagesEn.Season.RegistrationReminder(DateTime.Now.AddDays(14).ToShortDateString(), GetSeasonPrice()),
+        EmailType.FacilityUpdate => EmailMessagesEn.General.FacilityUpdate,
+        EmailType.ScheduleChange => EmailMessagesEn.General.ScheduleChange,
+        EmailType.LowAttendanceWarning => EmailMessagesEn.Attendance.LowAttendanceWarning,
+        EmailType.GeneralAnnouncement => EmailMessagesEn.General.WelcomeMessage(userName.Split(' ')[0]),
+        _ => string.Empty
+    };
+
+    private string GetDefaultFrenchMessage(EmailType emailType, string userName, PaymentPlan paymentPlan) => emailType switch
+    {
+        EmailType.PaymentReminder => EmailMessagesFr.Payment.PaymentDue(GetPaymentAmount(paymentPlan)),
+        EmailType.AttendanceReminder => EmailMessagesFr.Attendance.ReminderMessage(DateTime.Now.AddDays(8).ToShortDateString(), "10h00"),
+        EmailType.SeasonRegistrationReminder => EmailMessagesFr.Season.RegistrationReminder(DateTime.Now.AddDays(8).ToShortDateString(), GetSeasonPrice()),
+        EmailType.FacilityUpdate => EmailMessagesFr.General.FacilityUpdate,
+        EmailType.ScheduleChange => EmailMessagesFr.General.ScheduleChange,
+        EmailType.LowAttendanceWarning => EmailMessagesFr.Attendance.LowAttendanceWarning,
+        EmailType.GeneralAnnouncement => EmailMessagesFr.General.WelcomeMessage(userName.Split(' ')[0]),
+        _ => string.Empty
+    };
+
+    private string GetPaymentInstructions(EmailLanguage language)
+    {
+        if (language == EmailLanguage.English)
+        {
+            return @"
+            <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                <p style='color: #444; margin: 5px 0;'><strong>Payment Instructions:</strong></p>
+                <p style='color: #444; margin: 5px 0;'>Send payment via Interac e-Transfer to: <strong>pay@sainthenribasketball.com</strong></p>
+            </div>";
+        }
+
+        if (language == EmailLanguage.French)
+        {
+            return @"
+            <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                <p style='color: #444; margin: 5px 0;'><strong>Instructions de paiement :</strong></p>
+                <p style='color: #444; margin: 5px 0;'>Envoyez le paiement par virement Interac à : <strong>pay@sainthenribasketball.com</strong></p>
+            </div>";
+        }
+
+        // Bilingual
+        return @"
+        <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+            <p style='color: #444; margin: 5px 0;'><strong>Payment Instructions / Instructions de paiement :</strong></p>
+            <p style='color: #444; margin: 5px 0;'>Send payment via Interac e-Transfer to: <strong>pay@sainthenribasketball.com</strong></p>
+            <p style='color: #444; margin: 5px 0;'>Envoyez le paiement par virement Interac à : <strong>pay@sainthenribasketball.com</strong></p>
+        </div>";
+    }
+
+    private string GetEmailSubject(EmailType emailType, EmailLanguage language)
+    {
+        return (emailType, language) switch
+        {
+            (EmailType.PaymentReminder, EmailLanguage.French) => "Rappel de paiement - Saint Henri Basketball",
+            (EmailType.PaymentReminder, EmailLanguage.English) => "Payment Reminder - Saint Henri Basketball",
+            (EmailType.PaymentReminder, EmailLanguage.Bilingual) => "Payment Reminder / Rappel de paiement - Saint Henri Basketball",
+
+            (EmailType.AttendanceConfirmation, EmailLanguage.French) => "Rappel de présence - Saint Henri Basketball",
+            (EmailType.AttendanceConfirmation, EmailLanguage.English) => "Attendance Reminder - Saint Henri Basketball",
+            (EmailType.AttendanceConfirmation, EmailLanguage.Bilingual) => "Attendance Reminder / Rappel de présence - Saint Henri Basketball",
+
+            (EmailType.SeasonRegistrationReminder, EmailLanguage.French) => "Rappel d'inscription à la saison - Saint Henri Basketball",
+            (EmailType.SeasonRegistrationReminder, EmailLanguage.English) => "Season Registration Reminder - Saint Henri Basketball",
+            (EmailType.SeasonRegistrationReminder, EmailLanguage.Bilingual) => "Season Registration Reminder / Rappel d'inscription - Saint Henri Basketball",
+
+            (EmailType.GeneralAnnouncement, EmailLanguage.French) => "Annonce - Saint Henri Basketball",
+            (EmailType.GeneralAnnouncement, EmailLanguage.English) => "Announcement - Saint Henri Basketball",
+            (EmailType.GeneralAnnouncement, EmailLanguage.Bilingual) => "Announcement / Annonce - Saint Henri Basketball",
+
+            _ => "Saint Henri Basketball"
+        };
+    }
+    private decimal GetPaymentAmount(PaymentPlan plan) => plan switch
+    {
+        PaymentPlan.Season => 100.00m,
+        PaymentPlan.DropIn => 10.00m,
+        _ => 0.00m
+    };
+
+    private decimal GetSeasonPrice() => 100.00m;
+
+    public async Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string> emails, EmailLanguage language, string? customMessage, string? customMessageFr)
+    {
+        var result = new EmailSendResult();
+
+        foreach (var email in emails)
+        {
+            try
+            {
+                if (!new EmailAddressAttribute().IsValid(email))
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogWarning("Invalid email format: {Email}", email);
+                    continue;
+                }
+
+                // Get user details by email
+                var user = await _userRepository.GetByEmailAsync(email);
+                if (user == null)
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogWarning("User not found for email: {Email}", email);
+                    continue;
+                }
+
+                var subject = GetEmailSubject(emailType, language);
+                var htmlContent = await BuildEmailContentAsync(emailType, user, language, customMessage, customMessageFr);
+
+                var apiKey = _configuration["SendGrid:ApiKey"];
+                var fromEmail = _configuration["SendGrid:FromEmail"];
+                var fromName = _configuration["SendGrid:FromName"];
+
+                var client = new SendGridClient(apiKey);
+                var from = new EmailAddress(fromEmail, fromName);
+                var toAddress = new EmailAddress(email, $"{user.FirstName} {user.LastName}");
+                var msg = MailHelper.CreateSingleEmail(from, toAddress, subject, null, htmlContent);
+
+                var response = await client.SendEmailAsync(msg);
+                var responseBody = await response.Body.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogError("Failed to send email. Status Code: {StatusCode}, Body: {Body}",
+                        response.StatusCode, responseBody);
+                    continue;
+                }
+
+                result.SuccessCount++;
+                _logger.LogInformation("Successfully sent {EmailType} email in {Language} to {Email}",
+                    emailType, language, email);
+            }
+            catch (Exception ex)
+            {
+                result.FailureCount++;
+                result.FailedEmails.Add(email);
+                _logger.LogError(ex, "Failed to send {EmailType} email in {Language} to {Email}",
+                    emailType, language, email);
+            }
+        }
+
+        return result;
     }
 }

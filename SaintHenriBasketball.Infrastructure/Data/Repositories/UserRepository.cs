@@ -2,16 +2,19 @@
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Repositories;
 
 public class UserRepository : IUserRepository
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILogger<UserRepository> _logger;
 
-    public UserRepository(ApplicationDbContext context)
+    public UserRepository(ApplicationDbContext context, ILogger<UserRepository> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<ApplicationUser> GetByIdAsync(Guid id)
@@ -75,5 +78,40 @@ public class UserRepository : IUserRepository
     {
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<ApplicationUser>> GetUsersByIdsAsync(List<Guid> userIds)
+    {
+        try
+        {
+            if (userIds == null || !userIds.Any())
+            {
+                return new List<ApplicationUser>();
+            }
+
+            var users = await _context.Users
+                .Where(u => userIds.Contains(u.Id))
+                .OrderBy(u => u.LastName)
+                .ThenBy(u => u.FirstName)
+                .ToListAsync();
+
+            _logger.LogInformation("Retrieved {Count} users from {Total} requested IDs",
+                users.Count, userIds.Count);
+
+            if (users.Count < userIds.Count)
+            {
+                var missingIds = userIds.Except(users.Select(u => u.Id));
+                _logger.LogWarning("Some requested user IDs were not found: {MissingIds}",
+                    string.Join(", ", missingIds));
+            }
+
+            return users;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving users by IDs. Requested IDs: {UserIds}",
+                string.Join(", ", userIds));
+            throw;
+        }
     }
 }

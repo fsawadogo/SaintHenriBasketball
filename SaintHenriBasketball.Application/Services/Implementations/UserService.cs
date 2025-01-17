@@ -11,6 +11,9 @@ using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
+using SaintHenriBasketball.Application.DTOs.Email;
+using System.ComponentModel.DataAnnotations;
+using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -248,30 +251,6 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
     }
 
-    private string GenerateJwtToken(ApplicationUser user)
-    {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: _configuration["JwtSettings:Issuer"],
-            audience: _configuration["JwtSettings:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:DurationInDays"])),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
     public async Task UpdateUserPaymentPlanAsync(Guid userId, PaymentPlan paymentPlan)
     {
         try
@@ -317,5 +296,103 @@ public class UserService : IUserService
             _logger.LogError(ex, "Error updating payment plan for user {UserId}", userId);
             throw;
         }
+    }
+
+    public async Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string> emails, EmailLanguage language, string? customMessage, string? customMessageFr = null)
+    {
+        try
+        {
+            _logger.LogInformation("Starting to send {EmailType} emails to {Count} recipients in {Language}",
+                emailType, emails.Count, language);
+
+            if (emails.Count == 0)
+            {
+                throw new ValidationException("No email addresses provided");
+            }
+
+            // Validate all email addresses
+            var invalidEmails = emails.Where(e => !new EmailAddressAttribute().IsValid(e)).ToList();
+            if (invalidEmails.Count != 0)
+            {
+                throw new ValidationException($"Invalid email addresses: {string.Join(", ", invalidEmails)}");
+            }
+
+            var result = new EmailSendResult();
+
+            foreach (var email in emails)
+            {
+                try
+                {
+                    // Try to get the user to ensure they exist in our system
+                    var user = await _userRepository.GetByEmailAsync(email);
+                    if (user == null)
+                    {
+                        result.FailureCount++;
+                        result.FailedEmails.Add(email);
+                        _logger.LogWarning("User not found for email {Email}", email);
+                        continue;
+                    }
+
+                    // Send the targeted email
+                    await _emailService.SendTargetedEmailsAsync(
+                        emailType,
+                        [email],
+                        language,
+                        customMessage,
+                        customMessageFr);
+
+                    result.SuccessCount++;
+                    _logger.LogInformation("Successfully sent {EmailType} email to {Email}", emailType, email);
+                }
+                catch (Exception ex)
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogError(ex, "Failed to send {EmailType} email to {Email}", emailType, email);
+                }
+            }
+
+            // Log final results
+            _logger.LogInformation(
+                "Completed sending {EmailType} emails. Success: {SuccessCount}, Failed: {FailureCount}",
+                emailType, result.SuccessCount, result.FailureCount);
+
+            if (result.FailedEmails.Count != 0)
+            {
+                _logger.LogWarning(
+                    "Failed to send emails to: {FailedEmails}",
+                    string.Join(", ", result.FailedEmails));
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in SendTargetedEmailsAsync");
+            throw;
+        }
+    }
+    private string GenerateJwtToken(ApplicationUser user)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _configuration["JwtSettings:Issuer"],
+            audience: _configuration["JwtSettings:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:DurationInDays"])),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

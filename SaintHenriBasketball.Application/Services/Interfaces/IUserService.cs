@@ -16,5 +16,6 @@ public interface IUserService
     Task ForgotPasswordAsync(string email);
     Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
     Task UpdateUserPaymentPlanAsync(Guid userId, PaymentPlan paymentPlan);
+    Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
 }
 

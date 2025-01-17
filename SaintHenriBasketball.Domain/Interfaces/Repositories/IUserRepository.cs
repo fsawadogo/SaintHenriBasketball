@@ -5,6 +5,7 @@ namespace SaintHenriBasketball.Domain.Interfaces.Repositories;
 public interface IUserRepository
 {
     Task<ApplicationUser> GetByIdAsync(Guid id);
+    Task<List<ApplicationUser>> GetUsersByIdsAsync(List<Guid> userIds);
     Task<ApplicationUser> GetByEmailAsync(string email);
     Task<ApplicationUser> GetByUsernameAsync(string username);
     Task<bool> EmailExistsAsync(string email);

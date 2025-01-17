@@ -86,4 +86,13 @@ public class SessionRepository : ISessionRepository
     {
         return await _context.Sessions.AnyAsync(s => s.Id == id);
     }
+
+    public async Task<Session> GetClosestSessionAsync()
+    {
+        return await _context.Sessions
+            .Include(s => s.Registrations)
+            .Where(s => s.SessionDate > DateTime.UtcNow)
+            .OrderBy(s => s.SessionDate)
+            .FirstOrDefaultAsync();
+    }
 }

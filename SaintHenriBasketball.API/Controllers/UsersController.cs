@@ -6,6 +6,7 @@ using SaintHenriBasketball.Application.DTOs.Users;
 using System.Security.Claims;
 using SaintHenriBasketball.Application.Exceptions;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
+using SaintHenriBasketball.Application.Services.Implementations;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -345,6 +346,66 @@ public class UsersController : ControllerBase
         catch (ValidationException ex)
         {
             return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Send targeted emails to specific users (Admin only)
+    /// </summary>
+    [HttpPost("send-email")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SendTargetedEmails([FromBody] SendEmailRequestDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (!request.HasValidEmails())
+            {
+                return BadRequest("One or more email addresses are invalid");
+            }
+
+            var result = await _userService.SendTargetedEmailsAsync(
+                request.EmailType,
+                request.Emails,
+                request.Language,
+                request.CustomMessage,
+                request.CustomMessageFr);
+
+            if (result.AllSucceeded)
+            {
+                _logger.LogInformation(
+                    "Successfully sent {EmailType} emails to {Count} recipients in {Language}",
+                    request.EmailType, result.SuccessCount, request.Language);
+
+                return Ok(new
+                {
+                    Message = $"Successfully sent emails to {result.SuccessCount} recipients",
+                    result.SuccessCount
+                });
+            }
+
+            _logger.LogWarning(
+                "Partially completed sending {EmailType} emails. Success: {SuccessCount}, Failed: {FailureCount}",
+                request.EmailType, result.SuccessCount, result.FailureCount);
+
+            return Ok(new
+            {
+                result.SuccessCount,
+                result.FailureCount,
+                result.FailedEmails
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending targeted emails of type {EmailType}", request.EmailType);
+            return StatusCode(500, "An unexpected error occurred while sending emails");
         }
     }
     #endregion
