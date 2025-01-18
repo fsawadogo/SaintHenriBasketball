@@ -714,9 +714,7 @@ public class EmailService : IEmailService
                 <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
                     <p style='margin: 5px 0; color: #444;'>{messageContent}</p>
                 </div>
-                {GetPaymentInstructions(EmailLanguage.English)}
-                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                {GetSignature()}
             </div>
         </body>
         </html>";
@@ -735,9 +733,7 @@ public class EmailService : IEmailService
                 <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
                     <p style='margin: 5px 0; color: #444;'>{messageContent}</p>
                 </div>
-                {GetPaymentInstructions(EmailLanguage.French)}
-                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                {GetSignature()}
             </div>
         </body>
         </html>";
@@ -765,9 +761,7 @@ public class EmailService : IEmailService
                     <p style='margin: 5px 0; color: #444;'>{frenchContent}</p>
                 </div>
 
-                {GetPaymentInstructions(EmailLanguage.Bilingual)}
-                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+                {GetSignature()}
             </div>
         </body>
         </html>";
@@ -1090,4 +1084,33 @@ public class EmailService : IEmailService
 
         return result;
     }
+
+    public static string GetSignature(bool includeSocialMedia = true) =>
+             $@"<div style='margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;'>
+            <div style='font-family: Arial, sans-serif; color: #333;'>
+                <p style='margin: 0; font-weight: bold;'>L'équipe Saint Henri Basketball</p>
+                <p style='margin: 5px 0;'>Saint Henri Basketball</p>
+                <p style='margin: 5px 0;'>717 Saint-Ferdinand Street Montreal, QC H4C 3L7</p>
+                <p style='margin: 5px 0;'>
+                    <a href='tel:+15141234567' style='color: #333; text-decoration: none;'>(438) 935-8129</a>
+                </p>
+                <p style='margin: 5px 0;'>
+                    <a href='mailto:info@sainthenribasketball.com' style='color: #333; text-decoration: none;'>
+                        info@sainthenribasketball.com
+                    </a>
+                </p>
+                {GetSocialMediaLinks(includeSocialMedia)}
+            </div>
+        </div>";
+
+    private static string GetSocialMediaLinks(bool includeSocialMedia) => includeSocialMedia
+    ? $@"<div style='margin-top: 10px;'>
+                <a href='https://www.instagram.com/sainthenribasketball' style='text-decoration: none; margin-right: 10px;'>
+                    <img src='https://fr.pngtree.com/freepng/instagram-icon-instagram-logo_3584852.html' alt='Instagram' style='width: 24px; height: 24px;'>
+                </a>
+                <a href='https://x.com/basketballhenri' style='text-decoration: none;'>
+                    <img src='https://sainthenribasketball.com/images/twitter-icon.png' alt='Twitter' style='width: 24px; height: 24px;'>
+                </a>
+            </div>"
+    : string.Empty;
 }

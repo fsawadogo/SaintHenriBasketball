@@ -32,7 +32,7 @@ public static class EmailMessagesEn
     {
         public static string RegistrationReminder(string seasonStartDate, decimal price) =>
             $"The new basketball season starts on Saturday, January 25, 2025! " +
-            $"Secure your spot by registering now. The season fee is ${price}. " +
+            $"Secure your spot by registering now." +
             "Early registration helps us better plan our sessions and ensure everyone gets the best experience possible.";
 
         public static string EarlyBirdRegistration(string deadline, decimal discountedPrice) =>

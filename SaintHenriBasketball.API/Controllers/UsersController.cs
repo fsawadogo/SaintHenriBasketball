@@ -348,5 +348,41 @@ public class UsersController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    [HttpPatch("update-payment-plan")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateUserPaymentPlanByEmail([FromQuery] string email, [FromBody] UpdatePaymentPlanDto updatePaymentPlanDto)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(email) || !new EmailAddressAttribute().IsValid(email))
+                return BadRequest("Invalid email format");
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+                return NotFound("User not found");
+
+            await _userService.UpdateUserPaymentPlanAsync(user.Id, updatePaymentPlanDto.PaymentPlan);
+            _logger.LogInformation("User payment plan updated successfully: {Email}", email);
+
+            return NoContent();
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("Payment plan update failed for {Email}: {Message}", email, ex.Message);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during payment plan update for {Email}", email);
+            return StatusCode(500, "An unexpected error occurred while updating payment plan");
+        }
+    }
     #endregion
 }

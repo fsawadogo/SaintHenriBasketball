@@ -1,7 +1,7 @@
 # @baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEyYmY1MDA2LWYzNjEtNDNiYy1iZjRiLTliMDQ1ZmUxNmU3OCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImpvaG5AZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiam9obmRvZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJleHAiOjE3MzY5ODU1MjAsImlzcyI6IlNhaW50SGVucmlCYXNrZXRiYWxsIiwiYXVkIjoiU2FpbnRIZW5yaUJhc2tldGJhbGxDbGllbnQifQ.sb6QXqsvOCP47X0trTQjbudflozX7U7gpoz_jdUE09w
 @userId = a2bf5006-f361-43bc-bf4b-9b045fe16e78
-@adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM3NzM1ODIyLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.r0CsBg2PlbWgU8RRRXR6mHqu3Qo22pY0Ao4-IievTc4
+@adminToken =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM3ODIzNTkxLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.ioG4ZXwb3BaUJ0RU5fp4n1X7Ai5p_bclWcim9jtOtI4
 @baseUrl = https://localhost:7000
 ### Login
 POST {{baseUrl}}/api/users/login
@@ -103,62 +103,25 @@ Content-Type: application/json
   "paymentPlan": 1
 }
 
-### send target email<
-POST {{baseUrl}}/api/Communication/announcement
-Authorization: Bearer {{adminToken}}
-Content-Type: application/json
+### send target email
 
-{
-  "emails": [
-"admin@sainthenribasketball.com",
-"aliasreg@me.com",
-"baudin.andy@gmail.com",
-"ckillz45@hotmail.com,
-"contact@fsawadogo.me",
-"doudousermi@gmail.com",
-"ezechiel.gnepa09@gmail.com",
-"faycalsawadogo@gmail.com",
-"goudiaby1224@gmail.com",
-"iphilgood4@yahoo.fr",
-"kevinakplogan@yahoo.com",
-"malickcheick@hotmail.fr",
-"nikiemajose1@gmail.com",
-"ohinibc@hotmail.com",
-"sanou.lassena@gmail.com",
-"stenigmatik@gmail.com",
-"toky.rao@gmail.com",
-"tounoudjou@gmail.com",
-"yannick.sorel@gmail.com"
-  ],
-   "language": 0
-}
-
-### send target email<
 POST {{baseUrl}}/api/Communication/attendance-reminder
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-  "emails": [
-    "admin@sainthenribasketball.com",
-"aliasreg@me.com",
-"baudin.andy@gmail.com",
-"ckillz45@hotmail.com,
-"contact@fsawadogo.me",
-"doudousermi@gmail.com",
-"ezechiel.gnepa09@gmail.com",
-"faycalsawadogo@gmail.com",
-"goudiaby1224@gmail.com",
-"iphilgood4@yahoo.fr",
-"kevinakplogan@yahoo.com",
-"malickcheick@hotmail.fr",
-"nikiemajose1@gmail.com",
-"ohinibc@hotmail.com",
-"sanou.lassena@gmail.com",
-"stenigmatik@gmail.com",
-"toky.rao@gmail.com",
-"tounoudjou@gmail.com",
-"yannick.sorel@gmail.com"
-  ],
+  "emails": ["yannick.sorel@gmail.com"],
   "language": 1
+}
+
+###
+
+POST {{baseUrl}}/api/Communication/season-registration-reminder
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "emails": ["admin@sainthenribasketball.com"],
+  "language": 1,
+  "customMessageFr": "Nous aimerions confirmer votre choix de plan pour cette saison. Pour sélectionner votre forfait, veuillez vous connecter à votre compte et vous rendre sur https://sainthenribasketball.com/plan-selection. Vous pourrez y choisir entre le plan Saison ou le plan Par Séance.Votre choix nous aidera à mieux gérer votre adhésion et à vous offrir la meilleure expérience possible. Merci de nous tenir informés!"
 }

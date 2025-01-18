@@ -133,6 +133,16 @@ public class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
+    public async Task<UserDto> GetUserByEmailAsync(string email)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+        {
+            throw new NotFoundException("User not found");
+        }
+
+        return _mapper.Map<UserDto>(user);
+    }
     public async Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserDto updateDto)
     {
         var user = await _userRepository.GetByIdAsync(userId);
