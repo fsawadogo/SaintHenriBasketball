@@ -104,12 +104,11 @@ Content-Type: application/json
 }
 
 ### send target email<
-POST {{baseUrl}}/api/Users/send-email
+POST {{baseUrl}}/api/Communication/announcement
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-  "emailType": 1,
   "emails": [
 "admin@sainthenribasketball.com",
 "aliasreg@me.com",
@@ -132,4 +131,34 @@ Content-Type: application/json
 "yannick.sorel@gmail.com"
   ],
    "language": 0
+}
+
+### send target email<
+POST {{baseUrl}}/api/Communication/attendance-reminder
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "emails": [
+    "admin@sainthenribasketball.com",
+"aliasreg@me.com",
+"baudin.andy@gmail.com",
+"ckillz45@hotmail.com,
+"contact@fsawadogo.me",
+"doudousermi@gmail.com",
+"ezechiel.gnepa09@gmail.com",
+"faycalsawadogo@gmail.com",
+"goudiaby1224@gmail.com",
+"iphilgood4@yahoo.fr",
+"kevinakplogan@yahoo.com",
+"malickcheick@hotmail.fr",
+"nikiemajose1@gmail.com",
+"ohinibc@hotmail.com",
+"sanou.lassena@gmail.com",
+"stenigmatik@gmail.com",
+"toky.rao@gmail.com",
+"tounoudjou@gmail.com",
+"yannick.sorel@gmail.com"
+  ],
+  "language": 1
 }

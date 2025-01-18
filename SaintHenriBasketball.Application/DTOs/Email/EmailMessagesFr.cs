@@ -8,7 +8,7 @@ public static class EmailMessagesFr
     {
         public static string ReminderMessage(string sessionDate, string sessionTime) =>
             $"Ceci est un rappel amical concernant votre prochaine séance de basketball le samedi 25 janvier 2025. " +
-            "Veuillez arriver au moins 10 minutes avant le début de la séance pour assurer un démarrage en douceur de l'entraînement." +
+            "Veuillez arriver au moins 15 minutes avant le début de la séance pour assurer un démarrage en douceur de l'entraînement." +
             @"<div style='margin-top: 20px; text-align: center;'>
             <p style='color: #444; margin: 15px 0;'>Veuillez confirmer votre présence en cliquant sur le bouton ci-dessous :</p>
             <a href='https://sainthenribasketball.com/attendance-confirmation' 

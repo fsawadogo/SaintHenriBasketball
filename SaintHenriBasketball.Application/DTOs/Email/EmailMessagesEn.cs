@@ -8,7 +8,7 @@ public static class EmailMessagesEn
     {
         public static string ReminderMessage(string sessionDate, string sessionTime) =>
             $"This is a friendly reminder about your upcoming basketball session on Saturday, January 25, 2025 at 10 AM." +
-            "Please arrive at least 10 minutes before the session starts to ensure a smooth start to practice." +
+            "Please arrive at least 15 minutes before the session starts to ensure a smooth start to practice." +
             @"<div style='margin-top: 20px; text-align: center;'>
             <p style='color: #444; margin: 15px 0;'>Please confirm your attendance by clicking the button below:</p>
             <a href='https://sainthenribasketball.com/attendance-confirmation' 

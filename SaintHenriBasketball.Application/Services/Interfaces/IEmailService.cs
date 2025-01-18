@@ -37,4 +37,10 @@ public interface IEmailService
     // General communication
     Task SendGeneralAnnouncementEmailAsync(string userEmail, string userName, string message);
     Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string> emails, EmailLanguage language, string? customMessage, string? customMessageFr);
+    Task<EmailSendResult> SendPaymentRemindersAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
+    Task<EmailSendResult> SendAttendanceRemindersAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
+    Task<EmailSendResult> SendSeasonRegistrationRemindersAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
+    Task<EmailSendResult> SendFacilityUpdatesAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
+    Task<EmailSendResult> SendScheduleChangesAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
+    Task<EmailSendResult> SendGeneralAnnouncementsAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
 }

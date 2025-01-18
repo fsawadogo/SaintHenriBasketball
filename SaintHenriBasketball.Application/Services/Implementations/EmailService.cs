@@ -10,6 +10,7 @@ using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Application.DTOs.Users;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -930,6 +931,137 @@ public class EmailService : IEmailService
                 var from = new EmailAddress(fromEmail, fromName);
                 var toAddress = new EmailAddress(email, $"{user.FirstName} {user.LastName}");
                 var msg = MailHelper.CreateSingleEmail(from, toAddress, subject, null, htmlContent);
+
+                var response = await client.SendEmailAsync(msg);
+                var responseBody = await response.Body.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogError("Failed to send email. Status Code: {StatusCode}, Body: {Body}",
+                        response.StatusCode, responseBody);
+                    continue;
+                }
+
+                result.SuccessCount++;
+                _logger.LogInformation("Successfully sent {EmailType} email in {Language} to {Email}",
+                    emailType, language, email);
+            }
+            catch (Exception ex)
+            {
+                result.FailureCount++;
+                result.FailedEmails.Add(email);
+                _logger.LogError(ex, "Failed to send {EmailType} email in {Language} to {Email}",
+                    emailType, language, email);
+            }
+        }
+
+        return result;
+    }
+
+    public async Task<EmailSendResult> SendPaymentRemindersAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null)
+    {
+        return await SendEmailsAsync(
+            EmailType.PaymentReminder,
+            emails,
+            language,
+            customMessage,
+            customMessageFr);
+    }
+
+    public async Task<EmailSendResult> SendAttendanceRemindersAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null)
+    {
+        return await SendEmailsAsync(
+            EmailType.AttendanceReminder,
+            emails,
+            language,
+            customMessage,
+            customMessageFr);
+    }
+
+    public async Task<EmailSendResult> SendSeasonRegistrationRemindersAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null)
+    {
+        return await SendEmailsAsync(
+            EmailType.SeasonRegistrationReminder,
+            emails,
+            language,
+            customMessage,
+            customMessageFr);
+    }
+
+    public async Task<EmailSendResult> SendFacilityUpdatesAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null)
+    {
+        return await SendEmailsAsync(
+            EmailType.FacilityUpdate,
+            emails,
+            language,
+            customMessage,
+            customMessageFr);
+    }
+    public async Task<EmailSendResult> SendScheduleChangesAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null)
+    {
+        return await SendEmailsAsync(
+            EmailType.ScheduleChange,
+            emails,
+            language,
+            customMessage,
+            customMessageFr);
+    }
+
+    public async Task<EmailSendResult> SendGeneralAnnouncementsAsync(List<string> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null)
+    {
+        return await SendEmailsAsync(
+            EmailType.GeneralAnnouncement,
+            emails,
+            language,
+            customMessage,
+            customMessageFr);
+    }
+
+    private async Task<EmailSendResult> SendEmailsAsync(
+    EmailType emailType,
+    List<string> emails,
+    EmailLanguage language,
+    string? customMessage,
+    string? customMessageFr)
+    {
+        var result = new EmailSendResult();
+
+        foreach (var email in emails)
+        {
+            try
+            {
+                if (!new EmailAddressAttribute().IsValid(email))
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogWarning("Invalid email format: {Email}", email);
+                    continue;
+                }
+
+                var user = await _userRepository.GetByEmailAsync(email);
+                if (user == null)
+                {
+                    result.FailureCount++;
+                    result.FailedEmails.Add(email);
+                    _logger.LogWarning("User not found for email: {Email}", email);
+                    continue;
+                }
+
+                var subject = GetEmailSubject(emailType, language);
+                
+                var htmlContent = await BuildEmailContentAsync(emailType, user, language, customMessage, customMessageFr);
+
+                // SendGrid configuration
+                var apiKey = _configuration["SendGrid:ApiKey"];
+                var fromEmail = _configuration["SendGrid:FromEmail"];
+                var fromName = _configuration["SendGrid:FromName"];
+
+                var client = new SendGridClient(apiKey);
+                var from = new EmailAddress(fromEmail, fromName);
+                var to = new EmailAddress(email, $"{user.FirstName} {user.LastName}");
+                var msg = MailHelper.CreateSingleEmail(from, to, subject, null, htmlContent);
 
                 var response = await client.SendEmailAsync(msg);
                 var responseBody = await response.Body.ReadAsStringAsync();
