@@ -497,7 +497,7 @@ public class EmailService : IEmailService
             // Don't throw - this is a notification email, shouldn't block registration
         }
     }
-    
+
     private async Task SendPaymentPlanChangeNotificationToAdminAsync(string userEmail, string userName, PaymentPlan paymentPlan)
     {
         try
@@ -803,7 +803,7 @@ public class EmailService : IEmailService
         };
     }
 
-    private  string GetDefaultEnglishMessage(EmailType emailType, string userName, PaymentPlan paymentPlan) => emailType switch
+    private string GetDefaultEnglishMessage(EmailType emailType, string userName, PaymentPlan paymentPlan) => emailType switch
     {
         EmailType.PaymentReminder => EmailMessagesEn.Payment.PaymentDue(GetPaymentAmount(paymentPlan)),
         EmailType.AttendanceReminder => EmailMessagesEn.Attendance.ReminderMessage(DateTime.Now.ToShortDateString(), "10:00 AM"),
@@ -1044,7 +1044,7 @@ public class EmailService : IEmailService
                 }
 
                 var subject = GetEmailSubject(emailType, language);
-                
+
                 var htmlContent = await BuildEmailContentAsync(emailType, user, language, customMessage, customMessageFr);
 
                 // SendGrid configuration
@@ -1101,15 +1101,4 @@ public class EmailService : IEmailService
                 </p>
             </div>
         </div>";
-
-    private static string GetSocialMediaLinks(bool includeSocialMedia) => includeSocialMedia
-    ? $@"<div style='margin-top: 10px;'>
-                <a href='https://www.instagram.com/sainthenribasketball' style='text-decoration: none; margin-right: 10px;'>
-                    <img src='https://fr.pngtree.com/freepng/instagram-icon-instagram-logo_3584852.html' alt='Instagram' style='width: 24px; height: 24px;'>
-                </a>
-                <a href='https://x.com/basketballhenri' style='text-decoration: none;'>
-                    <img src='https://sainthenribasketball.com/images/twitter-icon.png' alt='Twitter' style='width: 24px; height: 24px;'>
-                </a>
-            </div>"
-    : string.Empty;
 }
