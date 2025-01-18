@@ -1099,7 +1099,6 @@ public class EmailService : IEmailService
                         info@sainthenribasketball.com
                     </a>
                 </p>
-                {GetSocialMediaLinks(includeSocialMedia)}
             </div>
         </div>";
 
