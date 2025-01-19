@@ -112,27 +112,6 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.User.LastName))
             .ForMember(dest => dest.RegisteredOn, opt => opt.MapFrom(src => src.RegisteredOn));
 
-        // Season Subscription mappings
-        CreateMap<SeasonSubscription, SeasonSubscriptionDto>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User.Email))
-            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src =>
-                $"{src.User.FirstName} {src.User.LastName}"))
-            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
-            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price))
-            .ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => src.PaymentStatus))
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
-
-        CreateMap<CreateSeasonSubscriptionDto, SeasonSubscription>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore())
-            .ForMember(dest => dest.UserId, opt => opt.Ignore())
-            .ForMember(dest => dest.User, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => DateTime.UtcNow))
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
-            .ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => PaymentStatus.Pending));
-
         // Attendance mappings
         CreateMap<SessionAttendance, AttendanceResponseDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -140,6 +119,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => 
                 $"{src.User.FirstName} {src.User.LastName}"))
+            .ForMember(dest => dest.IsAttending, opt => opt.MapFrom(src => src.IsAttending) )
             .ForMember(dest => dest.CheckInTime, opt => opt.MapFrom(src => src.CheckInTime))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
             .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn))

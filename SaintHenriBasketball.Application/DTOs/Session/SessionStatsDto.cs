@@ -9,5 +9,5 @@ public class SessionStatsDto
     public int TotalRegistered { get; set; }
     public int TotalPresent { get; set; }
     public double AttendanceRate { get; set; }
-    public List<AttendeeDetailDto> Attendees { get; set; }
+    public List<AttendeeDetailDto>? Attendees { get; set; }
 }

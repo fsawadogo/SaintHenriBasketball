@@ -158,7 +158,7 @@ public class EmailService : IEmailService
                         <h1 style='color: #333; text-align: center;'>Attendance Confirmation</h1>
                         <p style='color: #666; font-size: 16px;'>Your attendance has been recorded for the following session:</p>
                         <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                            <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.StartTime:dddd, MMMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.SessionDate:dddd, MMMM dd, yyyy}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Time:</strong> {attendance.Session.StartTime:hh:mm tt} - {attendance.Session.EndTime:hh:mm tt}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Location:</strong> {attendance.Session.Location}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Status:</strong> {(attendance.IsAttending ? "Present" : "Absent")}</p>
@@ -197,7 +197,7 @@ public class EmailService : IEmailService
                         <h1 style='color: #333; text-align: center;'>Attendance Update</h1>
                         <p style='color: #666; font-size: 16px;'>Your attendance status has been updated for the following session:</p>
                         <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                            <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.StartTime:dddd, MMMM dd, yyyy}</p>
+                            <p style='margin: 5px 0; color: #444;'><strong>Date:</strong> {attendance.Session.SessionDate:dddd, MMMM dd, yyyy}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Time:</strong> {attendance.Session.StartTime:hh:mm tt} - {attendance.Session.EndTime:hh:mm tt}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Location:</strong> {attendance.Session.Location}</p>
                             <p style='margin: 5px 0; color: #444;'><strong>Updated Status:</strong> {(attendance.IsAttending ? "Present" : "Absent")}</p>
