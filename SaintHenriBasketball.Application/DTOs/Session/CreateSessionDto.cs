@@ -5,7 +5,7 @@ public class CreateSessionDto
     public DateTime SessionDate { get; set; }
     public int MaxCapacity { get; set; }
     public decimal DropInPrice { get; set; }
-    public string StartTime { get; set; }
-    public string EndTime { get; set; }
-    public string Location { get; set; }
+    public required string StartTime { get; set; }
+    public required string EndTime { get; set; }
+    public required string Location { get; set; }
 }

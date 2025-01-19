@@ -1,11 +1,11 @@
-@SaintHenriBasketball.API_HostAddress = http://localhost:5004
+@baseUrl = http://localhost:5004
 
-POST {{SaintHenriBasketball.API_HostAddress}}/api/auth/register
+POST {{baseUrl}}/api/users/register
 Accept: application/json
 Content-Type: application/json
 
 {
-  "username": "afsawadogo",
+  "username": "asawadogo",
   "email": "afaicals@gmail.com",
   "password": "Admin@2025",
   "firstName": "Abdoul",
@@ -15,12 +15,12 @@ Content-Type: application/json
 
 ### Login
 
-POST {{SaintHenriBasketball.API_HostAddress}}/api/auth/login
+POST {{baseUrl}}/api/users/login
 Accept: application/json
 Content-Type: application/json
 
 {
-  "email": "faycalsawadogo@gmail.com",
+  "username": "fsawadogo",
   "password": "Kouanda75!"
 }
 

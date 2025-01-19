@@ -47,7 +47,7 @@ public class SeasonService : ISeasonService
         );
 
         await _seasonRepository.AddAsync(season);
-        return await GetSeasonDtoAsync(season.Id);
+        return (await GetSeasonDtoAsync(season.Id))!;
     }
 
     public async Task<SeasonDto> GetSeasonAsync(Guid id)
@@ -187,7 +187,7 @@ public class SeasonService : ISeasonService
             _logger.LogWarning(ex, "Failed to send season registration confirmation email");
         }
 
-        return await GetSeasonDtoAsync(seasonId);
+        return (await GetSeasonDtoAsync(seasonId))!;
     }
 
     public async Task UnregisterUserFromSeasonAsync(Guid seasonId, Guid userId)

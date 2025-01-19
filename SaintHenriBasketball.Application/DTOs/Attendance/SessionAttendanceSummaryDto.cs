@@ -8,5 +8,5 @@ public class SessionAttendanceSummaryDto
     public int RegisteredCount { get; set; }
     public int ConfirmedCount { get; set; }
     public decimal AttendanceRate { get; set; }
-    public List<AttendanceResponseDto> Attendances { get; set; }
+    public List<AttendanceResponseDto> Attendances { get; set; } = null!;
 }

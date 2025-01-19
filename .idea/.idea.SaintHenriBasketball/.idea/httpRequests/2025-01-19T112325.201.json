@@ -1,0 +1,9 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQ3YjRiYmUwLTBkZmQtNDAyMi1iYzhmLTJhN2JkYTgzY2I4ZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFmYWljYWxzQGdtYWlsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhc2F3YWRvZ28iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJVc2VyIiwiZXhwIjoxNzM3OTA4NjA1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.sH5mOx9N6JfWKE2W7W6DdZk1Wf08qEZ0FHvaH4rR6NQ",
+  "username": "asawadogo",
+  "email": "afaicals@gmail.com",
+  "firstName": "Abdoul",
+  "lastName": "Sawadogo",
+  "isAdmin": false,
+  "paymentPlan": 0
+}

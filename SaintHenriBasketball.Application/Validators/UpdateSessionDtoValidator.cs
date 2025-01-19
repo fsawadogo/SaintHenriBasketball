@@ -25,17 +25,17 @@ public class UpdateSessionDtoValidator : AbstractValidator<UpdateSessionDto>
             .When(x => x.DropInPrice.HasValue);
 
         RuleFor(x => x.StartTime)
-            .Must(BeValidTimeFormat).WithMessage("Start time must be in 24-hour format (HH:mm)")
+            .Must(BeValidTimeFormat!).WithMessage("Start time must be in 24-hour format (HH:mm)")
             .When(x => !string.IsNullOrEmpty(x.StartTime));
 
         RuleFor(x => x.EndTime)
-            .Must(BeValidTimeFormat).WithMessage("End time must be in 24-hour format (HH:mm)")
+            .Must(BeValidTimeFormat!).WithMessage("End time must be in 24-hour format (HH:mm)")
             .When(x => !string.IsNullOrEmpty(x.EndTime));
 
         When(x => !string.IsNullOrEmpty(x.StartTime) && !string.IsNullOrEmpty(x.EndTime), () =>
         {
             RuleFor(x => new { x.StartTime, x.EndTime })
-                .Must(x => BeValidTimeRange(x.StartTime, x.EndTime))
+                .Must(x => BeValidTimeRange(x.StartTime!, x.EndTime!))
                 .WithMessage("End time must be after start time");
         });
 

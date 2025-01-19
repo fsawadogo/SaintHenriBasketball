@@ -155,10 +155,7 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.CreatedOn)
                 .IsRequired();
-
-            entity.Property(e => e.IsPresent)
-                .IsRequired();
-
+            
             entity.Property(e => e.Notes)
                 .HasMaxLength(500);
 

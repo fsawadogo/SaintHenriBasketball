@@ -6,12 +6,12 @@ public class ResetPasswordDto
 {
     [Required]
     [EmailAddress]
-    public string Email { get; set; }
+    public required string Email { get; set; }
 
     [Required]
-    public string Token { get; set; }
+    public required string Token { get; set; }
 
     [Required]
     [MinLength(6)]
-    public string NewPassword { get; set; }
+    public required string NewPassword { get; set; }
 }

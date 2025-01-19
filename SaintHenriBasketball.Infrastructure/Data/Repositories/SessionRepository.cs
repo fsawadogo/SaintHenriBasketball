@@ -17,10 +17,10 @@ public class SessionRepository : ISessionRepository
 
     public async Task<Session> GetByIdAsync(Guid id)
     {
-        return await _context.Sessions
+        return (await _context.Sessions
             .Include(s => s.Registrations)
-                .ThenInclude(r => r.User)
-            .FirstOrDefaultAsync(s => s.Id == id);
+            .ThenInclude(r => r.User)
+            .FirstOrDefaultAsync(s => s.Id == id))!;
     }
 
     public async Task AddAsync(Session session)
@@ -89,10 +89,10 @@ public class SessionRepository : ISessionRepository
 
     public async Task<Session> GetClosestSessionAsync()
     {
-        return await _context.Sessions
+        return (await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s => s.SessionDate > DateTime.UtcNow)
             .OrderBy(s => s.SessionDate)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync())!;
     }
 }

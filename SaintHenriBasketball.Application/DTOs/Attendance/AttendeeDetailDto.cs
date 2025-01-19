@@ -3,10 +3,10 @@
 public class AttendeeDetailDto
 {
     public Guid UserId { get; set; }
-    public string UserName { get; set; }
-    public string Email { get; set; }
-    public bool IsPresent { get; set; }
+    public required string UserName { get; set; }
+    public required string Email { get; set; }
+    public bool IsAttending { get; set; }
     public DateTime? CheckInTime { get; set; }
-    public string PaymentPlan { get; set; }
+    public required string PaymentPlan { get; set; }
     public string? Notes { get; set; }
 }

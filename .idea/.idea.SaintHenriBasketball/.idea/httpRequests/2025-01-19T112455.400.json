@@ -1,0 +1,14 @@
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": {
+    "$": [
+      "JSON deserialization for type 'SaintHenriBasketball.Application.DTOs.Users.LoginDto' was missing required properties, including the following: userName"
+    ],
+    "loginDto": [
+      "The loginDto field is required."
+    ]
+  },
+  "traceId": "00-0a910962ba2b965ca905966e5cf511f7-fba29fb9f33a8761-00"
+}

@@ -213,7 +213,7 @@ public class UserService : IUserService
         }
 
         user.EmailConfirmed = true;
-        user.EmailConfirmationToken = null;
+        user.EmailConfirmationToken = null!;
         
         await _userRepository.UpdateAsync(user);
     }
@@ -255,7 +255,7 @@ public class UserService : IUserService
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.NewPassword);
-        user.PasswordResetToken = null;
+        user.PasswordResetToken = null!;
         user.PasswordResetTokenExpiry = null;
 
         await _userRepository.UpdateAsync(user);
@@ -384,7 +384,7 @@ public class UserService : IUserService
     }
     private string GenerateJwtToken(ApplicationUser user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>

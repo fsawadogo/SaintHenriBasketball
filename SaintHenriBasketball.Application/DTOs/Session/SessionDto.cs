@@ -10,7 +10,7 @@ public class SessionDto
     public decimal DropInPrice { get; set; }
     public SessionStatus Status { get; set; }
     public int RegisteredPlayersCount { get; set; }
-    public string StartTime { get; set; }
-    public string EndTime { get; set; }
-    public string Location { get; set; }
+    public required string StartTime { get; set; }
+    public required string EndTime { get; set; }
+    public required string Location { get; set; }
 }

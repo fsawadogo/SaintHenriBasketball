@@ -11,7 +11,7 @@ public class SessionDetailDto
     public decimal DropInPrice { get; set; }
     public SessionStatus Status { get; set; }
     public int RegisteredPlayersCount { get; set; }
-    public IEnumerable<UserDto> RegisteredPlayers { get; set; }
+    public required IEnumerable<UserDto> RegisteredPlayers { get; set; }
     public bool IsFullyBooked => RegisteredPlayersCount >= MaxCapacity;
     public decimal AvailableSpots => MaxCapacity - RegisteredPlayersCount;
 }

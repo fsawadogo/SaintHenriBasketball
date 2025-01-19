@@ -140,7 +140,6 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => 
                 $"{src.User.FirstName} {src.User.LastName}"))
-            .ForMember(dest => dest.IsPresent, opt => opt.MapFrom(src => src.IsPresent))
             .ForMember(dest => dest.CheckInTime, opt => opt.MapFrom(src => src.CheckInTime))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
             .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn))
