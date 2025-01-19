@@ -44,10 +44,10 @@ public class AttendanceService : IAttendanceService
         }
 
         // Validate session date
-        if (session.SessionDate < DateTime.UtcNow.AddDays(7))
-        {
-            throw new ValidationException("Attendance can only be marked within 7 days before the session");
-        }
+        //if (session.SessionDate < DateTime.UtcNow.AddDays(7))
+        //{
+        //    throw new ValidationException("Attendance can only be marked within 7 days before the session");
+        //}
 
         // Check for existing attendance
         var existingAttendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
@@ -104,10 +104,10 @@ public class AttendanceService : IAttendanceService
             throw new NotFoundException($"Session {sessionId} not found");
         }
 
-        if (session.SessionDate < DateTime.UtcNow.AddDays(7))
-        {
-            throw new ValidationException("Attendance can only be updated within 7 days before the session");
-        }
+        //if (session.SessionDate < DateTime.UtcNow.AddDays(7))
+        //{
+        //    throw new ValidationException("Attendance can only be updated within 7 days before the session");
+        //}
 
         // Track previous status for session count update
         var wasAttending = attendance.IsAttending;
