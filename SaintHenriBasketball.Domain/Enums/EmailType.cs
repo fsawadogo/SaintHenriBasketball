@@ -9,5 +9,6 @@ public enum EmailType
     FacilityUpdate,
     ScheduleChange,
     LowAttendanceWarning,
-    AttendanceConfirmation
+    AttendanceConfirmation,
+    MakeUserAdmin
 }

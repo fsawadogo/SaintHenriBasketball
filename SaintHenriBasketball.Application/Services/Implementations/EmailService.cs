@@ -788,7 +788,7 @@ public class EmailService : IEmailService
             EmailType.SeasonRegistrationReminder => language switch
             {
                 EmailLanguage.English => "Season Registration Reminder",
-                EmailLanguage.French => "Rappel d'inscription � la saison",
+                EmailLanguage.French => "Rappel d'inscription à la saison",
                 EmailLanguage.Bilingual => "Season Registration Reminder / Rappel d'inscription",
                 _ => "Saint Henri Basketball"
             },
@@ -797,6 +797,13 @@ public class EmailService : IEmailService
                 EmailLanguage.English => "Announcement",
                 EmailLanguage.French => "Annonce",
                 EmailLanguage.Bilingual => "Announcement / Annonce",
+                _ => "Saint Henri Basketball"
+            },
+            EmailType.MakeUserAdmin => language switch
+            {
+                EmailLanguage.English => "Admin Access Granted",
+                EmailLanguage.French => "Accès administrateur accordé",
+                EmailLanguage.Bilingual => "Admin Access Granted / Accès administrateur accordé",
                 _ => "Saint Henri Basketball"
             },
             _ => "Saint Henri Basketball"
@@ -876,6 +883,9 @@ public class EmailService : IEmailService
             (EmailType.GeneralAnnouncement, EmailLanguage.English) => "Announcement - Saint Henri Basketball",
             (EmailType.GeneralAnnouncement, EmailLanguage.Bilingual) => "Announcement / Annonce - Saint Henri Basketball",
 
+            (EmailType.MakeUserAdmin, EmailLanguage.French) => "Vous êtes maintenant administrateur - Saint Henri Basketball",
+            (EmailType.MakeUserAdmin, EmailLanguage.English) => "You are now an admin - Saint Henri Basketball",
+            (EmailType.MakeUserAdmin, EmailLanguage.Bilingual) => "You are now an admin / Vous êtes maintenant administrateur - Saint Henri Basketball",
             _ => "Saint Henri Basketball"
         };
     }

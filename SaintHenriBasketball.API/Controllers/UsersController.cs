@@ -7,6 +7,7 @@ using System.Security.Claims;
 using SaintHenriBasketball.Application.Exceptions;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 using SaintHenriBasketball.Application.Services.Implementations;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -384,5 +385,60 @@ public class UsersController : ControllerBase
             return StatusCode(500, "An unexpected error occurred while updating payment plan");
         }
     }
+
+    [HttpPatch("{userId}/make-admin")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MakeUserAdmin(Guid userId)
+    {
+        try
+        {
+            var user = await _userService.GetUserAsync(userId);
+            if (user == null)
+                return NotFound("User not found");
+
+            var updateUserDto = new UpdateUserDto
+            {
+                Username = user.Username,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                PaymentPlan = user.PaymentPlan,
+                IsAdmin = true
+            };
+
+            await _userService.UpdateUserAsync(userId, updateUserDto);
+            _logger.LogInformation("User made admin successfully: {UserId}", userId);
+
+            // Send email notification
+            var emailResult = await _userService.SendTargetedEmailsAsync(
+                EmailType.GeneralAnnouncement,
+                new List<string> { user.Email },
+                EmailLanguage.English,
+                "You have been granted admin privileges."
+            );
+
+            if (!emailResult.AllSucceeded)
+            {
+                _logger.LogWarning("Failed to send admin notification email to {Email}", user.Email);
+            }
+
+            return Ok("User made admin successfully");
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("Make admin failed for {UserId}: {Message}", userId, ex.Message);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error making user admin {UserId}", userId);
+            return StatusCode(500, "An unexpected error occurred while making user admin");
+        }
+    }
+
     #endregion
 }
