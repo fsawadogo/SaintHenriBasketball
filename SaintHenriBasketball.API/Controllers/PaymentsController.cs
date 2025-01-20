@@ -33,6 +33,7 @@ public class PaymentsController : ControllerBase
         }
         catch (ValidationException ex)
         {
+            _logger.LogError(ex.Message);
             return BadRequest(ex.Message);
         }
     }
@@ -43,10 +44,6 @@ public class PaymentsController : ControllerBase
     public async Task<ActionResult<PaymentDto>> GetPayment(Guid id)
     {
         var payment = await _paymentService.GetPaymentAsync(id);
-        if (payment == null)
-        {
-            return NotFound();
-        }
         return Ok(payment);
     }
 
@@ -71,6 +68,7 @@ public class PaymentsController : ControllerBase
         }
         catch (NotFoundException ex)
         {
+            _logger.LogError(ex, ex.Message);
             return NotFound(ex.Message);
         }
     }

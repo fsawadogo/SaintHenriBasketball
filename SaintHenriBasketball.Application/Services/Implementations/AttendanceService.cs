@@ -42,13 +42,7 @@ public class AttendanceService : IAttendanceService
         {
             throw new NotFoundException($"Session {sessionId} not found");
         }
-
-        // Validate session date
-        //if (session.SessionDate < DateTime.UtcNow.AddDays(7))
-        //{
-        //    throw new ValidationException("Attendance can only be marked within 7 days before the session");
-        //}
-
+        
         // Check for existing attendance
         var existingAttendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
         if (existingAttendance != null)
@@ -103,11 +97,6 @@ public class AttendanceService : IAttendanceService
         {
             throw new NotFoundException($"Session {sessionId} not found");
         }
-
-        //if (session.SessionDate < DateTime.UtcNow.AddDays(7))
-        //{
-        //    throw new ValidationException("Attendance can only be updated within 7 days before the session");
-        //}
 
         // Track previous status for session count update
         var wasAttending = attendance.IsAttending;
@@ -165,15 +154,16 @@ public class AttendanceService : IAttendanceService
 
         var attendances = await _attendanceRepository.GetSessionAttendancesAsync(sessionId);
 
+        var sessionAttendances = attendances.ToList();
         return new SessionAttendanceSummaryDto
         {
             SessionId = sessionId,
             SessionDate = session.SessionDate,
-            TotalAttendees = attendances.Count(),
+            TotalAttendees = sessionAttendances.Count(),
             RegisteredCount = session.RegisteredPlayersCount,
-            ConfirmedCount = attendances.Count(a => a.IsAttending),
+            ConfirmedCount = sessionAttendances.Count(a => a.IsAttending),
             AttendanceRate = session.RegisteredPlayersCount > 0
-                ? (decimal)attendances.Count(a => a.IsAttending) / session.RegisteredPlayersCount * 100
+                ? (decimal)sessionAttendances.Count(a => a.IsAttending) / session.RegisteredPlayersCount * 100
                 : 0,
             Attendances = _mapper.Map<List<AttendanceResponseDto>>(attendances)
         };
