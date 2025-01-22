@@ -757,7 +757,7 @@ public class EmailService : IEmailService
                 </div>
 
                 <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                    <h2 style='color: #333; margin-top: 0;'>Fran�ais</h2>
+                    <h2 style='color: #333; margin-top: 0;'>Français</h2>
                     <p style='margin: 5px 0; color: #444;'>{frenchContent}</p>
                 </div>
 
@@ -781,8 +781,8 @@ public class EmailService : IEmailService
             EmailType.AttendanceReminder => language switch
             {
                 EmailLanguage.English => "Attendance Reminder",
-                EmailLanguage.French => "Rappel de pr�sence",
-                EmailLanguage.Bilingual => "Attendance Reminder / Rappel de pr�sence",
+                EmailLanguage.French => "Rappel de présence",
+                EmailLanguage.Bilingual => "Attendance Reminder / Rappel de présence",
                 _ => "Saint Henri Basketball"
             },
             EmailType.SeasonRegistrationReminder => language switch
@@ -850,7 +850,7 @@ public class EmailService : IEmailService
             return @"
             <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
                 <p style='color: #444; margin: 5px 0;'><strong>Instructions de paiement :</strong></p>
-                <p style='color: #444; margin: 5px 0;'>Envoyez le paiement par virement Interac � : <strong>pay@sainthenribasketball.com</strong></p>
+                <p style='color: #444; margin: 5px 0;'>Envoyez le paiement par virement Interac: <strong>pay@sainthenribasketball.com</strong></p>
             </div>";
         }
 
@@ -859,7 +859,7 @@ public class EmailService : IEmailService
         <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
             <p style='color: #444; margin: 5px 0;'><strong>Payment Instructions / Instructions de paiement :</strong></p>
             <p style='color: #444; margin: 5px 0;'>Send payment via Interac e-Transfer to: <strong>pay@sainthenribasketball.com</strong></p>
-            <p style='color: #444; margin: 5px 0;'>Envoyez le paiement par virement Interac � : <strong>pay@sainthenribasketball.com</strong></p>
+            <p style='color: #444; margin: 5px 0;'>Envoyez le paiement par virement Interac: <strong>pay@sainthenribasketball.com</strong></p>
         </div>";
     }
 
@@ -871,11 +871,11 @@ public class EmailService : IEmailService
             (EmailType.PaymentReminder, EmailLanguage.English) => "Payment Reminder - Saint Henri Basketball",
             (EmailType.PaymentReminder, EmailLanguage.Bilingual) => "Payment Reminder / Rappel de paiement - Saint Henri Basketball",
 
-            (EmailType.AttendanceConfirmation, EmailLanguage.French) => "Rappel de pr�sence - Saint Henri Basketball",
+            (EmailType.AttendanceConfirmation, EmailLanguage.French) => "Rappel de présence - Saint Henri Basketball",
             (EmailType.AttendanceConfirmation, EmailLanguage.English) => "Attendance Reminder - Saint Henri Basketball",
-            (EmailType.AttendanceConfirmation, EmailLanguage.Bilingual) => "Attendance Reminder / Rappel de pr�sence - Saint Henri Basketball",
+            (EmailType.AttendanceConfirmation, EmailLanguage.Bilingual) => "Attendance Reminder / Rappel de présence - Saint Henri Basketball",
 
-            (EmailType.SeasonRegistrationReminder, EmailLanguage.French) => "Rappel d'inscription � la saison - Saint Henri Basketball",
+            (EmailType.SeasonRegistrationReminder, EmailLanguage.French) => "Rappel d'inscription à la saison - Saint Henri Basketball",
             (EmailType.SeasonRegistrationReminder, EmailLanguage.English) => "Season Registration Reminder - Saint Henri Basketball",
             (EmailType.SeasonRegistrationReminder, EmailLanguage.Bilingual) => "Season Registration Reminder / Rappel d'inscription - Saint Henri Basketball",
 
@@ -1098,7 +1098,7 @@ public class EmailService : IEmailService
     public static string GetSignature(bool includeSocialMedia = true) =>
              $@"<div style='margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;'>
             <div style='font-family: Arial, sans-serif; color: #333;'>
-                <p style='margin: 0; font-weight: bold;'>L'�quipe Saint Henri Basketball</p>
+                <p style='margin: 0; font-weight: bold;'>L'équipe Saint Henri Basketball</p>
                 <p style='margin: 5px 0;'>Saint Henri Basketball</p>
                 <p style='margin: 5px 0;'>717 Saint-Ferdinand Street Montreal, QC H4C 3L7</p>
                 <p style='margin: 5px 0;'>
