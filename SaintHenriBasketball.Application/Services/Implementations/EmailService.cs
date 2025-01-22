@@ -538,25 +538,28 @@ public class EmailService : IEmailService
         {
             _logger.LogInformation("Preparing attendance reminder email for user {Email}", userEmail);
 
-            var subject = "Session Attendance Reminder - Saint Henri Basketball";
+            var subject = "Rappel de présence - Saint Henri Basketball";
+            var defaultMessage = $"Ceci est un rappel amical concernant votre prochaine séance de basketball. " +
+                "Veuillez arriver au moins 15 minutes avant le début de la séance pour assurer un démarrage en douceur de l'entraînement." +
+                @"<div style='margin-top: 20px; text-align: center;'>
+                <p style='color: #444; margin: 15px 0;'>Veuillez confirmer votre présence en cliquant sur le bouton ci-dessous :</p>
+                <a href='https://sainthenribasketball.com/attendance-confirmation' 
+                   style='background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 3px; display: inline-block;'>
+                    Confirmer ma présence
+                </a>
+            </div>";
+
             var htmlContent = $@"
-            <html>
-            <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
-                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
-                    <h1 style='color: #333; text-align: center;'>Session Attendance Reminder</h1>
-                    <p style='color: #666; font-size: 16px;'>Hi {userName},</p>
-
-                    {(!string.IsNullOrEmpty(customMessage) ? $@"
-                    <div style='background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                        <p style='margin: 5px 0; color: #444;'>{customMessage}</p>
-                    </div>" : "")}
-
-                    <p style='color: #666; font-size: 14px;'>If you cannot attend, please let us know in advance.</p>
-                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                    <p style='color: #999; font-size: 12px; text-align: center;'>Saint Henri Basketball</p>
+        <html>
+        <body style='font-family: Arial, sans-serif; margin: 0; padding: 20px;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);'>
+                <div style='color: #444; font-size: 16px;'>
+                    {customMessage ?? defaultMessage}
                 </div>
-            </body>
-            </html>";
+                {GetSignature()}
+            </div>
+        </body>
+        </html>";
 
             await SendEmailAsync(userEmail, subject, htmlContent);
         }
@@ -566,7 +569,6 @@ public class EmailService : IEmailService
             throw;
         }
     }
-
     public async Task SendSeasonRegistrationReminderEmailAsync(string userEmail, string userName, string? customMessage = null)
     {
         try
