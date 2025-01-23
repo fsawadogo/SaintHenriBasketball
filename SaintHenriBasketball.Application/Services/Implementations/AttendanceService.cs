@@ -168,4 +168,28 @@ public class AttendanceService : IAttendanceService
             Attendances = _mapper.Map<List<AttendanceResponseDto>>(attendances)
         };
     }
+
+    public async Task<IEnumerable<AttendanceUserDto>> GetSessionAttendeesAsync(Guid sessionId)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            throw new NotFoundException($"Session with ID {sessionId} not found");
+        }
+
+        var attendances = await _attendanceRepository.GetSessionAttendancesAsync(sessionId);
+    
+        return attendances.Select(a => new AttendanceUserDto
+            {
+                UserId = a.UserId,
+                FirstName = a.User.FirstName,
+                LastName = a.User.LastName,
+                Email = a.User.Email,
+                IsAttending = a.IsAttending,
+                CheckInTime = a.CheckInTime,
+                Notes = a.Notes
+            })
+            .OrderBy(u => u.LastName)
+            .ThenBy(u => u.FirstName);
+    }
 }

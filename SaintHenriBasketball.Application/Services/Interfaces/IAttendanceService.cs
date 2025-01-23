@@ -8,4 +8,6 @@ public interface IAttendanceService
     Task<AttendanceResponseDto> UpdateAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes, string? updateReason);
     Task<IEnumerable<AttendanceResponseDto>> GetUserAttendanceHistoryAsync(Guid userId);
     Task<SessionAttendanceSummaryDto> GetSessionAttendanceSummaryAsync(Guid sessionId);
+    Task<IEnumerable<AttendanceUserDto>> GetSessionAttendeesAsync(Guid sessionId);
+
 }

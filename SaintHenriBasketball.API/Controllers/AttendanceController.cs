@@ -153,4 +153,29 @@ public class AttendanceController : BaseApiController
             return NotFound(ex.Message);
         }
     }
+    
+    /// <summary>
+    /// Get list of registered users for a session
+    /// </summary>
+    [HttpGet("sessions/{sessionId}/users")]
+    [ProducesResponseType(typeof(IEnumerable<AttendanceUserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IEnumerable<AttendanceUserDto>>> GetSessionAttendees(Guid sessionId)
+    {
+        try
+        {
+            var attendees = await _attendanceService.GetSessionAttendeesAsync(sessionId);
+            return Ok(attendees);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Session not found {SessionId}", sessionId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving attendees for session {SessionId}", sessionId);
+            return StatusCode(500, "An unexpected error occurred while retrieving session attendees");
+        }
+    }
 }
