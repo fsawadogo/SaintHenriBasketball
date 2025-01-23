@@ -11,7 +11,7 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsPresent",
+                name: "IsAttending",
                 table: "SessionAttendances");
         }
 
@@ -19,7 +19,7 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "IsPresent",
+                name: "IsAttending",
                 table: "SessionAttendances",
                 type: "bit",
                 nullable: false,

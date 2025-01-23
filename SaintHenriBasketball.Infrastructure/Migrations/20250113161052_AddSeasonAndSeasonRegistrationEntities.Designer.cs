@@ -262,7 +262,7 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<bool>("IsAttending")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsPresent")
+                    b.Property<bool>("IsAttending")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("LastUpdated")

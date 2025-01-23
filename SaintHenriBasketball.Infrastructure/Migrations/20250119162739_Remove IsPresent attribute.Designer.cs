@@ -12,7 +12,7 @@ using SaintHenriBasketball.Infrastructure.Data.Context;
 namespace SaintHenriBasketball.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250119162739_Remove IsPresent attribute")]
+    [Migration("20250119162739_Remove IsAttending attribute")]
     partial class RemoveIsPresentattribute
     {
         /// <inheritdoc />

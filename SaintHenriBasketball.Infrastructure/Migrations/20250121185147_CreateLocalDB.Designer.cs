@@ -12,8 +12,8 @@ using SaintHenriBasketball.Infrastructure.Data.Context;
 namespace SaintHenriBasketball.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250107154352_AddSessionAttendance")]
-    partial class AddSessionAttendance
+    [Migration("20250121185147_CreateLocalDB")]
+    partial class CreateLocalDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -117,6 +117,61 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.Season", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Seasons");
+                });
+
+            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.SeasonRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("RegisteredOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SeasonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SeasonId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SeasonRegistrations");
+                });
+
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.SeasonSubscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -163,6 +218,14 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<decimal>("DropInPrice")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("EndTime")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("MaxCapacity")
                         .HasColumnType("int");
 
@@ -171,6 +234,10 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
 
                     b.Property<DateTime>("SessionDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StartTime")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -195,12 +262,18 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<bool>("IsAttending")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UpdateReason")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -249,6 +322,25 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.SeasonRegistration", b =>
+                {
+                    b.HasOne("SaintHenriBasketball.Domain.Entities.Season", "Season")
+                        .WithMany("Registrations")
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SaintHenriBasketball.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Season");
 
                     b.Navigation("User");
                 });
@@ -305,6 +397,11 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.ApplicationUser", b =>
                 {
                     b.Navigation("SessionRegistrations");
+                });
+
+            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.Season", b =>
+                {
+                    b.Navigation("Registrations");
                 });
 
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.Session", b =>

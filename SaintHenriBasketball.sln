@@ -11,6 +11,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SaintHenriBasketball.Applic
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SaintHenriBasketball.Infrastructure", "SaintHenriBasketball.Infrastructure\SaintHenriBasketball.Infrastructure.csproj", "{46C6AD01-877C-4878-9920-E6368546C1C3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{28F1DD76-4E30-400E-99BF-BAED5F726C24}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{06F805A4-CBCA-4911-BC53-A4A88C06BEDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaintHenriBasketball.UnitTests", "SaintHenriBasketball.UnitTests\SaintHenriBasketball.UnitTests.csproj", "{1E4B8EC5-434E-4008-8789-B1A734CFEB69}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaintHenriBasketball.IntegrationTests", "SaintHenriBasketball.IntegrationTests\SaintHenriBasketball.IntegrationTests.csproj", "{2D136F77-0D99-4DD2-91F0-CA606BD58CD4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaintHenriBasketball.TestUtils", "SaintHenriBasketball.TestUtils\SaintHenriBasketball.TestUtils.csproj", "{F3F9018B-98D1-4C9D-A690-8F412DC7C420}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,9 +43,30 @@ Global
 		{46C6AD01-877C-4878-9920-E6368546C1C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46C6AD01-877C-4878-9920-E6368546C1C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46C6AD01-877C-4878-9920-E6368546C1C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E4B8EC5-434E-4008-8789-B1A734CFEB69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E4B8EC5-434E-4008-8789-B1A734CFEB69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E4B8EC5-434E-4008-8789-B1A734CFEB69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E4B8EC5-434E-4008-8789-B1A734CFEB69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D136F77-0D99-4DD2-91F0-CA606BD58CD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D136F77-0D99-4DD2-91F0-CA606BD58CD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D136F77-0D99-4DD2-91F0-CA606BD58CD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D136F77-0D99-4DD2-91F0-CA606BD58CD4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3F9018B-98D1-4C9D-A690-8F412DC7C420}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3F9018B-98D1-4C9D-A690-8F412DC7C420}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3F9018B-98D1-4C9D-A690-8F412DC7C420}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3F9018B-98D1-4C9D-A690-8F412DC7C420}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{ED5D90AD-5ADA-4D0A-AEE6-90FB92899140} = {28F1DD76-4E30-400E-99BF-BAED5F726C24}
+		{09A7D226-4687-4F37-9DD4-A743B1B77479} = {28F1DD76-4E30-400E-99BF-BAED5F726C24}
+		{3C30DB61-3E19-488B-A026-F908DDD15586} = {28F1DD76-4E30-400E-99BF-BAED5F726C24}
+		{46C6AD01-877C-4878-9920-E6368546C1C3} = {28F1DD76-4E30-400E-99BF-BAED5F726C24}
+		{1E4B8EC5-434E-4008-8789-B1A734CFEB69} = {06F805A4-CBCA-4911-BC53-A4A88C06BEDA}
+		{2D136F77-0D99-4DD2-91F0-CA606BD58CD4} = {06F805A4-CBCA-4911-BC53-A4A88C06BEDA}
+		{F3F9018B-98D1-4C9D-A690-8F412DC7C420} = {06F805A4-CBCA-4911-BC53-A4A88C06BEDA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {87CDD527-F2E1-4525-8E5B-4D468F84C593}
