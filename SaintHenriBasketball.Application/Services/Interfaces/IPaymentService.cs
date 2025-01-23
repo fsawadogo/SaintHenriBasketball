@@ -12,4 +12,6 @@ public interface IPaymentService
     Task<PaymentSummaryDto> GetPaymentSummaryAsync();
     Task<IEnumerable<PaymentDto>> GetPendingPaymentsAsync();
     Task<IEnumerable<PaymentDto>> GetAllPayments();
+    Task DeletePaymentAsync(Guid id);
+
 }

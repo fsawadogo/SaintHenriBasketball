@@ -12,4 +12,5 @@ public interface IPaymentRepository
     Task<IReadOnlyList<Payment>> GetPaymentsByTypeAsync(PaymentPlan plan);
     Task AddAsync(Payment payment);
     Task UpdateAsync(Payment payment);
+    Task DeleteAsync(Guid id);
 }

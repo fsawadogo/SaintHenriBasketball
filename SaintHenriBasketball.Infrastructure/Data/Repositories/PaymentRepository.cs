@@ -68,4 +68,11 @@ public class PaymentRepository : IPaymentRepository
         _context.Payments.Update(payment);
         await _context.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var payment = await GetByIdAsync(id);
+        _context.Payments.Remove(payment);
+        await _context.SaveChangesAsync();
+    }
 }

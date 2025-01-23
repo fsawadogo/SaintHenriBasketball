@@ -96,4 +96,15 @@ public class PaymentService : IPaymentService
         var payments = await _paymentRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<PaymentDto>>(payments);
     }
+
+    public async Task DeletePaymentAsync(Guid id)
+    {
+        var payment = await _paymentRepository.GetByIdAsync(id);
+        if (payment == null)
+        {
+            throw new NotFoundException($"Payment with ID {id} not found");
+        }
+        await _paymentRepository.DeleteAsync(id);
+        _logger.LogInformation("Payment {PaymentId} deleted", id);
+    }
 }

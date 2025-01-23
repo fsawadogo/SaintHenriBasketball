@@ -99,4 +99,22 @@ public class PaymentsController : ControllerBase
         var payments = await _paymentService.GetAllPayments();
         return Ok(payments);
     }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeletePayment(Guid id)
+    {
+        try
+        {
+            await _paymentService.DeletePaymentAsync(id);
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return NotFound(ex.Message);
+        }
+    }
 }
