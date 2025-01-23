@@ -90,4 +90,13 @@ public class PaymentsController : ControllerBase
         var payments = await _paymentService.GetPendingPaymentsAsync();
         return Ok(payments);
     }
+
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PaymentDto>>> GetAllPayments()
+    {
+        var payments = await _paymentService.GetAllPayments();
+        return Ok(payments);
+    }
 }

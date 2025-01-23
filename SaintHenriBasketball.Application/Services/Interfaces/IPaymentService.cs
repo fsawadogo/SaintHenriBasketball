@@ -11,4 +11,5 @@ public interface IPaymentService
     Task UpdatePaymentStatusAsync(Guid id, PaymentStatus status);
     Task<PaymentSummaryDto> GetPaymentSummaryAsync();
     Task<IEnumerable<PaymentDto>> GetPendingPaymentsAsync();
+    Task<IEnumerable<PaymentDto>> GetAllPayments();
 }

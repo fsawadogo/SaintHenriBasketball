@@ -90,4 +90,10 @@ public class PaymentService : IPaymentService
         var payments = await _paymentRepository.GetPaymentsByStatusAsync(PaymentStatus.Pending);
         return _mapper.Map<IEnumerable<PaymentDto>>(payments);
     }
+
+    public async Task<IEnumerable<PaymentDto>> GetAllPayments()
+    {
+        var payments = _paymentRepository.GetAllAsync();
+        return _mapper.Map<IEnumerable<PaymentDto>>(payments);
+    }
 }
