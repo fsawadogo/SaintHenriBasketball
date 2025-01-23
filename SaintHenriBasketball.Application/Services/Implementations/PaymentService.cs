@@ -93,7 +93,7 @@ public class PaymentService : IPaymentService
 
     public async Task<IEnumerable<PaymentDto>> GetAllPayments()
     {
-        var payments = _paymentRepository.GetAllAsync();
+        var payments = await _paymentRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<PaymentDto>>(payments);
     }
 }

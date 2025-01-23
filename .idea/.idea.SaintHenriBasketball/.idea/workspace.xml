@@ -8,14 +8,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="app.http">
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Attendance/AttendanceUserDto.cs" afterDir="false" />
+    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AttendanceController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/AttendanceController.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AttendanceService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/AttendanceService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAttendanceService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IAttendanceService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -157,6 +155,7 @@
     "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
     "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
     "HTTP Request.app | #17.executor": "Run",
+    "HTTP Request.app | #18.executor": "Run",
     "HTTP Request.app | Admin login.executor": "Run",
     "HTTP Request.app | Create new season.executor": "Run",
     "HTTP Request.app | Get current user.executor": "Run",
@@ -172,10 +171,7 @@
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected="HTTP Request.app | #17">
-    <configuration name="SaintHenriBasketball.API | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.http" executionIdentifier="Login" index="2" runType="Run single request">
-      <method v="2" />
-    </configuration>
+  <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
     <configuration name="app | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Login" runType="Run single request">
       <method v="2" />
     </configuration>
@@ -183,6 +179,9 @@
       <method v="2" />
     </configuration>
     <configuration name="app | #17" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#17" index="17" runType="Run single request">
+      <method v="2" />
+    </configuration>
+    <configuration name="app | #18" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#18" index="18" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="SaintHenriBasketball.API: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile" temporary="true">
@@ -202,11 +201,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="HTTP Request.app | #17" />
-        <item itemvalue="HTTP Request.app | Season" />
-        <item itemvalue="HTTP Request.app | Login" />
         <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
-        <item itemvalue="HTTP Request.SaintHenriBasketball.API | Login" />
+        <item itemvalue="HTTP Request.app | #18" />
+        <item itemvalue="HTTP Request.app | #17" />
+        <item itemvalue="HTTP Request.app | Login" />
+        <item itemvalue="HTTP Request.app | Season" />
       </list>
     </recent_temporary>
   </component>
@@ -221,6 +220,8 @@
       <workItem from="1736046834070" duration="10148000" />
       <workItem from="1736466106907" duration="20551000" />
       <workItem from="1736621307786" duration="2422000" />
+      <workItem from="1737599501938" duration="6000" />
+      <workItem from="1737642051023" duration="643000" />
     </task>
     <task id="LOCAL-00001" summary="Add email cnfirmation and passport reset">
       <option name="closed" value="true" />
@@ -262,7 +263,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736621778870</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Added /api/attendance/sessions/{{sessionId}}/users endpoint">
+      <option name="closed" value="true" />
+      <created>1737592960480</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1737592960480</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -285,6 +294,7 @@
     <MESSAGE value="Update user update and EmailService.cs" />
     <MESSAGE value="Update the mapping profile for the season entity" />
     <MESSAGE value="app.http" />
-    <option name="LAST_COMMIT_MESSAGE" value="app.http" />
+    <MESSAGE value="Added /api/attendance/sessions/{{sessionId}}/users endpoint" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added /api/attendance/sessions/{{sessionId}}/users endpoint" />
   </component>
 </project>

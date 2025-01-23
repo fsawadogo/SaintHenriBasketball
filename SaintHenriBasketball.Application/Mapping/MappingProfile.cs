@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.DTOs.Attendance;
+using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Session;
 using SaintHenriBasketball.Application.DTOs.Users;
@@ -131,5 +132,15 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.SessionDate))
             .ForMember(dest => dest.TotalPresent, opt => opt.Ignore())
             .ForMember(dest => dest.AttendanceRate, opt => opt.Ignore());
+        
+        CreateMap<Payment, PaymentDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Amount, opt => opt.MapFrom(src => src.Amount))
+            .ForMember(dest => dest.PaymentDate, opt => opt.MapFrom(src => src.PaymentDate))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
+            .ForMember(dest => dest.Plan, opt => opt.MapFrom(src => src.Plan))
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => $"{src.User.FirstName} {src.User.LastName}"))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User.Email));
     }
 }
