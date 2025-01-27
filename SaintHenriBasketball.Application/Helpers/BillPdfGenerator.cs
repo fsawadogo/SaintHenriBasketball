@@ -16,7 +16,7 @@ public class BillPdfGenerator
         { "DESCRIPTION", new() { { "en", "Description" }, { "fr", "Description" } } },
         { "AMOUNT", new() { { "en", "Amount" }, { "fr", "Montant" } } },
         { "TOTAL_AMOUNT", new() { { "en", "Total Amount" }, { "fr", "Montant total" } } },
-        { "PAYMENT_INSTRUCTIONS", new() { { "en", "Payment Instructions" }, { "fr", "Instructions de paiement" } } },
+        { "SEND_PAYMENT", new() { { "en", "Please send payment via Interac e-Transfer to:" }, { "fr", "Veuillez envoyer le paiement par virement Interac à:" } } },
         { "BILL_GENERATED", new() { { "en", "Bill generated on" }, { "fr", "Facture générée le" } } }
     };
 
@@ -83,14 +83,6 @@ public class BillPdfGenerator
         gfx.DrawString($"{GetTranslation("TOTAL_AMOUNT", language)}: ${details.Amount:F2}", 
             headerFont, XBrushes.Black, 
             new XRect(50, yPos, page.Width - 100, 30), XStringFormats.TopRight);
-        
-        // Payment instructions
-        yPos += 60;
-        gfx.DrawString($"{GetTranslation("PAYMENT_INSTRUCTIONS", language)}:", headerFont, XBrushes.Black, 50, yPos);
-        yPos += 25;
-        gfx.DrawString(GetTranslation("SEND_PAYMENT", language), normalFont, XBrushes.Black, 50, yPos);
-        yPos += 20;
-        gfx.DrawString("pay@sainthenribasketball.com", normalFont, XBrushes.Black, 50, yPos);
         
         // Footer
         var footerText = $"{GetTranslation("BILL_GENERATED", language)} {DateTime.Now.ToString("MMMM dd, yyyy", GetCulture(language))}";
