@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
-using SaintHenriBasketball.Domain.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -16,6 +14,7 @@ public class CommunicationController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly ILogger<CommunicationController> _logger;
 
+    /// <inheritdoc />
     public CommunicationController(
         IEmailService emailService,
         ILogger<CommunicationController> logger)
@@ -34,8 +33,7 @@ public class CommunicationController : ControllerBase
     {
         try
         {
-            var result = await _emailService.SendTargetedEmailsAsync(
-                EmailType.PaymentReminder,
+            var result = await _emailService.SendPaymentRemindersAsync(
                 request.Emails,
                 request.Language,
                 request.CustomMessage,
@@ -60,8 +58,7 @@ public class CommunicationController : ControllerBase
     {
         try
         {
-            var result = await _emailService.SendTargetedEmailsAsync(
-                EmailType.AttendanceReminder,
+            var result = await _emailService.SendAttendanceRemindersAsync(
                 request.Emails,
                 request.Language,
                 request.CustomMessage,
@@ -86,8 +83,7 @@ public class CommunicationController : ControllerBase
     {
         try
         {
-            var result = await _emailService.SendTargetedEmailsAsync(
-                EmailType.SeasonRegistrationReminder,
+            var result = await _emailService.SendSeasonRegistrationRemindersAsync(
                 request.Emails,
                 request.Language,
                 request.CustomMessage,
@@ -103,58 +99,6 @@ public class CommunicationController : ControllerBase
     }
 
     /// <summary>
-    /// Send facility update notifications to specified users
-    /// </summary>
-    [HttpPost("facility-update")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SendFacilityUpdates([FromBody] EmailRequestDto request)
-    {
-        try
-        {
-            var result = await _emailService.SendTargetedEmailsAsync(
-                EmailType.FacilityUpdate,
-                request.Emails,
-                request.Language,
-                request.CustomMessage,
-                request.CustomMessageFr);
-
-            return HandleEmailResult(result, "facility update");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending facility updates");
-            return StatusCode(500, "An error occurred while sending facility updates");
-        }
-    }
-
-    /// <summary>
-    /// Send schedule change notifications to specified users
-    /// </summary>
-    [HttpPost("schedule-change")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SendScheduleChanges([FromBody] EmailRequestDto request)
-    {
-        try
-        {
-            var result = await _emailService.SendTargetedEmailsAsync(
-                EmailType.ScheduleChange,
-                request.Emails,
-                request.Language,
-                request.CustomMessage,
-                request.CustomMessageFr);
-
-            return HandleEmailResult(result, "schedule change");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending schedule changes");
-            return StatusCode(500, "An error occurred while sending schedule changes");
-        }
-    }
-
-    /// <summary>
     /// Send general announcements to specified users
     /// </summary>
     [HttpPost("announcement")]
@@ -162,10 +106,14 @@ public class CommunicationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SendAnnouncements([FromBody] EmailRequestDto request)
     {
+        if (string.IsNullOrEmpty(request.CustomMessage))
+        {
+            return BadRequest("Announcement message is required");
+        }
+
         try
         {
-            var result = await _emailService.SendTargetedEmailsAsync(
-                EmailType.GeneralAnnouncement,
+            var result = await _emailService.SendGeneralAnnouncementsAsync(
                 request.Emails,
                 request.Language,
                 request.CustomMessage,
@@ -180,23 +128,49 @@ public class CommunicationController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Send custom email based on email type
+    /// </summary>
+    [HttpPost("custom")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SendCustomEmail([FromBody] CustomEmailRequestDto request)
+    {
+        try
+        {
+            if (!request.Emails.Any())
+            {
+                return BadRequest("At least one email address is required");
+            }
+
+            var result = await _emailService.SendTargetedEmailsAsync(
+                request.EmailType,
+                request.Emails,
+                request.Language,
+                request.CustomMessage,
+                request.CustomMessageFr);
+
+            return HandleEmailResult(result, request.EmailType.ToString().ToLower());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending {EmailType} emails", request.EmailType);
+            return StatusCode(500, $"An error occurred while sending {request.EmailType} emails");
+        }
+    }
+    
     private IActionResult HandleEmailResult(EmailSendResult result, string emailType)
     {
-        if (!result.AllSucceeded)
+        var response = new EmailSendResponseDto
         {
-            return Ok(new
-            {
-                Message = $"Some {emailType} emails failed to send",
-                SuccessCount = result.SuccessCount,
-                FailureCount = result.FailureCount,
-                FailedEmails = result.FailedEmails
-            });
-        }
+            Message = result.AllSucceeded 
+                ? $"Successfully sent {emailType} emails to {result.SuccessCount} recipients"
+                : $"Some {emailType} emails failed to send",
+            SuccessCount = result.SuccessCount,
+            FailureCount = result.FailureCount,
+            FailedEmails = result.FailedEmails
+        };
 
-        return Ok(new
-        {
-            Message = $"Successfully sent {emailType} emails to {result.SuccessCount} recipients",
-            SuccessCount = result.SuccessCount
-        });
+        return Ok(response);
     }
 }

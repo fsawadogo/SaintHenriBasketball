@@ -7,26 +7,65 @@ namespace SaintHenriBasketball.Application.Services.Interfaces;
 
 public interface IEmailService
 {
+    // Basic Email Methods
     Task SendEmailAsync(string? to, string subject, string htmlContent);
+    
+    // Authentication Emails
     Task SendConfirmationEmailAsync(string? to, string confirmationLink);
     Task SendPasswordResetEmailAsync(string? to, string resetLink);
+    
+    // Payment Related Emails
     Task SendPaymentConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language = EmailLanguage.English);
+    Task SendPaymentReminderEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan, string? customMessage = null);
+    Task SendPaymentPlanUpdateEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan);
+    
+    // Attendance Related Emails
     Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance);
     Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance);
+    Task SendAttendanceReminderEmailAsync(string? userEmail, string userName, string? customMessage = null);
+    
+    // Season Related Emails
     Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration);
     Task SendSeasonRegistrationCancelledEmailAsync(string? userEmail, Season season);
+    Task SendSeasonRegistrationReminderEmailAsync(string? userEmail, string userName, string? customMessage = null);
     Task SendSeasonStatusUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers);
     Task SendSeasonUpdateEmailAsync(Season season, List<SeasonUserDto> registeredUsers, string[] changedProperties);
     Task SendSeasonPaymentReminderEmailAsync(SeasonRegistration registration);
-    Task SendPaymentPlanUpdateEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan);
+    
+    // Admin Notifications
     Task SendNewUserNotificationToAdminAsync(ApplicationUser newUser);
-    Task SendAttendanceReminderEmailAsync(string? userEmail, string userName, string? customMessage = null);
-    Task SendSeasonRegistrationReminderEmailAsync(string? userEmail, string userName, string? customMessage = null);
+    
+    // General Announcements
     Task SendGeneralAnnouncementEmailAsync(string? userEmail, string userName, string message);
-    Task SendPaymentReminderEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan, string? customMessage = null);
-    Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string?> emails, EmailLanguage language, string? customMessage, string? customMessageFr);
-    Task<EmailSendResult> SendPaymentRemindersAsync(List<string?> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
-    Task<EmailSendResult> SendAttendanceRemindersAsync(List<string?> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
-    Task<EmailSendResult> SendSeasonRegistrationRemindersAsync(List<string?> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
-    Task<EmailSendResult> SendGeneralAnnouncementsAsync(List<string?> emails, EmailLanguage language, string? customMessage = null, string? customMessageFr = null);
+    
+    // Bulk Email Methods
+    Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType,
+        List<string> emails,
+        EmailLanguage language,
+        string? customMessage,
+        string? customMessageFr);
+        
+    Task<EmailSendResult> SendPaymentRemindersAsync(
+        List<string?> emails, 
+        EmailLanguage language, 
+        string? customMessage = null, 
+        string? customMessageFr = null);
+        
+    Task<EmailSendResult> SendAttendanceRemindersAsync(
+        List<string?> emails, 
+        EmailLanguage language, 
+        string? customMessage = null, 
+        string? customMessageFr = null);
+        
+    Task<EmailSendResult> SendSeasonRegistrationRemindersAsync(
+        List<string?> emails, 
+        EmailLanguage language, 
+        string? customMessage = null, 
+        string? customMessageFr = null);
+        
+    Task<EmailSendResult> SendGeneralAnnouncementsAsync(
+        List<string?> emails, 
+        EmailLanguage language, 
+        string? customMessage = null, 
+        string? customMessageFr = null);
 }

@@ -12,5 +12,5 @@ public class SeasonSubscription
     public PaymentStatus PaymentStatus { get; set; }
     public DateTime CreatedOn { get; set; }
     public bool IsActive { get; set; }
-    public virtual ApplicationUser User { get; set; }
+    public virtual required ApplicationUser User { get; set; }
 }

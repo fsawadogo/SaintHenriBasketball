@@ -334,29 +334,25 @@ public class UserService : IUserService
                 {
                     // Try to get the user to ensure they exist in our system
                     var user = await _userRepository.GetByEmailAsync(email);
-                    if (user == null)
-                    {
-                        result.FailureCount++;
-                        result.FailedEmails.Add(email);
-                        _logger.LogWarning("User not found for email {Email}", email);
-                        continue;
-                    }
 
                     // Send the targeted email
-                    await _emailService.SendTargetedEmailsAsync(
-                        emailType,
-                        [email],
-                        language,
-                        customMessage,
-                        customMessageFr);
+                    if (email != null)
+                    {
+                        await _emailService.SendTargetedEmailsAsync(
+                            emailType,
+                            [email],
+                            language,
+                            customMessage,
+                            customMessageFr);
 
-                    result.SuccessCount++;
-                    _logger.LogInformation("Successfully sent {EmailType} email to {Email}", emailType, email);
+                        result.SuccessCount++;
+                        _logger.LogInformation("Successfully sent {EmailType} email to {Email}", emailType, email);
+                    }
                 }
                 catch (Exception ex)
                 {
                     result.FailureCount++;
-                    result.FailedEmails.Add(email);
+                    result.FailedEmails?.Add(email);
                     _logger.LogError(ex, "Failed to send {EmailType} email to {Email}", emailType, email);
                 }
             }
@@ -366,7 +362,7 @@ public class UserService : IUserService
                 "Completed sending {EmailType} emails. Success: {SuccessCount}, Failed: {FailureCount}",
                 emailType, result.SuccessCount, result.FailureCount);
 
-            if (result.FailedEmails.Count != 0)
+            if (result.FailedEmails != null && result.FailedEmails.Count != 0)
             {
                 _logger.LogWarning(
                     "Failed to send emails to: {FailedEmails}",
