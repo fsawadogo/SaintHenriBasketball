@@ -15,6 +15,7 @@ public interface IEmailService
     Task SendPasswordResetEmailAsync(string? to, string resetLink);
     
     // Payment Related Emails
+    Task SendPaymentCreatedConfirmationAsync(Payment payment, EmailLanguage language = EmailLanguage.French);
     Task SendPaymentConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language = EmailLanguage.English);
     Task SendPaymentReminderEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan, string? customMessage = null);
     Task SendPaymentPlanUpdateEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan);
@@ -40,7 +41,7 @@ public interface IEmailService
     
     // Bulk Email Methods
     Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType,
-        List<string> emails,
+        List<string?> emails,
         EmailLanguage language,
         string? customMessage,
         string? customMessageFr);

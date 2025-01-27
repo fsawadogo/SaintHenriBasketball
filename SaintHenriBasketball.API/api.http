@@ -1,0 +1,113 @@
+@baseUrl = http://localhost:5004
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NjAxNjc5LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.0lS0GT39M4ZoZf4w-mPjpddm5GUbPrcc5tbv6dEPzmI
+
+
+### Login
+POST {{baseUrl}}/api/users/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "userName": "admin",
+  "password": "Admin@2025"
+}
+
+### Send Payment Reminder
+POST {{baseUrl}}/api/Communication/payment-reminder
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": ["faycalsawadogo@gmail.com"],
+  "language": 0,
+  "customMessage": "Your payment for the current season is due. Please complete your payment to continue participating in sessions."
+}
+
+### Send Season Registration Reminder
+POST {{baseUrl}}/api/Communication/season-registration-reminder
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": ["faycalsawadogo@gmail.com"],
+  "language": 1,
+  "customMessage": "The new season is starting soon. Register now to secure your spot!",
+  "customMessageFr": "La nouvelle saison commence bientôt. Inscrivez-vous maintenant pour réserver votre place!"
+}
+
+### Send Attendance Reminder
+POST {{baseUrl}}/api/Communication/attendance-reminder
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": ["faycalsawadogo@gmail.com"],
+  "language": 1,
+  "customMessage": "Don't forget to confirm your attendance for tomorrow's session.",
+  "customMessageFr": "N'oubliez pas de confirmer votre présence pour la séance de demain."
+}
+
+### Send General Announcement
+POST {{baseUrl}}/api/Communication/announcement
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": ["faycalsawadogo@gmail.com"],
+  "language": 0,
+  "customMessage": "The gym will be closed for maintenance this weekend. Sessions will resume next week."
+}
+
+### Send Schedule Change
+POST {{baseUrl}}/api/Communication/schedule-change
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": ["faycalsawadogo@gmail.com"],
+  "language": 1,
+  "customMessage": "Session time has changed to 7:00 PM",
+  "customMessageFr": "L'heure de la séance a été changée à 19h00"
+}
+
+### Send Facility Update
+POST {{baseUrl}}/api/Communication/facility-update
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": ["faycalsawadogo@gmail.com"],
+  "language": 2,
+  "customMessage": "New basketball hoops have been installed in the gym.",
+  "customMessageFr": "De nouveaux paniers de basketball ont été installés dans le gymnase."
+}
+
+### Send Multiple Payment Reminders
+POST {{baseUrl}}/api/Communication/payment-reminder
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emails": [
+    "faycalsawadogo@gmail.com",
+    "admin@sainthenribasketball.com"
+  ],
+  "language": 0,
+  "customMessage": "Final reminder: Payments are due by the end of this week."
+}
+
+### Send Bulk Announcement
+POST {{baseUrl}}/api/Communication/custom
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "emailType": 2,
+  "emails": [
+    "faycalsawadogo@gmail.com",
+    "admin@sainthenribasketball.com"
+  ],
+  "language": 2,
+  "customMessage": "Important: New season registration opens next week!",
+  "customMessageFr": "Important: Les inscriptions pour la nouvelle saison commencent la semaine prochaine!"
+}

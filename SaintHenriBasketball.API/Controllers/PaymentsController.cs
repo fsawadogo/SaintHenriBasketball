@@ -19,6 +19,7 @@ public class PaymentsController : ControllerBase
    private readonly IUserService _userService;
    private readonly ILogger<PaymentsController> _logger;
 
+   /// <inheritdoc />
    public PaymentsController(
        IPaymentService paymentService,
        IEmailService emailService,
@@ -41,13 +42,6 @@ public class PaymentsController : ControllerBase
        {
            var payment = await _paymentService.CreatePaymentAsync(createPaymentDto);
            var user = await _userService.GetUserAsync(payment.UserId);
-
-           await _emailService.SendPaymentConfirmationAsync(
-               payment.UserEmail,
-               payment.Amount,
-               payment.Reference,
-               user.PreferredLanguage
-           );
 
            return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
        }
