@@ -11,6 +11,8 @@ public class Payment
     public PaymentStatus Status { get; set; }
     public DateTime PaymentDate { get; set; }
     public ApplicationUser User { get; set; }
+    public string? Reference { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     private Payment() { } // For EF Core
 
@@ -21,6 +23,6 @@ public class Payment
         Amount = amount;
         Plan = plan;
         Status = PaymentStatus.Pending;
-        PaymentDate = DateTime.UtcNow;
+        PaymentDate = DateTime.Now;
     }
 }

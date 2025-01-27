@@ -68,4 +68,13 @@ public class PaymentRepository : IPaymentRepository
         _context.Payments.Update(payment);
         await _context.SaveChangesAsync();
     }
+    
+    public async Task<IEnumerable<Payment>> GetPaymentsByDateRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _context.Payments
+            .Where(p => p.CreatedAt >= startDate && p.CreatedAt <= endDate)
+            .Include(p => p.User)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
 }

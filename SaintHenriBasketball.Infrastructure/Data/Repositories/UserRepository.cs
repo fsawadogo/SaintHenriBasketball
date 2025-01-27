@@ -25,12 +25,12 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.Id == id))!;
     }
 
-    public async Task<ApplicationUser> GetByEmailAsync(string email)
+    public async Task<ApplicationUser> GetByEmailAsync(string? email)
     {
         return (await _context.Users
             .Include(u => u.SessionRegistrations)
             .ThenInclude(sr => sr.Session)
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower()))!;
+            .FirstOrDefaultAsync(u => u.Email != null && email != null && u.Email.ToLower() == email.ToLower()))!;
     }
 
     public async Task<ApplicationUser> GetByUsernameAsync(string username)
@@ -38,19 +38,19 @@ public class UserRepository : IUserRepository
         return (await _context.Users
             .Include(u => u.SessionRegistrations)
             .ThenInclude(sr => sr.Session)
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower()))!;
+            .FirstOrDefaultAsync(u => u.Username != null && u.Username.ToLower() == username.ToLower()))!;
     }
 
-    public async Task<bool> EmailExistsAsync(string email)
+    public async Task<bool> EmailExistsAsync(string? email)
     {
         return await _context.Users
-            .AnyAsync(u => u.Email.ToLower() == email.ToLower());
+            .AnyAsync(u => u.Email != null && email != null && u.Email.ToLower() == email.ToLower());
     }
 
-    public async Task<bool> UsernameExistsAsync(string username)
+    public async Task<bool> UsernameExistsAsync(string? username)
     {
         return await _context.Users
-            .AnyAsync(u => u.Username.ToLower() == username.ToLower());
+            .AnyAsync(u => u.Username != null && username != null && u.Username.ToLower() == username.ToLower());
     }
 
     public async Task<IEnumerable<ApplicationUser>> GetAllUsersAsync()

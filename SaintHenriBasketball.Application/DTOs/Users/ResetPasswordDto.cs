@@ -6,7 +6,7 @@ public class ResetPasswordDto
 {
     [Required]
     [EmailAddress]
-    public required string Email { get; set; }
+    public required string? Email { get; set; }
 
     [Required]
     public required string Token { get; set; }

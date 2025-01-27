@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
-using SaintHenriBasketball.Application.DTOs.Email;
 using System.ComponentModel.DataAnnotations;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 
@@ -133,7 +132,7 @@ public class UserService : IUserService
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task<UserDto> GetUserByEmailAsync(string email)
+    public async Task<UserDto> GetUserByEmailAsync(string? email)
     {
         var user = await _userRepository.GetByEmailAsync(email);
         if (user == null)
@@ -194,7 +193,7 @@ public class UserService : IUserService
         await _userRepository.DeleteAsync(user);
     }
 
-    public async Task ConfirmEmailAsync(string email, string token)
+    public async Task ConfirmEmailAsync(string? email, string token)
     {
         var user = await _userRepository.GetByEmailAsync(email);
         if (user == null)
@@ -218,7 +217,7 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
     }
 
-    public async Task ForgotPasswordAsync(string email)
+    public async Task ForgotPasswordAsync(string? email)
     {
         var user = await _userRepository.GetByEmailAsync(email);
         if (user == null)
@@ -308,7 +307,7 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string> emails, EmailLanguage language, string? customMessage, string? customMessageFr = null)
+    public async Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string?> emails, EmailLanguage language, string? customMessage, string? customMessageFr = null)
     {
         try
         {
@@ -387,22 +386,26 @@ public class UserService : IUserService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new List<Claim>
+        if (user is { Email: not null, Username: not null })
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
-        };
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
+            };
 
-        var token = new JwtSecurityToken(
-            issuer: _configuration["JwtSettings:Issuer"],
-            audience: _configuration["JwtSettings:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:DurationInDays"])),
-            signingCredentials: credentials
-        );
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JwtSettings:Issuer"],
+                audience: _configuration["JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:DurationInDays"])),
+                signingCredentials: credentials
+            );
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        throw new ValidationException("Invalid username or password");
     }
 }

@@ -15,11 +15,11 @@ public class Session
     public DateTime CreatedOn { get; private set; }
     public string StartTime { get; set; }
     public string EndTime { get; set; }
-    public string Location { get; set; }
+    public string? Location { get; set; }
 
     private Session() { } // For EF Core
 
-    public Session(DateTime sessionDate, int maxCapacity, decimal dropInPrice, string startTime, string endTime, string location)
+    public Session(DateTime sessionDate, int maxCapacity, decimal dropInPrice, string startTime, string endTime, string? location)
     {
         Id = Guid.NewGuid();
         SessionDate = sessionDate;

@@ -11,5 +11,6 @@ public class PaymentDto
     public PaymentStatus Status { get; set; }
     public DateTime PaymentDate { get; set; }
     public required string UserName { get; set; }
-    public required string UserEmail { get; set; }
+    public required string? UserEmail { get; set; }
+    public string? Reference { get; set; }
 }

@@ -6,7 +6,7 @@ namespace SaintHenriBasketball.Application.DTOs.Email;
 public class EmailRequestDto
 {
     [Required]
-    public List<string> Emails { get; set; } = new();
+    public List<string?> Emails { get; set; } = new();
 
     [Required]
     public EmailLanguage Language { get; set; } = EmailLanguage.English;

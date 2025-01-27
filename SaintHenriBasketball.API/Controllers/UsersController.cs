@@ -296,7 +296,7 @@ public class UsersController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ConfirmEmail([FromQuery] string token, [FromQuery] string email)
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string token, [FromQuery] string? email)
     {
         try
         {
@@ -355,7 +355,7 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UpdateUserPaymentPlanByEmail([FromQuery] string email, [FromBody] UpdatePaymentPlanDto updatePaymentPlanDto)
+    public async Task<IActionResult> UpdateUserPaymentPlanByEmail([FromQuery] string? email, [FromBody] UpdatePaymentPlanDto updatePaymentPlanDto)
     {
         try
         {
@@ -416,7 +416,7 @@ public class UsersController : ControllerBase
             // Send email notification
             var emailResult = await _userService.SendTargetedEmailsAsync(
                 EmailType.GeneralAnnouncement,
-                new List<string> { user.Email },
+                new List<string?> { user.Email },
                 EmailLanguage.English,
                 "You have been granted admin privileges."
             );

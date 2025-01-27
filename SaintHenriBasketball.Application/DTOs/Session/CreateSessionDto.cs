@@ -7,5 +7,5 @@ public class CreateSessionDto
     public decimal DropInPrice { get; set; }
     public required string StartTime { get; set; }
     public required string EndTime { get; set; }
-    public required string Location { get; set; }
+    public required string? Location { get; set; }
 }

@@ -5,8 +5,8 @@ namespace SaintHenriBasketball.Domain.Entities;
 public class ApplicationUser
 {
     public Guid Id { get; private set; }
-    public string Username { get; set; }
-    public string Email { get; set; }
+    public string? Username { get; set; }
+    public string? Email { get; set; }
     public string PasswordHash { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
@@ -18,10 +18,11 @@ public class ApplicationUser
     public string PasswordResetToken { get; set; }
     public DateTime? PasswordResetTokenExpiry { get; set; }
     public ICollection<SessionRegistration> SessionRegistrations { get; private set; }
+    public EmailLanguage PreferredLanguage { get; }
 
     private ApplicationUser() { } // For EF Core
 
-    public ApplicationUser(string username, string email, string passwordHash, string firstName, string lastName, PaymentPlan paymentPlan)
+    public ApplicationUser(string? username, string? email, string passwordHash, string firstName, string lastName, PaymentPlan paymentPlan)
     {
         Id = Guid.NewGuid();
         Username = username;

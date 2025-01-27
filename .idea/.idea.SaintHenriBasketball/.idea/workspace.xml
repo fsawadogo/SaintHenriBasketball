@@ -8,12 +8,48 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="">
+    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="Update payments">
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/wwwroot/images/logo.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/BillDetails.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/BulkEmailDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/PaymentReconciliationDto.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Helpers/BillPdfGenerator.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Helpers/EmailTemplateHelper.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.csproj" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Attendance/AttendanceUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Attendance/AttendanceUserDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/EmailRequestDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/EmailRequestDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Payment/PaymentDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Payment/PaymentDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Season/SeasonUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Season/SeasonUserDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Session/CreateSessionDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Session/CreateSessionDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/EmailSendResult.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/EmailSendResult.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ForgotPasswordDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ForgotPasswordDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/RegisterUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/RegisterUserDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ResetPasswordDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ResetPasswordDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UpdateUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UpdateUserDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserDto.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserResponseDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserResponseDto.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IPaymentService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IPaymentService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IUserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IUserService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Payment.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Payment.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Session.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Session.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,97 +75,10 @@
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Controllers/UsersController.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/DTOs/Users/LoginDto.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Validators/LoginDtoValidator.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Domain/Interfaces/Repositories/ISeasonSubscriptionRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Context/ApplicationDbContext.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Extensions/DependencyInjection.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/77fc0eb92b774686bbae91cb92331703d83600/39/25fe8b31/Task.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/1b445ceb1c5ab1d07b7b55412b10a5e21169ec87228ca8ad8a18a6982f3278/ControllerBase.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/2a8a5156343c6853864d9956214644e750ec73ec2d90f1d3748e8a765eec/ActionResultOfT.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ce37be1a06b16c6faa02038d2cc477dd3bca5b217ceeb41c5f2ad45c1bf9/ServiceProvider.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/db7395f4add94e6d10e515b3e55373f2821f8323de7dc8e314d78feefacf5584/ActionMethodExecutor.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ead6614bb1135d7d61e33ab3a33f17abb3e4f07240e1ae2f5641235738ab7/ServiceProviderEngineScope.cs" root0="FORCE_HIGHLIGHTING" />
@@ -161,6 +110,7 @@
     "HTTP Request.app | Get current user.executor": "Run",
     "HTTP Request.app | Login.executor": "Run",
     "HTTP Request.app | Season.executor": "Run",
+    "HTTP Request.app | update payment plan.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "master",
@@ -171,17 +121,17 @@
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected=".NET Launch Settings Profile.SaintHenriBasketball.API: http">
+  <component name="RunManager" selected="HTTP Request.app | #18">
     <configuration name="app | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Login" runType="Run single request">
-      <method v="2" />
-    </configuration>
-    <configuration name="app | Season" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Season" index="2" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="app | #17" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#17" index="17" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="app | #18" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#18" index="18" runType="Run single request">
+      <method v="2" />
+    </configuration>
+    <configuration name="app | update payment plan" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="update payment plan" index="14" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="SaintHenriBasketball.API: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile" temporary="true">
@@ -201,11 +151,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
         <item itemvalue="HTTP Request.app | #18" />
-        <item itemvalue="HTTP Request.app | #17" />
+        <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
         <item itemvalue="HTTP Request.app | Login" />
-        <item itemvalue="HTTP Request.app | Season" />
+        <item itemvalue="HTTP Request.app | update payment plan" />
+        <item itemvalue="HTTP Request.app | #17" />
       </list>
     </recent_temporary>
   </component>
@@ -221,7 +171,7 @@
       <workItem from="1736466106907" duration="20551000" />
       <workItem from="1736621307786" duration="2422000" />
       <workItem from="1737599501938" duration="6000" />
-      <workItem from="1737642051023" duration="643000" />
+      <workItem from="1737642051023" duration="23413000" />
     </task>
     <task id="LOCAL-00001" summary="Add email cnfirmation and passport reset">
       <option name="closed" value="true" />
@@ -271,7 +221,15 @@
       <option name="project" value="LOCAL" />
       <updated>1737592960480</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Update payments">
+      <option name="closed" value="true" />
+      <created>1737642732523</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1737642732523</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -295,6 +253,26 @@
     <MESSAGE value="Update the mapping profile for the season entity" />
     <MESSAGE value="app.http" />
     <MESSAGE value="Added /api/attendance/sessions/{{sessionId}}/users endpoint" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added /api/attendance/sessions/{{sessionId}}/users endpoint" />
+    <MESSAGE value="Update payments" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update payments" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs</url>
+          <line>92</line>
+          <properties documentPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" containingFunctionPresentation="Method 'UpdatePaymentStatus'">
+            <startOffsets>
+              <option value="3087" />
+            </startOffsets>
+            <endOffsets>
+              <option value="3170" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

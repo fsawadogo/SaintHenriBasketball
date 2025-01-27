@@ -25,4 +25,8 @@
     <ProjectReference Include="..\SaintHenriBasketball.Infrastructure\SaintHenriBasketball.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="wwwroot\images\logo.png" />
+  </ItemGroup>
+
 </Project>

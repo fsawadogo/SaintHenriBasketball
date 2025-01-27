@@ -12,4 +12,5 @@ public class UserDto
     public bool IsAdmin { get; set; }
     public PaymentPlan PaymentPlan { get; set; }
     public DateTime CreatedOn { get; set; }
+    public EmailLanguage PreferredLanguage { get; set; }
 }
