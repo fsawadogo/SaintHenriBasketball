@@ -17,7 +17,6 @@ public class BillPdfGenerator
         { "AMOUNT", new() { { "en", "Amount" }, { "fr", "Montant" } } },
         { "TOTAL_AMOUNT", new() { { "en", "Total Amount" }, { "fr", "Montant total" } } },
         { "PAYMENT_INSTRUCTIONS", new() { { "en", "Payment Instructions" }, { "fr", "Instructions de paiement" } } },
-        { "SEND_PAYMENT", new() { { "en", "Please send payment via Interac e-Transfer to:" }, { "fr", "Veuillez envoyer le paiement par virement Interac à:" } } },
         { "BILL_GENERATED", new() { { "en", "Bill generated on" }, { "fr", "Facture générée le" } } }
     };
 
