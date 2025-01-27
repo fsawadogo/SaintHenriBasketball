@@ -117,101 +117,91 @@ public class EmailService : IEmailService
 
     #region Payment Emails
 
-    public async Task SendPaymentCreatedConfirmationAsync(Payment payment,
-        EmailLanguage language = EmailLanguage.French)
+public async Task SendPaymentCreatedConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language = EmailLanguage.French)
+{
+    try
     {
+        var user = await _userRepository.GetByEmailAsync(email)
+            ?? throw new ArgumentException($"User not found for email: {email}");
+
+        var userName = $"{user.FirstName} {user.LastName}";
+        var billLanguage = language == EmailLanguage.French ? "fr" : "en";
+        var culture = billLanguage == "fr" ? new CultureInfo("fr-CA") : new CultureInfo("en-CA");
+        var localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("America/Montreal"));
+
+        var paymentInstructions = new Dictionary<string, string?>
+        {
+            { language == EmailLanguage.French ? "Envoyer à" : "Send to", "pay@sainthenribasketball.com" },
+            { language == EmailLanguage.French ? "Montant dû" : "Amount Due", $"${amount}" },
+            { language == EmailLanguage.French ? "Message" : "Message", $"{user.FirstName} {user.LastName} - {reference}" }
+        };
+
+        var emailContent = EmailTemplateHelper.BuildEmailLayout(
+            language == EmailLanguage.French ? "Rappel de paiement" : "Payment Reminder",
+            $@"<p style='{EmailTemplateHelper.Styles.Content}'>{(language == EmailLanguage.French ? "Bonjour" : "Hi")} {userName},</p>
+                <div style='background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                    <h2 style='color: #2e7d32; margin-top: 0;'>{(language == EmailLanguage.French ? "Instructions de paiement" : "Payment Instructions")}</h2>
+                    {EmailTemplateHelper.BuildInfoBox(paymentInstructions)}
+                    <p style='{EmailTemplateHelper.Styles.Content}'>
+                        {(language == EmailLanguage.French
+                            ? "Veuillez effectuer votre paiement dès que possible. Vous trouverez la facture en pièce jointe."
+                            : "Please complete your payment as soon as possible. You will find the bill attached.")}
+                    </p>
+                </div>"
+        );
+
+        var msg = new SendGridMessage();
+        msg.SetFrom(_fromAddress);
+        msg.AddTo(new EmailAddress(email));
+        msg.SetSubject(language == EmailLanguage.French
+            ? "Rappel de paiement - Saint Henri Basketball"
+            : "Payment Reminder - Saint Henri Basketball");
+        msg.AddContent(MimeType.Html, emailContent);
+
         try
         {
-            var user = await _userRepository.GetByIdAsync(payment.UserId)
-                       ?? throw new ArgumentException($"User not found for payment: {payment.Id}");
+            var billGenerator = new BillPdfGenerator(_webHostEnvironment);
+            var description = language == EmailLanguage.French
+                ? user.PaymentPlan == PaymentPlan.Season
+                    ? "Forfait de saison"
+                    : "Forfait à la séance"
+                : user.PaymentPlan == PaymentPlan.Season
+                    ? "Season Plan"
+                    : "Drop-in Plan";
 
-            var userName = $"{user.FirstName} {user.LastName}";
-            var billLanguage = language == EmailLanguage.French ? "fr" : "en";
-            var culture = billLanguage == "fr" ? new CultureInfo("fr-CA") : new CultureInfo("en-CA");
-            var localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-                TimeZoneInfo.FindSystemTimeZoneById("America/Montreal"));
-
-            // Generate unique reference if not provided
-            if (string.IsNullOrEmpty(payment.Reference))
+            var billDetails = new BillDetails
             {
-                payment.Reference = user.PaymentPlan == PaymentPlan.Season
-                    ? $"SEASON-{DateTime.Now:yyMM}-{Random.Shared.Next(1000, 9999)}"
-                    : $"DROPIN-{DateTime.Now:yyMM}-{Random.Shared.Next(1000, 9999)}";
-            }
-
-            var fields = new Dictionary<string, string?>
-            {
-                { language == EmailLanguage.French ? "Référence" : "Payment Reference", payment.Reference },
-                { language == EmailLanguage.French ? "Montant payé" : "Amount Paid", $"${payment.Amount}" },
-                { "Date", localTime.ToString("MMM dd, yyyy HH:mm", culture) },
-                { language == EmailLanguage.French ? "Statut" : "Status", payment.Status.ToString() }
+                Name = userName,
+                Email = email,
+                Description = description,
+                Amount = amount,
+                Reference = reference,
+                Date = localTime
             };
 
-            var emailContent = EmailTemplateHelper.BuildEmailLayout(
-                language == EmailLanguage.French ? "Confirmation de paiement" : "Payment Confirmation",
-                $@"<p style='{EmailTemplateHelper.Styles.Content}'>{(language == EmailLanguage.French ? "Bonjour" : "Hi")} {userName},</p>
-                {EmailTemplateHelper.BuildInfoBox(fields)}
-                <p style='{EmailTemplateHelper.Styles.Content}'>
-                    {(language == EmailLanguage.French
-                        ? "Merci pour votre paiement. Veuillez trouver votre facture en pièce jointe."
-                        : "Thank you for your payment. Please find your bill attached.")}
-                </p>"
+            var pdfContent = billGenerator.GenerateBill(billDetails, billLanguage);
+
+            msg.AddAttachment(
+                language == EmailLanguage.French ? "facture.pdf" : "bill.pdf",
+                Convert.ToBase64String(pdfContent),
+                "application/pdf",
+                "attachment"
             );
-
-            var msg = new SendGridMessage();
-            msg.SetFrom(_fromAddress);
-            msg.AddTo(new EmailAddress(user.Email));
-            msg.SetSubject(language == EmailLanguage.French
-                ? "Confirmation de paiement - Saint Henri Basketball"
-                : "Payment Confirmation - Saint Henri Basketball");
-            msg.AddContent(MimeType.Html, emailContent);
-
-            try
-            {
-                var billGenerator = new BillPdfGenerator(_webHostEnvironment);
-                var description = language == EmailLanguage.French
-                    ? user.PaymentPlan == PaymentPlan.Season
-                        ? "Forfait de saison"
-                        : "Forfait à la séance"
-                    : user.PaymentPlan == PaymentPlan.Season
-                        ? "Season Plan"
-                        : "Drop-in Plan";
-
-                var billDetails = new BillDetails
-                {
-                    Name = userName,
-                    Email = user.Email,
-                    Description = description,
-                    Amount = payment.Amount,
-                    Reference = payment.Reference,
-                    Date = localTime
-                };
-
-                var pdfContent = billGenerator.GenerateBill(billDetails, billLanguage);
-
-                msg.AddAttachment(
-                    language == EmailLanguage.French ? $"facture de {description}.pdf" : $"bill of {description}.pdf",
-                    Convert.ToBase64String(pdfContent),
-                    "application/pdf",
-                    "attachment"
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to generate PDF bill. Sending email without attachment.");
-            }
-
-            await SendWithRetryAsync(msg);
-            await NotifyAdminOfPayment(user.Email, userName, payment.Amount, payment.Reference, language);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment created confirmation email for payment {PaymentId}",
-                payment.Id);
-            throw;
+            _logger.LogWarning(ex, "Failed to generate PDF bill. Sending email without attachment.");
         }
-    }
 
+        await SendWithRetryAsync(msg);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to send payment reminder email to {Email}", email);
+        throw;
+    }
+}
     public async Task SendPaymentConfirmationAsync(string? email, decimal amount, string? reference,
         EmailLanguage language = EmailLanguage.French)
     {
@@ -829,7 +819,7 @@ public class EmailService : IEmailService
 
     #region Bulk Email Methods
 
-    public async Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string?> emails,
+    public async Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType, List<string> emails,
         EmailLanguage language, string? customMessage, string? customMessageFr)
     {
         var result = new EmailSendResult();
