@@ -157,41 +157,6 @@ public async Task SendPaymentCreatedConfirmationAsync(string? email, decimal amo
             : "Payment Reminder - Saint Henri Basketball");
         msg.AddContent(MimeType.Html, emailContent);
 
-        try
-        {
-            var billGenerator = new BillPdfGenerator(_webHostEnvironment);
-            var description = language == EmailLanguage.French
-                ? user.PaymentPlan == PaymentPlan.Season
-                    ? "Forfait de saison"
-                    : "Forfait à la séance"
-                : user.PaymentPlan == PaymentPlan.Season
-                    ? "Season Plan"
-                    : "Drop-in Plan";
-
-            var billDetails = new BillDetails
-            {
-                Name = userName,
-                Email = email,
-                Description = description,
-                Amount = amount,
-                Reference = reference,
-                Date = localTime
-            };
-
-            var pdfContent = billGenerator.GenerateBill(billDetails, billLanguage);
-
-            msg.AddAttachment(
-                language == EmailLanguage.French ? "facture.pdf" : "bill.pdf",
-                Convert.ToBase64String(pdfContent),
-                "application/pdf",
-                "attachment"
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to generate PDF bill. Sending email without attachment.");
-        }
-
         await SendWithRetryAsync(msg);
     }
     catch (Exception ex)
