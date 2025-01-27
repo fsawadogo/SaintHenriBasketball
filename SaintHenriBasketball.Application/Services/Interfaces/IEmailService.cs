@@ -2,6 +2,7 @@ using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
+using SendGrid.Helpers.Mail;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
 
@@ -9,7 +10,8 @@ public interface IEmailService
 {
     // Basic Email Methods
     Task SendEmailAsync(string? to, string subject, string htmlContent);
-    
+    Task SendWithRetryAsync(SendGridMessage msg, int retryCount = 0);
+
     // Authentication Emails
     Task SendConfirmationEmailAsync(string? to, string confirmationLink);
     Task SendPasswordResetEmailAsync(string? to, string resetLink);

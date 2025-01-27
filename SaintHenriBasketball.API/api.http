@@ -111,3 +111,23 @@ Content-Type: application/json
   "customMessage": "Important: New season registration opens next week!",
   "customMessageFr": "Important: Les inscriptions pour la nouvelle saison commencent la semaine prochaine!"
 }
+
+###
+POST {{baseUrl}}/api/Payments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "2299ad12-4de2-475c-a775-7222b874959d",
+  "amount": 10,
+  "plan": 1
+}
+
+### Update
+PUT {{baseUrl}}/api/Payments/83bb3efa-5b1b-4421-8bf8-5707e0f7771d/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": 1
+}

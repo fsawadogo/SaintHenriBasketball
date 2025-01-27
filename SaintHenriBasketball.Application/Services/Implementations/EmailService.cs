@@ -56,12 +56,12 @@ public class EmailService : IEmailService
         await SendWithRetryAsync(msg);
     }
 
-    private async Task SendWithRetryAsync(SendGridMessage msg, int retryCount = 0)
+    public async Task SendWithRetryAsync(SendGridMessage msg, int retryCount = 0)
     {
         try
         {
             var response = await _client.SendEmailAsync(msg);
-
+            
             if (!response.IsSuccessStatusCode && retryCount < MaxRetries)
             {
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
@@ -72,8 +72,7 @@ public class EmailService : IEmailService
             if (!response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Body.ReadAsStringAsync();
-                throw new Exception(
-                    $"Failed to send email after {MaxRetries} retries. Status: {response.StatusCode}, Body: {responseBody}");
+                throw new Exception($"Failed to send email after {MaxRetries} retries. Status: {response.StatusCode}, Body: {responseBody}");
             }
         }
         catch (Exception ex)
@@ -82,7 +81,6 @@ public class EmailService : IEmailService
             throw;
         }
     }
-
     #endregion
 
     #region Authentication Emails
