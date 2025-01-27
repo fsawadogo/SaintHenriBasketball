@@ -8,49 +8,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="Update payments">
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/wwwroot/images/logo.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/BillDetails.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/BulkEmailDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/PaymentReconciliationDto.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Helpers/BillPdfGenerator.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Helpers/EmailTemplateHelper.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/UsersController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Program.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/SaintHenriBasketball.API.csproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Attendance/AttendanceUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Attendance/AttendanceUserDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/EmailRequestDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/EmailRequestDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Payment/PaymentDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Payment/PaymentDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Season/SeasonUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Season/SeasonUserDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Session/CreateSessionDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Session/CreateSessionDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/EmailSendResult.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/EmailSendResult.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ForgotPasswordDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ForgotPasswordDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/RegisterUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/RegisterUserDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ResetPasswordDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/ResetPasswordDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UpdateUserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UpdateUserDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserResponseDto.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Users/UserResponseDto.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/SaintHenriBasketball.Application.csproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/EmailService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/PaymentService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Implementations/UserService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IEmailService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IPaymentService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IPaymentService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IUserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/Services/Interfaces/IUserService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/ApplicationUser.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Payment.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Payment.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Session.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Entities/Session.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IPaymentRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Domain/Interfaces/Repositories/IUserRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/PaymentRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Data/Repositories/UserRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs" afterDir="false" />
-    </list>
+    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="update payment" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -171,7 +129,7 @@
       <workItem from="1736466106907" duration="20551000" />
       <workItem from="1736621307786" duration="2422000" />
       <workItem from="1737599501938" duration="6000" />
-      <workItem from="1737642051023" duration="23413000" />
+      <workItem from="1737642051023" duration="23522000" />
     </task>
     <task id="LOCAL-00001" summary="Add email cnfirmation and passport reset">
       <option name="closed" value="true" />
@@ -229,7 +187,15 @@
       <option name="project" value="LOCAL" />
       <updated>1737642732523</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="update payment">
+      <option name="closed" value="true" />
+      <created>1737992236941</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1737992236941</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -254,7 +220,8 @@
     <MESSAGE value="app.http" />
     <MESSAGE value="Added /api/attendance/sessions/{{sessionId}}/users endpoint" />
     <MESSAGE value="Update payments" />
-    <option name="LAST_COMMIT_MESSAGE" value="Update payments" />
+    <MESSAGE value="update payment" />
+    <option name="LAST_COMMIT_MESSAGE" value="update payment" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
