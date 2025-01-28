@@ -379,29 +379,36 @@ public class UserService : IUserService
     }
     private string GenerateJwtToken(ApplicationUser user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]!));
+        if (user is not { Email: not null, Username: not null })
+        {
+            throw new ValidationException("User email and username are required");
+        }
+
+        var jwtKey = _configuration["JwtSettings:Key"] 
+                     ?? throw new InvalidOperationException("JWT key is not configured");
+        
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        if (user is { Email: not null, Username: not null })
+        var claims = new List<Claim>
         {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
-            };
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
+        };
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["JwtSettings:Issuer"],
-                audience: _configuration["JwtSettings:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["JwtSettings:DurationInDays"])),
-                signingCredentials: credentials
-            );
+        var durationInMinutes = Convert.ToDouble(_configuration["JwtSettings:DurationInMinutes"] 
+                                                 ?? throw new InvalidOperationException("JWT duration is not configured"));
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-        throw new ValidationException("Invalid username or password");
+        var token = new JwtSecurityToken(
+            issuer: _configuration["JwtSettings:Issuer"],
+            audience: _configuration["JwtSettings:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(durationInMinutes),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
