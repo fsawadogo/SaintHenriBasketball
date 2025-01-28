@@ -398,14 +398,18 @@ public class UserService : IUserService
             new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
         };
 
-        var durationInMinutes = Convert.ToDouble(_configuration["JwtSettings:DurationInMinutes"] 
-                                                 ?? throw new InvalidOperationException("JWT duration is not configured"));
+        var durationInDays = Convert.ToDouble(_configuration["JwtSettings:DurationInDays"] ?? throw new InvalidOperationException("JWT duration is not configured"));
+
+        if (durationInDays <= 0)
+        {
+            throw new InvalidOperationException("JWT duration must be positive");
+        }
 
         var token = new JwtSecurityToken(
             issuer: _configuration["JwtSettings:Issuer"],
             audience: _configuration["JwtSettings:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(durationInMinutes),
+            expires: DateTime.UtcNow.AddDays(durationInDays),
             signingCredentials: credentials
         );
 
