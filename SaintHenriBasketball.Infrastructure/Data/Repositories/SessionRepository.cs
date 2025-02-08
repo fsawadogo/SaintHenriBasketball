@@ -39,7 +39,7 @@ public class SessionRepository : ISessionRepository
     {
         return await _context.Sessions
             .Include(s => s.Registrations)
-            .Where(s => s.SessionDate > DateTime.UtcNow)
+            .Where(s => s.SessionDate >= DateTime.UtcNow)
             .OrderBy(s => s.SessionDate)
             .ToListAsync();
     }
