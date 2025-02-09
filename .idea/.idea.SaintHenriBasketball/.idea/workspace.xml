@@ -8,7 +8,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="update payment" />
+    <list default="true" id="fc68c6b1-735d-42be-8c62-8ae7bd8a7247" name="Changes" comment="Update the dates">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/2025-01-19T112315.400.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/2025-01-19T112325.201.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/2025-01-19T112455.400.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/2025-01-19T112524.200.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-client.cookies" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-client.cookies" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/httpRequests/http-requests-log.http" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.SaintHenriBasketball/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/api.http" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/api.http" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/BillDetails.cs" beforeDir="false" afterPath="$PROJECT_DIR$/SaintHenriBasketball.Application/DTOs/Email/BillDetails.cs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -33,13 +45,24 @@
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/Mapping/MappingProfile.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.API/Program.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Application/DTOs/Email/BillDetails.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/SessionRepository.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/SessionRepository.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Users/fsawadogo/Documents/GitHub/SaintHenriBasketball/SaintHenriBasketball.Infrastructure/Data/Repositories/SessionRepository.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/77fc0eb92b774686bbae91cb92331703d83600/39/25fe8b31/Task.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/88433e3d6a3649b8ab3f80ef9ff5a4b332800/6d/41df2131/EmailAddressAttribute.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/96abcd60a4784fc38bae19661ab4a10c38fc0/2e/4b14e39b/OpenApiSecurityScheme.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/96abcd60a4784fc38bae19661ab4a10c38fc0/92/eeaaed98/OpenApiInfo.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/e0deb11d22c64968a71b092118e94bf91d000/75/8b03c5b1/SwaggerGenOptionsExtensions.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/1b445ceb1c5ab1d07b7b55412b10a5e21169ec87228ca8ad8a18a6982f3278/ControllerBase.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/2a8a5156343c6853864d9956214644e750ec73ec2d90f1d3748e8a765eec/ActionResultOfT.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/3ebffcd2ab98c3abdcb6c2c350fb49783e75ae2d26c32d1ab7d87c9e84e4/JwtSecurityToken.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ce37be1a06b16c6faa02038d2cc477dd3bca5b217ceeb41c5f2ad45c1bf9/ServiceProvider.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/db7395f4add94e6d10e515b3e55373f2821f8323de7dc8e314d78feefacf5584/ActionMethodExecutor.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/ead6614bb1135d7d61e33ab3a33f17abb3e4f07240e1ae2f5641235738ab7/ServiceProviderEngineScope.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/f8ac19d881e6171f373968cb347690b5b8557fa651dec723703ea0941242617c/JwtSecurityTokenHandler.cs" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="KubernetesApiPersistence">{}</component>
   <component name="KubernetesApiProvider">{
@@ -61,11 +84,19 @@
     "HTTP Request.SaintHenriBasketball.API | #1.executor": "Run",
     "HTTP Request.SaintHenriBasketball.API | Login.executor": "Run",
     "HTTP Request.SaintHenriBasketball.API | Me.executor": "Run",
+    "HTTP Request.api | #10.executor": "Run",
+    "HTTP Request.api | #12.executor": "Run",
+    "HTTP Request.api | Login.executor": "Run",
+    "HTTP Request.api | Update.executor": "Run",
     "HTTP Request.app | #17.executor": "Run",
     "HTTP Request.app | #18.executor": "Run",
+    "HTTP Request.app | #19.executor": "Run",
     "HTTP Request.app | Admin login.executor": "Run",
     "HTTP Request.app | Create new season.executor": "Run",
+    "HTTP Request.app | Get all seasons.executor": "Run",
+    "HTTP Request.app | Get current season.executor": "Run",
     "HTTP Request.app | Get current user.executor": "Run",
+    "HTTP Request.app | Get seasion users.executor": "Run",
     "HTTP Request.app | Login.executor": "Run",
     "HTTP Request.app | Season.executor": "Run",
     "HTTP Request.app | update payment plan.executor": "Run",
@@ -76,20 +107,21 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "RiderNuGetOptionsPageId",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected="HTTP Request.app | #18">
-    <configuration name="app | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="Login" runType="Run single request">
+  <component name="RunManager" selected="HTTP Request.api | #12">
+    <configuration name="api | Login" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/api.http" executionIdentifier="Login" runType="Run single request">
       <method v="2" />
     </configuration>
-    <configuration name="app | #17" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#17" index="17" runType="Run single request">
+    <configuration name="api | #12" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/api.http" executionIdentifier="#12" index="12" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="app | #18" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#18" index="18" runType="Run single request">
       <method v="2" />
     </configuration>
-    <configuration name="app | update payment plan" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="update payment plan" index="14" runType="Run single request">
+    <configuration name="app | #19" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" nameIsGenerated="true" path="$PROJECT_DIR$/SaintHenriBasketball.API/app.http" executionIdentifier="#19" index="19" runType="Run single request">
       <method v="2" />
     </configuration>
     <configuration name="SaintHenriBasketball.API: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile" temporary="true">
@@ -109,11 +141,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="HTTP Request.app | #18" />
+        <item itemvalue="HTTP Request.api | #12" />
+        <item itemvalue="HTTP Request.api | Login" />
         <item itemvalue=".NET Launch Settings Profile.SaintHenriBasketball.API: http" />
-        <item itemvalue="HTTP Request.app | Login" />
-        <item itemvalue="HTTP Request.app | update payment plan" />
-        <item itemvalue="HTTP Request.app | #17" />
+        <item itemvalue="HTTP Request.app | #19" />
+        <item itemvalue="HTTP Request.app | #18" />
       </list>
     </recent_temporary>
   </component>
@@ -130,6 +162,8 @@
       <workItem from="1736621307786" duration="2422000" />
       <workItem from="1737599501938" duration="6000" />
       <workItem from="1737642051023" duration="23522000" />
+      <workItem from="1738040636621" duration="19682000" />
+      <workItem from="1739024663887" duration="4795000" />
     </task>
     <task id="LOCAL-00001" summary="Add email cnfirmation and passport reset">
       <option name="closed" value="true" />
@@ -195,7 +229,71 @@
       <option name="project" value="LOCAL" />
       <updated>1737992236941</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Update Payment">
+      <option name="closed" value="true" />
+      <created>1738011685025</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1738011685025</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Removed attached file for payment reminder email">
+      <option name="closed" value="true" />
+      <created>1738013016302</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1738013016302</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Add amount paid in the pdf">
+      <option name="closed" value="true" />
+      <created>1738014537515</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1738014537515</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Updated token expiration time">
+      <option name="closed" value="true" />
+      <created>1738040454430</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1738040454430</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Update user GenerateJwtToken validation">
+      <option name="closed" value="true" />
+      <created>1738040500323</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1738040500323</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Update token function">
+      <option name="closed" value="true" />
+      <created>1738040874938</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1738040874938</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Include today session">
+      <option name="closed" value="true" />
+      <created>1739025023203</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1739025023203</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Update the dates">
+      <option name="closed" value="true" />
+      <created>1739026268478</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1739026268478</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -221,25 +319,14 @@
     <MESSAGE value="Added /api/attendance/sessions/{{sessionId}}/users endpoint" />
     <MESSAGE value="Update payments" />
     <MESSAGE value="update payment" />
-    <option name="LAST_COMMIT_MESSAGE" value="update payment" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs</url>
-          <line>92</line>
-          <properties documentPath="$PROJECT_DIR$/SaintHenriBasketball.API/Controllers/PaymentsController.cs" containingFunctionPresentation="Method 'UpdatePaymentStatus'">
-            <startOffsets>
-              <option value="3087" />
-            </startOffsets>
-            <endOffsets>
-              <option value="3170" />
-            </endOffsets>
-          </properties>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="Update Payment" />
+    <MESSAGE value="Removed attached file for payment reminder email" />
+    <MESSAGE value="Add amount paid in the pdf" />
+    <MESSAGE value="Updated token expiration time" />
+    <MESSAGE value="Update user GenerateJwtToken validation" />
+    <MESSAGE value="Update token function" />
+    <MESSAGE value="Include today session" />
+    <MESSAGE value="Update the dates" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update the dates" />
   </component>
 </project>

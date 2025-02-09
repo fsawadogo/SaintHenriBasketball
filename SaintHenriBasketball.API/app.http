@@ -1,8 +1,9 @@
-#@baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
+@baseUrl = https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MTk3MzMwLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.L25Nz46zS9HY6-ypz-qTG1938dk6tYN9Z05z1aeP3gg
 @userId = a2bf5006-f361-43bc-bf4b-9b045fe16e78
-@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
-@baseUrl =  http://localhost:5004
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NDQ4MTg4LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.6mvDs1xreUCKyyzNUq36BvlloGl4FGeRYJYaBndUJiA
+
+#@baseUrl =  http://localhost:5004
 ### Login
 POST {{baseUrl}}/api/users/login
 Accept: application/json
@@ -133,10 +134,24 @@ GET http://localhost:5004/api/attendance/sessions/{{sessionId}}/users
 Authorization: Bearer {{token}}
 
 ###
-PUT {{baseUrl}}/api/Payments/74317a4e-5271-4f49-9424-d2d3b958f938/status
+PUT {{baseUrl}}/api/Payments/28347955-23b8-4423-bf4f-a0eea649359d/status
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
   "status": 1
+}
+
+###
+PUT {{baseUrl}}/api/Sessions/0de0ae92-5e80-4ade-bfa2-0bee03fffa51
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "maxCapacity": 20,
+  "dropInPrice": 10,
+  "status": 2,
+  "startTime": "05:00",
+  "endTime": "12:00",
+  "location": "717 Saint-Ferdinand Street, Montreal, QC H4C 3L7"
 }

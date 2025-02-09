@@ -1,3 +1,324 @@
+GET http://localhost:5004/api/Sessions
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+<> 2025-02-08T094448.500.txt
+
+###
+
+POST http://localhost:5004/api/users/login
+Accept: application/json
+Content-Type: application/json
+Content-Length: 53
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+{
+  "userName": "admin",
+  "password": "Admin@2025"
+}
+
+<> 2025-02-08T094442.500.json
+
+###
+
+POST http://localhost:5004/api/users/login
+Accept: application/json
+Content-Type: application/json
+Content-Length: 53
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+{
+  "userName": "admin",
+  "password": "Admin@2025"
+}
+
+<> 2025-02-08T094431.500.json
+
+###
+
+POST http://localhost:5004/api/users/login
+Accept: application/json
+Content-Type: application/json
+Content-Length: 53
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+{
+  "userName": "admin",
+  "password": "Admin@2025"
+}
+
+<> 2025-02-08T094425.500.json
+
+###
+
+POST http://localhost:5004/api/users/login
+Accept: application/json
+Content-Type: application/json
+Content-Length: 53
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+{
+  "userName": "admin",
+  "password": "Admin@2025"
+}
+
+<> 2025-02-08T094121.500.json
+
+###
+
+GET http://localhost:5004/api/Sessions
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+<> 2025-02-08T093823.500.txt
+
+###
+
+GET https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net/api/Sessions
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+Cookie: ARRAffinity=92ca53ad8db4fbb93d4d3b7d8ab54dcf8ffecb2d731f25b0e91ad575d7534c3f; ARRAffinitySameSite=92ca53ad8db4fbb93d4d3b7d8ab54dcf8ffecb2d731f25b0e91ad575d7534c3f
+
+<> 2025-02-08T093638.200.json
+
+###
+
+PUT https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net/api/Sessions/0de0ae92-5e80-4ade-bfa2-0bee03fffa51
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NDQ4MTg4LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.6mvDs1xreUCKyyzNUq36BvlloGl4FGeRYJYaBndUJiA
+Content-Type: application/json
+Content-Length: 171
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+Cookie: ARRAffinity=92ca53ad8db4fbb93d4d3b7d8ab54dcf8ffecb2d731f25b0e91ad575d7534c3f; ARRAffinitySameSite=92ca53ad8db4fbb93d4d3b7d8ab54dcf8ffecb2d731f25b0e91ad575d7534c3f
+
+{
+  "maxCapacity": 20,
+  "dropInPrice": 10,
+  "status": 2,
+  "startTime": "05:00",
+  "endTime": "12:00",
+  "location": "717 Saint-Ferdinand Street, Montreal, QC H4C 3L7"
+}
+
+###
+
+PUT https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net/api/Sessions/0de0ae92-5e80-4ade-bfa2-0bee03fffa51
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NDQ4MTg4LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.6mvDs1xreUCKyyzNUq36BvlloGl4FGeRYJYaBndUJiA
+Content-Type: application/json
+Content-Length: 171
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+Cookie: ARRAffinity=92ca53ad8db4fbb93d4d3b7d8ab54dcf8ffecb2d731f25b0e91ad575d7534c3f; ARRAffinitySameSite=92ca53ad8db4fbb93d4d3b7d8ab54dcf8ffecb2d731f25b0e91ad575d7534c3f
+
+{
+  "maxCapacity": 20,
+  "dropInPrice": 10,
+  "status": 2,
+  "startTime": "10:00",
+  "endTime": "12:00",
+  "location": "717 Saint-Ferdinand Street, Montreal, QC H4C 3L7"
+}
+
+<> 2025-01-31T094115.400.txt
+
+###
+
+POST https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net/api/Sessions/0de0ae92-5e80-4ade-bfa2-0bee03fffa51
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NDQ4MTg4LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.6mvDs1xreUCKyyzNUq36BvlloGl4FGeRYJYaBndUJiA
+Content-Type: application/json
+Content-Length: 3
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/28347955-23b8-4423-bf4f-a0eea649359d/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MDQwMjIxLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.s2dh2eLPaVKOU91BsEdoHUIDpLxzrGlDCpK315eXtes
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+GET http://localhost:5004/api/seasons/3d18f4a5-aa56-412e-bb5c-bf6b9bafc2fa/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MDQwMjIxLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.s2dh2eLPaVKOU91BsEdoHUIDpLxzrGlDCpK315eXtes
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+<> 2025-01-27T235814.200.json
+
+###
+
+GET http://localhost:5004/api/seasons/current
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MDQwMjIxLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.s2dh2eLPaVKOU91BsEdoHUIDpLxzrGlDCpK315eXtes
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+<> 2025-01-27T235743.200.json
+
+###
+
+GET http://localhost:5004/api/seasons
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MDQwMjIxLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.s2dh2eLPaVKOU91BsEdoHUIDpLxzrGlDCpK315eXtes
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+<> 2025-01-27T235716.200.json
+
+###
+
+POST http://localhost:5004/api/users/login
+Accept: application/json
+Content-Type: application/json
+Content-Length: 53
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+{
+  "userName": "admin",
+  "password": "Admin@2025"
+}
+
+<> 2025-01-27T235601.200.json
+
+###
+
+PUT http://localhost:5004/api/Payments/28347955-23b8-4423-bf4f-a0eea649359d/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/423053aa-f4d4-469e-a982-a1c06f0d4ab3/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NjAxNjc5LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.0lS0GT39M4ZoZf4w-mPjpddm5GUbPrcc5tbv6dEPzmI
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/423053aa-f4d4-469e-a982-a1c06f0d4ab3/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/423053aa-f4d4-469e-a982-a1c06f0d4ab3/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/83bb3efa-5b1b-4421-8bf8-5707e0f7771d/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NjAxNjc5LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.0lS0GT39M4ZoZf4w-mPjpddm5GUbPrcc5tbv6dEPzmI
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+<> 2025-01-27T163844.404.txt
+
+###
+
+PUT http://localhost:5004/api/Payments/423053aa-f4d4-469e-a982-a1c06f0d4ab3/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/423053aa-f4d4-469e-a982-a1c06f0d4ab3/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
+PUT http://localhost:5004/api/Payments/28347955-23b8-4423-bf4f-a0eea649359d/status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NTEyMjQ1LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.Oz6grxgHeZZ2YzrO42o5hxSfjh1YCnR-kMe53afmlpA
+Content-Type: application/json
+Content-Length: 17
+User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "status": 1
+}
+
+###
+
 PUT http://localhost:5004/api/Payments/83bb3efa-5b1b-4421-8bf8-5707e0f7771d/status
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4NjAxNjc5LCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.0lS0GT39M4ZoZf4w-mPjpddm5GUbPrcc5tbv6dEPzmI
 Content-Type: application/json
@@ -356,168 +677,6 @@ Accept-Encoding: br, deflate, gzip, x-gzip
 Accept: */*
 
 <> 2025-01-23T092314.500.txt
-
-###
-
-GET http://localhost:5004/api/attendance/sessions/5c6f097a-867f-4653-95d4-549f1fcdb054/users
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MTk3MzMwLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.L25Nz46zS9HY6-ypz-qTG1938dk6tYN9Z05z1aeP3gg
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-Accept: */*
-
-<> 2025-01-23T092230.200.json
-
-###
-
-POST http://localhost:5004/api/users/login
-Accept: application/json
-Content-Type: application/json
-Content-Length: 53
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "userName": "admin",
-  "password": "Admin@2025"
-}
-
-<> 2025-01-23T092126.200.json
-
-###
-
-GET http://localhost:5004/api/attendance/sessions/5c6f097a-867f-4653-95d4-549f1fcdb054/users
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MTk3MzMwLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.L25Nz46zS9HY6-ypz-qTG1938dk6tYN9Z05z1aeP3gg
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-Accept: */*
-
-<> 2025-01-22T194108.200.json
-
-###
-
-POST http://localhost:5004/api/seasons
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjIyOTlhZDEyLTRkZTItNDc1Yy1hNzc1LTcyMjJiODc0OTU5ZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFkbWluQHNhaW50aGVucmliYXNrZXRiYWxsLmNvbSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzM4MTk3MzMwLCJpc3MiOiJTYWludEhlbnJpQmFza2V0YmFsbCIsImF1ZCI6IlNhaW50SGVucmlCYXNrZXRiYWxsQ2xpZW50In0.L25Nz46zS9HY6-ypz-qTG1938dk6tYN9Z05z1aeP3gg
-Content-Type: application/json
-Content-Length: 142
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-Accept: */*
-
-{
-  "startDate": "2025-07-14T10:00:00.000Z",
-  "endDate": "2025-10-27T12:00:00.000Z",
-  "price": 110,
-  "status": 0,
-  "notes": "Let's hoop"
-}
-
-<> 2025-01-22T193946.400.txt
-
-###
-
-POST http://localhost:5004/api/users/login
-Accept: application/json
-Content-Type: application/json
-Content-Length: 53
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "userName": "admin",
-  "password": "Admin@2025"
-}
-
-<> 2025-01-22T193530.200.json
-
-###
-
-POST http://localhost:5004/api/users/login
-Accept: application/json
-Content-Type: application/json
-Content-Length: 57
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "username": "fsawadogo",
-  "password": "Kouanda75!"
-}
-
-<> 2025-01-19T112524.200.json
-
-###
-
-POST http://localhost:5004/api/users/login
-Accept: application/json
-Content-Type: application/json
-Content-Length: 69
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "email": "faycalsawadogo@gmail.com",
-  "password": "Kouanda75!"
-}
-
-<> 2025-01-19T112455.400.json
-
-###
-
-POST http://localhost:5004/api/users/register
-Accept: application/json
-Content-Type: application/json
-Content-Length: 161
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "username": "asawadogo",
-  "email": "afaicals@gmail.com",
-  "password": "Admin@2025",
-  "firstName": "Abdoul",
-  "lastName": "Sawadogo",
-  "paymentPlan": 0
-}
-
-<> 2025-01-19T112325.201.json
-
-###
-
-POST http://localhost:5004/api/users/register
-Accept: application/json
-Content-Type: application/json
-Content-Length: 162
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "username": "afsawadogo",
-  "email": "afaicals@gmail.com",
-  "password": "Admin@2025",
-  "firstName": "Abdoul",
-  "lastName": "Sawadogo",
-  "paymentPlan": 0
-}
-
-<> 2025-01-19T112315.400.json
-
-###
-
-POST http://localhost:5004/api/auth/register
-Accept: application/json
-Content-Type: application/json
-Content-Length: 162
-User-Agent: IntelliJ HTTP Client/JetBrains Rider 2024.3
-Accept-Encoding: br, deflate, gzip, x-gzip
-
-{
-  "username": "afsawadogo",
-  "email": "afaicals@gmail.com",
-  "password": "Admin@2025",
-  "firstName": "Abdoul",
-  "lastName": "Sawadogo",
-  "paymentPlan": 0
-}
 
 ###
 

@@ -124,10 +124,13 @@ Content-Type: application/json
 }
 
 ### Update
-PUT {{baseUrl}}/api/Payments/83bb3efa-5b1b-4421-8bf8-5707e0f7771d/status
+PUT {{baseUrl}}/api/Payments/423053aa-f4d4-469e-a982-a1c06f0d4ab3/status
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "status": 1
 }
+
+###
+GET https://sainthenri-basketball-drf4g9dkasfdhfa2.canadacentral-01.azurewebsites.net/api/Sessions

@@ -84,13 +84,8 @@ public class PaymentService : IPaymentService
        if (payment == null)
            throw new NotFoundException($"Payment with ID {id} not found");
 
-       var previousStatus = payment.Status;
        payment.Status = status;
        await _paymentRepository.UpdateAsync(payment);
-
-       var user = await _userRepository.GetByIdAsync(payment.UserId);
-       await SendPaymentStatusUpdateEmail(payment, user, previousStatus);
-
        _logger.LogInformation("Payment {PaymentId} status updated to {Status}", id, status);
        
        return _mapper.Map<PaymentDto>(payment);
