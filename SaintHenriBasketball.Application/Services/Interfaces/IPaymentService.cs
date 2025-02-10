@@ -15,4 +15,5 @@ public interface IPaymentService
     Task<IEnumerable<PaymentDto>> GetAllPayments();
     Task<PaymentDto> ProcessPaymentAsync(CreatePaymentDto createPaymentDto);
     Task<PaymentReconciliationDto> ReconcilePaymentsAsync(DateTime startDate, DateTime endDate);
+    Task<PaymentDto> UpdatePaymentAsync(Guid id, UpdatePaymentDto updatePaymentDto);
 }

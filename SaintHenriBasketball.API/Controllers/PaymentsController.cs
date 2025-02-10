@@ -76,6 +76,24 @@ public class PaymentsController : ControllerBase
        return Ok(payments);
    }
 
+   [HttpPut("{id}")]
+   [Authorize(Roles = "Admin")]
+   [ProducesResponseType(StatusCodes.Status204NoContent)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentDto updatePaymentDto)
+   {
+       try
+       {
+           await _paymentService.UpdatePaymentAsync(id, updatePaymentDto);
+           return NoContent();
+       }
+       catch (NotFoundException ex)
+       {
+           _logger.LogError(ex, ex.Message);
+           return NotFound(ex.Message);
+       }
+   }
+   
    [HttpPut("{id}/status")]
    [Authorize(Roles = "Admin")]
    [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -176,6 +176,19 @@ public class PaymentService : IPaymentService
        };
    }
 
+   public async Task<PaymentDto> UpdatePaymentAsync(Guid id, UpdatePaymentDto updatePaymentDto)
+   {
+        var payment = await _paymentRepository.GetByIdAsync(id);
+       if (payment == null)
+           throw new NotFoundException($"Payment with ID {id} not found");
+
+        payment.Amount = updatePaymentDto.Amount;
+        payment.Plan = updatePaymentDto.Plan;
+        await _paymentRepository.UpdateAsync(payment);
+                
+        return _mapper.Map<PaymentDto>(payment);
+   }
+
    private async Task SendPaymentStatusUpdateEmail(Payment payment, ApplicationUser user, PaymentStatus previousStatus)
    {
        if (payment.Status == PaymentStatus.Completed && previousStatus != PaymentStatus.Completed)
