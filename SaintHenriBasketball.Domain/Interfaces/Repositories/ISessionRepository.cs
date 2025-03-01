@@ -14,6 +14,7 @@ public interface ISessionRepository
     Task<int> GetRegistrationCountAsync(Guid sessionId);
     Task<bool> ExistsAsync(Guid id);
     Task<Session> GetClosestSessionAsync();
+    Task<Session> GetNextSessionAsync();
 }
 
 

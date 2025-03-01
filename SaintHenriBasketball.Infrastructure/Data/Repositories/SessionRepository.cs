@@ -95,4 +95,17 @@ public class SessionRepository : ISessionRepository
             .OrderBy(s => s.SessionDate)
             .FirstOrDefaultAsync())!;
     }
+
+    public async Task<Session> GetNextSessionAsync()
+    {
+        return await _context.Sessions
+            .Include(s => s.Registrations)
+            .ThenInclude(r => r.User)
+            .Where(s => 
+                s.SessionDate > DateTime.Now &&
+                s.Status == SessionStatus.Open &&
+                s.RegisteredPlayersCount < s.MaxCapacity)
+            .OrderBy(s => s.SessionDate)
+            .FirstOrDefaultAsync();
+    }
 }

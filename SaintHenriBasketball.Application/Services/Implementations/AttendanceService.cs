@@ -7,7 +7,7 @@ using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
-namespace SaintHenriBasketball.Application.Validators;
+namespace SaintHenriBasketball.Application.Services.Implementations;
 
 public class AttendanceService : IAttendanceService
 {
