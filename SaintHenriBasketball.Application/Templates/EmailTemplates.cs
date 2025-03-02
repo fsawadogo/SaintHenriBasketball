@@ -17,7 +17,7 @@ public static class EmailTemplates
         public const string LogoContainer = "text-align: center; margin-bottom: 30px;";
     }
 
-    private static readonly string Logo = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "logo.png");
+    private static readonly string Logo = Path.Combine("https://sainthenribasketball.com/", "logo.png");
 
     private static readonly CultureInfo FrenchCulture = new("fr-CA");
 
