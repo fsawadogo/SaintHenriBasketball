@@ -246,7 +246,7 @@ public class EmailService : IEmailService
         try
         {
             var amount = GetPaymentAmount(paymentPlan);
-            var content = EmailTemplates.Payments.GetPaymentReminderEmail(userName, amount, customMessage);
+            var content = EmailTemplates.Payments.GetPaymentReminderEmail(userName, amount);
 
             await SendEmailAsync(
                 userEmail,
@@ -458,16 +458,20 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendAttendanceReminderEmailAsync(string? userEmail, string userName, string? customMessage = null)
+    public async Task SendAttendanceReminderEmailAsync(Guid userId, string? customMessage = null)
     {
+        var nextSession = await _sessionRepository.GetNextSessionAsync()
+                              ?? throw new InvalidOperationException("Aucune session à venir n'a été trouvée");
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new ArgumentException($"User not found for ID: {userId}");
+
         try
         {
-            var nextSession = await _sessionRepository.GetNextSessionAsync()
-                              ?? throw new InvalidOperationException("Aucune session à venir n'a été trouvée");
-
             var content = EmailTemplates.Attendance.GetAttendanceReminderEmail(
-                userName,
+                user.Id,
+                nextSession.Id,
                 nextSession.SessionDate,
+                $"{user.FirstName} {user.LastName}",
                 nextSession.StartTime,
                 nextSession.EndTime,
                 nextSession.Location,
@@ -475,14 +479,14 @@ public class EmailService : IEmailService
             );
 
             await SendEmailAsync(
-                userEmail,
+                user.Email,
                 "Rappel de présence - Saint Henri Basketball",
                 content
             );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send attendance reminder email to {Email}", userEmail);
+            _logger.LogError(ex, "Failed to send attendance reminder email to {Email}", user.Email);
             throw;
         }
     }
@@ -666,8 +670,10 @@ public class EmailService : IEmailService
 
                 
                     EmailType.AttendanceReminder => EmailTemplates.Attendance.GetAttendanceReminderEmail(
-                        user.FirstName,
+                        user.Id,
+                        nextSession.Id,
                         nextSession.SessionDate,
+                        user.Username,
                         nextSession.StartTime,
                         nextSession.EndTime,
                         nextSession.Location,

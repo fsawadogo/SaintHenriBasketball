@@ -15,17 +15,20 @@ public class AttendanceController : BaseApiController
     private readonly IAttendanceService _attendanceService;
     private readonly IEmailService _emailService;
     private readonly ISessionService _sessionService;
+    private readonly IUserService _userService;
     private readonly ILogger<AttendanceController> _logger;
 
     public AttendanceController(
         IAttendanceService attendanceService,
         IEmailService emailService,
         ISessionService sessionService,
+        IUserService userService,
         ILogger<AttendanceController> logger)
     {
         _attendanceService = attendanceService;
         _emailService = emailService;
         _sessionService = sessionService;
+        _userService = userService;
         _logger = logger;
     }
 
@@ -176,6 +179,97 @@ public class AttendanceController : BaseApiController
         {
             _logger.LogError(ex, "Error retrieving attendees for session {SessionId}", sessionId);
             return StatusCode(500, "An unexpected error occurred while retrieving session attendees");
+        }
+    }
+
+    /// <summary>
+    /// Confirm attendance from email link
+    /// </summary>
+    [HttpGet("confirm")]
+    [AllowAnonymous] // Allow non-authenticated users to confirm via email link
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ConfirmAttendanceFromEmail(
+        [FromQuery] Guid sessionId,
+        [FromQuery] Guid userId,
+        [FromQuery] bool attending)
+    {
+        try
+        {
+            // Validate session still exists and is upcoming
+            var session = await _sessionService.GetSessionAsync(sessionId);
+            if (session == null)
+            {
+                return NotFound("Session not found");
+            }
+
+            if (session.SessionDate < DateTime.UtcNow)
+            {
+                return BadRequest("Cannot confirm attendance for a past session");
+            }
+
+            // Check if user exists
+            var user = await _userService.GetUserAsync(userId);
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            // Check if attendance is already marked
+            var existingAttendance = await _attendanceService.UpdateAttendanceAsync(sessionId,userId,attending);
+
+            AttendanceResponseDto response;
+            string message;
+
+            if (existingAttendance != null)
+            {
+                // Update existing attendance
+                response = await _attendanceService.UpdateAttendanceAsync(
+                    sessionId,
+                    userId,
+                    attending,
+                    null, // No notes when confirming from email
+                    "Updated via email link"
+                );
+
+                message = attending
+                    ? "Your attendance has been confirmed. We look forward to seeing you at the session!"
+                    : "You have been marked as not attending this session. We hope to see you at a future session!";
+            }
+            else
+            {
+                // Create new attendance record
+                response = await _attendanceService.MarkAttendanceAsync(
+                    sessionId,
+                    userId,
+                    attending,
+                    null // No notes when confirming from email
+                );
+
+                message = attending
+                    ? "Thank you for confirming your attendance. We look forward to seeing you at the session!"
+                    : "You have been marked as not attending this session. We hope to see you at a future session!";
+            }
+
+            // Instead of returning a raw message, let's redirect to a confirmation page on the frontend
+            var redirectUrl = $"https://sainthenribasketball.com/attendance/confirmation?status=success&attending={attending}";
+            return Redirect(redirectUrl);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Attendance confirmation failed for session {SessionId}", sessionId);
+            return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Session or user not found for attendance confirmation {SessionId}, {UserId}", sessionId, userId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error confirming attendance for session {SessionId}", sessionId);
+            return StatusCode(500, "An unexpected error occurred while confirming attendance");
         }
     }
 }

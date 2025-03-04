@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using Hangfire;
+using SaintHenriBasketball.Infrastructure.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,10 +70,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-builder.Services.AddHangfire(config => config
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Add Hangfire services
+builder.Services.AddHangfireServices(builder.Configuration);
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -128,6 +127,11 @@ app.UseCors("AllowAll");
 // Add authentication & authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Use Hangfire Dashboard
+app.UseHangfireDashboard();
+// Configure Hangfire recurring jobs
+app.UseHangfireJobs(builder.Environment);
 
 app.MapControllers();
 

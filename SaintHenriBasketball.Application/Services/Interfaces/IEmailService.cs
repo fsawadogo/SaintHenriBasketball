@@ -26,7 +26,7 @@ public interface IEmailService
     // Attendance Related Emails
     Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance);
     Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance);
-    Task SendAttendanceReminderEmailAsync(string? userEmail, string userName, string? customMessage = null);
+    Task SendAttendanceReminderEmailAsync(Guid userId, string? customMessage = null);
     
     // Season Related Emails
     Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration);

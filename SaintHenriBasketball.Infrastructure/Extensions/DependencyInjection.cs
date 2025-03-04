@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SaintHenriBasketball.Application.Mapping;
+using SaintHenriBasketball.Application.Services.Interfaces;
+using SaintHenriBasketball.Application.Services.Implementations;
 
 namespace SaintHenriBasketball.Infrastructure.Extensions;
 

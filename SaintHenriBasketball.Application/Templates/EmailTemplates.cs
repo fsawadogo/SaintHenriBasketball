@@ -1,3 +1,5 @@
+using SaintHenriBasketball.Application.DTOs.Session;
+using SaintHenriBasketball.Domain.Enums;
 using System.Globalization;
 
 namespace SaintHenriBasketball.Application.Templates;
@@ -6,15 +8,35 @@ public static class EmailTemplates
 {
     private static class Styles
     {
+        // Primary brand color (orange)
+        public const string PrimaryColor = "#FF6B1A";
+
+        // Secondary colors
+        public const string SecondaryColor = "#4A4A4A";
+        public const string AccentColor = "#3b82f6"; // Blue for buttons
+        public const string SuccessColor = "#22c55e"; // Green for positive actions
+        public const string DangerColor = "#ef4444"; // Red for negative actions
+
+        // Basic elements
         public const string Container = "max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;";
-        public const string Header = "color: #333333; margin-bottom: 24px; text-align: center; font-size: 24px; font-weight: bold;";
-        public const string Content = "color: #333333; line-height: 1.6;";
-        public const string InfoBox = "background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;";
-        public const string Button = "display: inline-block; padding: 12px 24px; background-color: #FF6B1A; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; text-align: center;";
+        public const string Header = $"color: {SecondaryColor}; margin-bottom: 20px; font-size: 20px; font-weight: bold;";
+        public const string Content = "color: #333333; line-height: 1.6; font-size: 16px;";
+
+        // UI elements
+        public const string InfoBox = "background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;";
+        public const string Button = $"display: inline-block; padding: 12px 24px; background-color: {AccentColor}; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; text-align: center; font-weight: 500;";
+        public const string SuccessButton = $"display: inline-block; padding: 12px 24px; background-color: {SuccessColor}; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; text-align: center; font-weight: 500;";
+        public const string DangerButton = $"display: inline-block; padding: 12px 24px; background-color: {DangerColor}; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; text-align: center; font-weight: 500;";
+
+        // Table styles
         public const string Table = "width: 100%; border-collapse: collapse; margin: 15px 0;";
-        public const string TableCell = "padding: 12px; border: 1px solid #e0e0e0;";
-        public const string Logo = "width: 120px; height: 120px; margin: 0 auto 20px auto;";
+        public const string TableHead = "background-color: #f3f4f6; font-weight: bold;";
+        public const string TableCell = "padding: 12px; border: 1px solid #e5e7eb;";
+
+        // Logo and image styles
+        public const string Logo = "width: 120px; height: auto; margin: 0 auto 20px auto;";
         public const string LogoContainer = "text-align: center; margin-bottom: 30px;";
+        public const string PrimaryButton = "display: inline-block; padding: 15px 30px; background-color: #FF6B1A; color: white; text-decoration: none; border-radius: 6px; margin: 15px 0; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); transition: background-color 0.3s;";
     }
 
     private static readonly string Logo = Path.Combine("https://sainthenribasketball.com/", "logo.png");
@@ -134,12 +156,12 @@ public static class EmailTemplates
             BuildEmailLayout(
                 "Rappel de paiement",
                 $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
-                <div style='{Styles.InfoBox}'>
-                    <h2 style='{Styles.Header}'>Rappel de paiement</h2>
+        <div style='{Styles.InfoBox}'>
+            <h2 style='{Styles.Header}'>Rappel de paiement</h2>
                     <p style='{Styles.Content}'>Un paiement de {amount:C} est en attente.</p>
-                    {(!string.IsNullOrEmpty(customMessage) ? $"<p style='{Styles.Content}'>{customMessage}</p>" : "")}
-                </div>
-                <div style='{Styles.InfoBox}'>
+            {(!string.IsNullOrEmpty(customMessage) ? $"<p style='{Styles.Content}'>{customMessage}</p>" : "")}
+        </div>
+        <div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Instructions de paiement</h2>
                     <p style='{Styles.Content}'>
                         Veuillez effectuer le paiement par virement Interac à:<br>
@@ -152,10 +174,10 @@ public static class EmailTemplates
     public static class Attendance
     {
         public static string GetAttendanceConfirmationEmail(
-            string userName, 
-            DateTime sessionDate, 
-            string startTime, 
-            string endTime, 
+            string userName,
+            DateTime sessionDate,
+            string startTime,
+            string endTime,
             string? location,
             bool isAttending,
             string? notes = null) =>
@@ -191,69 +213,77 @@ public static class EmailTemplates
                 </div>"
             );
 
- public static string GetAttendanceReminderEmail(
-    string userName, 
-    DateTime sessionDate, 
-    string startTime,
-    string endTime,
-    string? location,
-    string? customMessage = null) =>
-    BuildEmailLayout(
-        "Rappel de présence",
-        $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+        public static string GetAttendanceReminderEmail(
+            Guid sessionId,
+            Guid userId,
+            DateTime sessionDate,
+            string userName,
+            string startTime,
+            string endTime,
+            string? location,
+            string? customMessage = null)
+        {
+            var sessionDateStr = sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture);
+
+            return BuildEmailLayout(
+                    "Rappel de présence",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
         
         <div style='{Styles.InfoBox}'>
-            <h2 style='{Styles.Header}'>Détails de la session</h2>
+            <h2 style='{Styles.Header}'>Détails de la session - {sessionDateStr}</h2>
             <table style='{Styles.Table}'>
                 <tr>
-                    <td style='{Styles.TableCell}'>Date:</td>
-                    <td style='{Styles.TableCell}'>{sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture)}</td>
+                    <td style='{Styles.TableCell}'><strong>Date:</strong></td>
+                    <td style='{Styles.TableCell}'>{sessionDateStr}</td>
                 </tr>
                 <tr>
-                    <td style='{Styles.TableCell}'>Heure:</td>
-                    <td style='{Styles.TableCell}'>{startTime:HH\\:mm} - {endTime:HH\\:mm}</td>
+                    <td style='{Styles.TableCell}'><strong>Heure:</strong></td>
+                    <td style='{Styles.TableCell}'>{startTime} - {endTime}</td>
                 </tr>
                 <tr>
-                    <td style='{Styles.TableCell}'>Lieu:</td>
+                    <td style='{Styles.TableCell}'><strong>Lieu:</strong></td>
                     <td style='{Styles.TableCell}'>{location}</td>
                 </tr>
             </table>
         </div>
 
-        {(!string.IsNullOrEmpty(customMessage) ? 
-            $@"<div style='{Styles.InfoBox}'>
+        {(!string.IsNullOrEmpty(customMessage) ?
+                        $@"<div style='{Styles.InfoBox}'>
                 <p style='{Styles.Content}'>{customMessage}</p>
-            </div>" 
-            : "")}
+            </div>"
+                        : "")}
 
         <div style='{Styles.InfoBox}'>
-            <h2 style='{Styles.Header}'>Rappels importants</h2>
+            <h2 style='{Styles.Header}'>À ne pas oublier</h2>
             <ul style='{Styles.Content}'>
-                <li>Veuillez arriver 10-15 minutes avant le début de la session</li>
-                <li>Apportez:</li>
-                <ul>
-                    <li>Votre bouteille d'eau</li>
-                    <li>Des chaussures de sport d'intérieur propres</li>
-                    <li>Une serviette (recommandé)</li>
-                </ul>
-                <li>Si vous ne pouvez pas assister à la session, veuillez nous en informer dès que possible</li>
+                <li>Bouteille d'eau</li>
+                <li>Chaussures de sport propres</li>
+                <li>Serviette</li>
             </ul>
+            <p style='{Styles.Content}'>Arrivez 10-15 minutes à l'avance pour échauffement</p>
         </div>
 
-        <div style='text-align: center; margin-top: 20px;'>
-            <a href='https://sainthenribasketball.com/attendance-confirmation' style='{Styles.Button}'>
-                Confirmer ma présence
-            </a>
-        </div>
-
-        <p style='{Styles.Content}'>
-            Pour toute question ou changement de dernière minute, n'hésitez pas à nous contacter.<br>
-            Téléphone: (438) 935-8129<br>
-            Courriel: info@sainthenribasketball.com
-        </p>"
-    );
+        <!-- Improved button design to match the screenshot -->
+        <table style='width: 100%; border-collapse: collapse; margin-top: 30px;'>
+            <tr>
+                <td style='width: 50%; padding: 0;'>
+                    <a href='https://sainthenribasketball.com/attendance/confirm?sessionId={sessionId}&userId={userId}&attending=true' 
+                       style='display: block; background-color: #4CAF50; color: white; padding: 15px 0; text-decoration: none; text-align: center; font-weight: normal; font-size: 16px; border-top-left-radius: 5px; border-bottom-left-radius: 5px;'>
+                        J'y serai ✓
+                    </a>
+                </td>
+                <td style='width: 50%; padding: 0;'>
+                    <a href='https://sainthenribasketball.com/attendance/confirm?sessionId={sessionId}&userId={userId}&attending=false' 
+                       style='display: block; background-color: #E57373; color: white; padding: 15px 0; text-decoration: none; text-align: center; font-weight: normal; font-size: 16px; border-top-right-radius: 5px; border-bottom-right-radius: 5px;'>
+                        Je ne pourrai pas y être ✗
+                    </a>
+                </td>
+            </tr>
+        </table>"
+                );
+        }
     }
-    
+
     public static class Season
     {
         public static string GetSeasonRegistrationConfirmationEmail(string userName, DateTime startDate, DateTime endDate, decimal price) =>
@@ -346,5 +376,85 @@ public static class EmailTemplates
                     : "")}
                 </div>"
             );
+    }
+
+    public static class Sessions
+    {
+        public static string GetSessionCancellationEmail(
+            string userName,
+            DateTime sessionDate,
+            string startTime,
+            string? location,
+            string? cancellationReason = null,
+            SessionDto? alternativeSession = null)
+        {
+            var sessionDateStr = sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture);
+
+            return BuildEmailLayout(
+                "Session annulée",
+                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+            
+            <div style='{Styles.InfoBox}'>
+                <h2 style='{Styles.Header}'>Annulation de session</h2>
+                <p style='{Styles.Content}'>Nous regrettons de vous informer que la séance suivante a été <strong>annulée</strong> :</p>
+                <table style='{Styles.Table}'>
+                    <tr>
+                        <td style='{Styles.TableCell}'>Date:</td>
+                        <td style='{Styles.TableCell}'>{sessionDateStr}</td>
+                    </tr>
+                    <tr>
+                        <td style='{Styles.TableCell}'>Heure:</td>
+                        <td style='{Styles.TableCell}'>{startTime}</td>
+                    </tr>
+                    <tr>
+                        <td style='{Styles.TableCell}'>Lieu:</td>
+                        <td style='{Styles.TableCell}'>{location}</td>
+                    </tr>
+                </table>
+                
+                {(!string.IsNullOrEmpty(cancellationReason) ?
+                        $@"<div style='margin-top: 15px; padding: 15px; background-color: #fef2f2; border-radius: 5px;'>
+                        <p style='margin: 0; color: #991b1b;'><strong>Raison de l'annulation:</strong> {cancellationReason}</p>
+                    </div>"
+                        : "")}
+            </div>
+            
+            {(alternativeSession != null ?
+                    $@"<div style='{Styles.InfoBox}'>
+                    <h2 style='{Styles.Header}'>Session alternative disponible</h2>
+                    <p style='{Styles.Content}'>Nous vous invitons à vous inscrire à une session alternative:</p>
+                    <table style='{Styles.Table}'>
+                        <tr>
+                            <td style='{Styles.TableCell}'>Date:</td>
+                            <td style='{Styles.TableCell}'>{alternativeSession.SessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture)}</td>
+                        </tr>
+                        <tr>
+                            <td style='{Styles.TableCell}'>Heure:</td>
+                            <td style='{Styles.TableCell}'>{alternativeSession.StartTime} - {alternativeSession.EndTime}</td>
+                        </tr>
+                        <tr>
+                            <td style='{Styles.TableCell}'>Lieu:</td>
+                            <td style='{Styles.TableCell}'>{alternativeSession.Location}</td>
+                        </tr>
+                    </table>
+                    <div style='text-align: center; margin-top: 20px;'>
+                        <a href='https://sainthenribasketball.com/session/{alternativeSession.Id}/register' 
+                           style='background-color: #3b82f6; color: white; padding: 12px 25px; text-decoration: none; border-radius: 3px; display: inline-block;'>
+                            S'inscrire à cette session
+                        </a>
+                    </div>
+                </div>"
+                    : "")}
+                
+            <div style='{Styles.InfoBox}'>
+                <p style='{Styles.Content}'>Nous nous excusons pour tout inconvénient que cette annulation pourrait causer.</p>
+                <p style='{Styles.Content}'>Si vous avez des questions, n'hésitez pas à nous contacter:</p>
+                <ul style='{Styles.Content}'>
+                    <li>Téléphone: (438) 935-8129</li>
+                    <li>Courriel: info@sainthenribasketball.com</li>
+                </ul>
+            </div>"
+            );
+        }
     }
 }
