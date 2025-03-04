@@ -50,7 +50,7 @@ public class PaymentService : IPaymentService
        _logger.LogInformation("Payment created for user {UserId}", createPaymentDto.UserId);
 
        await _emailService.SendPaymentCreatedConfirmationAsync(
-           user.Email,
+           user.Id,
            payment.Amount,
            payment.Reference);
 

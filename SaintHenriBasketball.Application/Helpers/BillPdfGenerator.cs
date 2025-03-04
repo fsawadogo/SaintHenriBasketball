@@ -38,7 +38,7 @@ public class BillPdfGenerator
         }
     }
     
-    public byte[] GenerateBill(BillDetails details, string language = "en")
+    public byte[] GenerateBill(BillDetails details, string language = "fr")
     {
         using var document = new PdfDocument();
         var page = document.AddPage();

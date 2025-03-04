@@ -109,7 +109,7 @@ public class PaymentsController : ControllerBase
            {
                case PaymentStatus.Completed:
                    await _emailService.SendPaymentConfirmationAsync(
-                       payment.Id,
+                       payment.UserId,
                        payment.Amount,
                        payment.Reference);
                    break;

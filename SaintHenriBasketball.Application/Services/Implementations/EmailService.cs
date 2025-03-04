@@ -139,28 +139,28 @@ public class EmailService : IEmailService
     #endregion
 
     #region Payment Emails
-    public async Task SendPaymentCreatedConfirmationAsync(string? email, decimal amount, string? reference)
+    public async Task SendPaymentCreatedConfirmationAsync(Guid userId, decimal amount, string? reference, EmailLanguage emailLanguage)
     {
+        var user = await _userRepository.GetByIdAsync(userId)
+                ?? throw new ArgumentException($"User not found for id: {userId}");
+
         try
         {
-            var user = await _userRepository.GetByEmailAsync(email)
-                ?? throw new ArgumentException($"User not found for email: {email}");
-
             var content = EmailTemplates.Payments.GetPaymentCreatedEmail(
-                $"{user.FirstName} {user.LastName}",
+                $"{user.FirstName}",
                 amount,
                 reference ?? GenerateReference("PAY")
             );
 
             await SendEmailAsync(
-                email,
+                user.Email,
                 "Demande de paiement - Saint Henri Basketball",
                 content
             );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment created confirmation email to {Email}", email);
+            _logger.LogError(ex, "Failed to send payment created confirmation email to {Email}", user.Email);
             throw;
         }
     }
@@ -172,7 +172,7 @@ public class EmailService : IEmailService
 
         try
         {
-            var userName = $"{user.FirstName}";
+            var userName = user.FirstName;
             var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
                 userName,
                 amount,
@@ -300,7 +300,7 @@ public class EmailService : IEmailService
                 ?? throw new ArgumentException($"User not found for id: {userId}");
         try
         {
-            var userName = $"{user.FirstName}";
+            var userName = user.FirstName;
             var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
                 userName,
                 amount,

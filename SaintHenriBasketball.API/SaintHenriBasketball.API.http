@@ -35,6 +35,15 @@ Content-Type: application/json
   "language": 1
 }
 
+###
+PUT {{baseUrl}}/api/Payments/8408404e-b7c5-4e75-b214-f80df08cccc5/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": 1
+}
+
 ### mark attendance
 @sessionId = d0b69cde-e8e3-4277-82f1-0b789de7ccb3
 POST {{SaintHenriBasketball.API_HostAddress}}/api/Attendance/sessions/{{sessionId}}
