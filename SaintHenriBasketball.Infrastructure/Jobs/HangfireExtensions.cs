@@ -27,20 +27,21 @@ public static class HangfireExtensions
     {
         // Configure recurring jobs
         HangfireJobsConfiguration.ConfigureRecurringJobs();
+        app.UseHangfireDashboard("/hangfire");
 
-        if (env.IsDevelopment())
-        {
-            // In development, allow all access
-            app.UseHangfireDashboard("/hangfire");
-        }
-        else
-        {
-            // In production, restrict access to admins
-            app.UseHangfireDashboard("/hangfire", new DashboardOptions
-            {
-                Authorization = new[] { new HangfireAuthorizationFilter() }
-            });
-        }
+        //if (env.IsDevelopment())
+        //{
+        //    // In development, allow all access
+        //    app.UseHangfireDashboard("/hangfire");
+        //}
+        //else
+        //{
+        //    // In production, restrict access to admins
+        //    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+        //    {
+        //        Authorization = new[] { new HangfireAuthorizationFilter() }
+        //    });
+        //}
 
         return app;
     }
