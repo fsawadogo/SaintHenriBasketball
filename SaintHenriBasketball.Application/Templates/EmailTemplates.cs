@@ -152,38 +152,65 @@ public static class EmailTemplates
                 <p style='{Styles.Content}'>Merci pour votre paiement. Votre reçu est joint à ce courriel.</p>"
             );
 
-        public static string GetPaymentReminderEmail(string userName, decimal amount, string? customMessage = null) =>
-            BuildEmailLayout(
+        // In EmailTemplates.Payments
+        public static string GetPaymentReminderEmail(string userName, decimal amount, PaymentPlan paymentPlan, string? customMessage = null, string? reference = null)
+        {
+            // Set the appropriate Stripe payment link based on the user's plan
+            string stripePaymentLink = paymentPlan == PaymentPlan.Season
+                ? "https://buy.stripe.com/28o6pW5ANh1q4VOdQQ"  // Season plan link
+                : "https://buy.stripe.com/14k15C6EReTi5ZS7st"; // Drop-in link
+
+            string planName = paymentPlan == PaymentPlan.Season ? "Saison" : "Par Séance";
+
+            return BuildEmailLayout(
                 "Rappel de paiement",
                 $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+        
         <div style='{Styles.InfoBox}'>
             <h2 style='{Styles.Header}'>Rappel de paiement</h2>
-                    <p style='{Styles.Content}'>Un paiement de {amount:C} est en attente.</p>
+            <p style='{Styles.Content}'>Nous vous rappelons qu'un paiement de <strong>{amount:C}</strong> est en attente pour votre forfait <strong>{planName}</strong>.</p>
+            {(!string.IsNullOrEmpty(reference) ? $"<p style='{Styles.Content}'>Référence: <strong>{reference}</strong></p>" : "")}
             {(!string.IsNullOrEmpty(customMessage) ? $"<p style='{Styles.Content}'>{customMessage}</p>" : "")}
         </div>
+        
         <div style='{Styles.InfoBox}'>
-                    <h2 style='{Styles.Header}'>Instructions de paiement</h2>
-                    <p style='{Styles.Content}'>
-                        Veuillez effectuer le paiement par virement Interac à:<br>
-                        <strong>pay@sainthenribasketball.com</strong>
-                    </p>
-                </div>"
-            );
-    }
+            <h2 style='{Styles.Header}'>Options de paiement</h2>
+            
+            <p style='{Styles.Content}'><strong>Option 1: Paiement par carte (recommandé)</strong></p>
+            <div style='text-align: center; margin: 20px 0;'>
+                <a href='{stripePaymentLink}' 
+                   style='background-color: #635BFF; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>
+                    Payer maintenant avec Stripe
+                </a>
+            </div>
+            
+            <p style='{Styles.Content}'><strong>Option 2: Virement Interac</strong></p>
+            <ol style='{Styles.Content}'>
+                <li>Envoyez un virement Interac à: <strong>pay@sainthenribasketball.com</strong></li>
+                {(!string.IsNullOrEmpty(reference) ? $"<li>Incluez votre numéro de référence: <strong>{reference}</strong></li>" : "")}
+                <li>Utilisez votre nom complet dans le message</li>
+            </ol>
+        </div>
 
-    public static class Attendance
-    {
-        public static string GetAttendanceConfirmationEmail(
-            string userName,
-            DateTime sessionDate,
-            string startTime,
-            string endTime,
-            string? location,
-            bool isAttending,
-            string? notes = null) =>
-            BuildEmailLayout(
-                "Confirmation de présence",
-                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+        <p style='{Styles.Content}'>Votre paiement nous permettra de continuer à fournir des sessions de qualité. Merci pour votre ponctualité!</p>
+        
+        <p style='{Styles.Content}'>Si vous avez des questions concernant ce paiement, n'hésitez pas à nous contacter à <a href='mailto:info@sainthenribasketball.com'>info@sainthenribasketball.com</a>.</p>"
+            );
+        }
+
+        public static class Attendance
+        {
+            public static string GetAttendanceConfirmationEmail(
+                string userName,
+                DateTime sessionDate,
+                string startTime,
+                string endTime,
+                string? location,
+                bool isAttending,
+                string? notes = null) =>
+                BuildEmailLayout(
+                    "Confirmation de présence",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
                 <div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Détails de la session</h2>
                     <table style='{Styles.Table}'>
@@ -209,25 +236,25 @@ public static class EmailTemplates
                             <h3 style='{Styles.Header}'>Notes:</h3>
                             <p style='{Styles.Content}'>{notes}</p>
                         </div>"
-                    : "")}
+                        : "")}
                 </div>"
-            );
+                );
 
-        public static string GetAttendanceReminderEmail(
-            Guid sessionId,
-            Guid userId,
-            DateTime sessionDate,
-            string userName,
-            string startTime,
-            string endTime,
-            string? location,
-            string? customMessage = null)
-        {
-            var sessionDateStr = sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture);
+            public static string GetAttendanceReminderEmail(
+                Guid sessionId,
+                Guid userId,
+                DateTime sessionDate,
+                string userName,
+                string startTime,
+                string endTime,
+                string? location,
+                string? customMessage = null)
+            {
+                var sessionDateStr = sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture);
 
-            return BuildEmailLayout(
-                    "Rappel de présence",
-                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+                return BuildEmailLayout(
+                        "Rappel de présence",
+                        $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
         
         <div style='{Styles.InfoBox}'>
             <h2 style='{Styles.Header}'>Détails de la session - {sessionDateStr}</h2>
@@ -248,10 +275,10 @@ public static class EmailTemplates
         </div>
 
         {(!string.IsNullOrEmpty(customMessage) ?
-                        $@"<div style='{Styles.InfoBox}'>
+                            $@"<div style='{Styles.InfoBox}'>
                 <p style='{Styles.Content}'>{customMessage}</p>
             </div>"
-                        : "")}
+                            : "")}
 
         <div style='{Styles.InfoBox}'>
             <h2 style='{Styles.Header}'>À ne pas oublier</h2>
@@ -280,16 +307,16 @@ public static class EmailTemplates
                 </td>
             </tr>
         </table>"
-                );
+                    );
+            }
         }
-    }
 
-    public static class Season
-    {
-        public static string GetSeasonRegistrationConfirmationEmail(string userName, DateTime startDate, DateTime endDate, decimal price) =>
-            BuildEmailLayout(
-                "Inscription à la saison confirmée",
-                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+        public static class Season
+        {
+            public static string GetSeasonRegistrationConfirmationEmail(string userName, DateTime startDate, DateTime endDate, decimal price) =>
+                BuildEmailLayout(
+                    "Inscription à la saison confirmée",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
                 <div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Informations sur la saison</h2>
                     <table style='{Styles.Table}'>
@@ -315,12 +342,12 @@ public static class EmailTemplates
                         <li>Message: Inscription saison - {userName}</li>
                     </ul>
                 </div>"
-            );
+                );
 
-        public static string GetSeasonCancellationEmail(string userName, DateTime startDate, DateTime endDate) =>
-            BuildEmailLayout(
-                "Annulation de l'inscription à la saison",
-                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+            public static string GetSeasonCancellationEmail(string userName, DateTime startDate, DateTime endDate) =>
+                BuildEmailLayout(
+                    "Annulation de l'inscription à la saison",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
                 <div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Détails de l'annulation</h2>
                     <table style='{Styles.Table}'>
@@ -331,15 +358,15 @@ public static class EmailTemplates
                     </table>
                     <p style='{Styles.Content}'>Votre inscription à la saison a été annulée. Si vous pensez qu'il s'agit d'une erreur, veuillez nous contacter.</p>
                 </div>"
-            );
-    }
+                );
+        }
 
-    public static class General
-    {
-        public static string GetAnnouncementEmail(string userName, string message, string? customMessage = null) =>
-            BuildEmailLayout(
-                "Annonce importante",
-                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+        public static class General
+        {
+            public static string GetAnnouncementEmail(string userName, string message, string? customMessage = null) =>
+                BuildEmailLayout(
+                    "Annonce importante",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
                 <div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Annonce</h2>
                     <p style='{Styles.Content}'>{message}</p>
@@ -347,14 +374,14 @@ public static class EmailTemplates
                         <div style='margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;'>
                             <p style='{Styles.Content}'>{customMessage}</p>
                         </div>"
-                    : "")}
+                        : "")}
                 </div>"
-            );
+                );
 
-        public static string GetScheduleChangeEmail(string userName, string details, DateTime? newDate = null, TimeSpan? newTime = null) =>
-            BuildEmailLayout(
-                "Changement d'horaire",
-                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+            public static string GetScheduleChangeEmail(string userName, string details, DateTime? newDate = null, TimeSpan? newTime = null) =>
+                BuildEmailLayout(
+                    "Changement d'horaire",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
                 <div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Changement à l'horaire</h2>
                     <p style='{Styles.Content}'>{details}</p>
@@ -365,34 +392,34 @@ public static class EmailTemplates
                                     <td style='{Styles.TableCell}'>Nouvelle date:</td>
                                     <td style='{Styles.TableCell}'>{newDate.Value.ToString("dddd dd MMMM yyyy", FrenchCulture)}</td>
                                 </tr>"
-                            : "")}
+                                : "")}
                             {(newTime.HasValue ? $@"
                                 <tr>
                                     <td style='{Styles.TableCell}'>Nouvel horaire:</td>
                                     <td style='{Styles.TableCell}'>{newTime.Value:HH\\:mm}</td>
                                 </tr>"
-                            : "")}
+                                : "")}
                         </table>"
-                    : "")}
+                        : "")}
                 </div>"
-            );
-    }
+                );
+        }
 
-    public static class Sessions
-    {
-        public static string GetSessionCancellationEmail(
-            string userName,
-            DateTime sessionDate,
-            string startTime,
-            string? location,
-            string? cancellationReason = null,
-            SessionDto? alternativeSession = null)
+        public static class Sessions
         {
-            var sessionDateStr = sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture);
+            public static string GetSessionCancellationEmail(
+                string userName,
+                DateTime sessionDate,
+                string startTime,
+                string? location,
+                string? cancellationReason = null,
+                SessionDto? alternativeSession = null)
+            {
+                var sessionDateStr = sessionDate.ToString("dddd dd MMMM yyyy", FrenchCulture);
 
-            return BuildEmailLayout(
-                "Session annulée",
-                $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
+                return BuildEmailLayout(
+                    "Session annulée",
+                    $@"<p style='{Styles.Content}'>Bonjour {userName},</p>
             
             <div style='{Styles.InfoBox}'>
                 <h2 style='{Styles.Header}'>Annulation de session</h2>
@@ -413,14 +440,14 @@ public static class EmailTemplates
                 </table>
                 
                 {(!string.IsNullOrEmpty(cancellationReason) ?
-                        $@"<div style='margin-top: 15px; padding: 15px; background-color: #fef2f2; border-radius: 5px;'>
+                            $@"<div style='margin-top: 15px; padding: 15px; background-color: #fef2f2; border-radius: 5px;'>
                         <p style='margin: 0; color: #991b1b;'><strong>Raison de l'annulation:</strong> {cancellationReason}</p>
                     </div>"
-                        : "")}
+                            : "")}
             </div>
             
             {(alternativeSession != null ?
-                    $@"<div style='{Styles.InfoBox}'>
+                        $@"<div style='{Styles.InfoBox}'>
                     <h2 style='{Styles.Header}'>Session alternative disponible</h2>
                     <p style='{Styles.Content}'>Nous vous invitons à vous inscrire à une session alternative:</p>
                     <table style='{Styles.Table}'>
@@ -444,7 +471,7 @@ public static class EmailTemplates
                         </a>
                     </div>
                 </div>"
-                    : "")}
+                        : "")}
                 
             <div style='{Styles.InfoBox}'>
                 <p style='{Styles.Content}'>Nous nous excusons pour tout inconvénient que cette annulation pourrait causer.</p>
@@ -454,7 +481,8 @@ public static class EmailTemplates
                     <li>Courriel: info@sainthenribasketball.com</li>
                 </ul>
             </div>"
-            );
+                );
+            }
         }
     }
 }
