@@ -8,6 +8,10 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using Hangfire;
 using SaintHenriBasketball.Infrastructure.Jobs;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,12 +23,38 @@ builder.Services.AddSingleton(builder.Environment);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+// Configure Swagger to work with API versioning
+builder.Services.AddSwaggerGen(options =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Saint Henri Basketball API", Version = "v1" });
+    // Get all API version descriptions
+    var provider = builder.Services.BuildServiceProvider()
+        .GetRequiredService<IApiVersionDescriptionProvider>();
 
-    // Configure Swagger to use JWT Authentication
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    // Create a swagger document for each API version
+    foreach (var description in provider.ApiVersionDescriptions)
+    {
+        options.SwaggerDoc(
+            description.GroupName,
+            new OpenApiInfo
+            {
+                Title = $"Saint Henri Basketball API {description.ApiVersion}",
+                Version = description.ApiVersion.ToString(),
+                Description = description.IsDeprecated
+                    ? "This API version has been deprecated."
+                    : "API for managing basketball sessions, attendance, and payments."
+            });
+    }
+
+    // Set the comments path for the Swagger JSON and UI
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+
+    // Add security definitions
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below. Example: 'Bearer 12345abcdef'",
         Name = "Authorization",
@@ -33,7 +63,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -47,6 +77,25 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+});
+
+// Add API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("X-Api-Version"),
+        new QueryStringApiVersionReader("api-version"));
+});
+
+// Add API version explorer to enable Swagger to understand versions
+builder.Services.AddVersionedApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
 });
 
 // Add JWT Authentication
@@ -114,9 +163,18 @@ using (var scope = app.Services.CreateScope())
 //}
 
 app.UseSwagger();
-app.UseSwaggerUI(c =>
+app.UseSwaggerUI(options =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Basketball Training API v1");
+    // Get all API version descriptions
+    var provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+
+    // Create a swagger endpoint for each API version
+    foreach (var description in provider.ApiVersionDescriptions)
+    {
+        options.SwaggerEndpoint(
+            $"/swagger/{description.GroupName}/swagger.json",
+            $"Saint Henri Basketball API {description.GroupName}");
+    }
 });
 
 app.UseHttpsRedirection();

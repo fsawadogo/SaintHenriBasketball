@@ -6,8 +6,9 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
 
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-[Route("api/[controller]")]
 [Authorize(Roles = "Admin")]
 public class CommunicationController : ControllerBase
 {

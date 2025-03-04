@@ -10,7 +10,8 @@ using SaintHenriBasketball.Application.DTOs.Session;
 
 namespace SaintHenriBasketball.API.Controllers;
 
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize]
 public class SessionsController : BaseApiController
