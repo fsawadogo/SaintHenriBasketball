@@ -176,15 +176,15 @@ public static class EmailTemplates
         <div style='{Styles.InfoBox}'>
             <h2 style='{Styles.Header}'>Options de paiement</h2>
             
-            <p style='{Styles.Content}'><strong>Option 1: Paiement par carte (recommandé)</strong></p>
+            <p style='{Styles.Content}'><strong>Option 1: Paiement par carte</strong></p>
             <div style='text-align: center; margin: 20px 0;'>
                 <a href='{stripePaymentLink}' 
                    style='background-color: #635BFF; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>
-                    Payer maintenant avec Stripe
+                    Payer maintenant
                 </a>
             </div>
             
-            <p style='{Styles.Content}'><strong>Option 2: Virement Interac</strong></p>
+            <p style='{Styles.Content}'><strong>Option 2: Virement Interac (recommandé)</strong></p>
             <ol style='{Styles.Content}'>
                 <li>Envoyez un virement Interac à: <strong>pay@sainthenribasketball.com</strong></li>
                 {(!string.IsNullOrEmpty(reference) ? $"<li>Incluez votre numéro de référence: <strong>{reference}</strong></li>" : "")}
