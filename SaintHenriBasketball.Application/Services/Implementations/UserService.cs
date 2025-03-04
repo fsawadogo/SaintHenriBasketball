@@ -286,10 +286,7 @@ public class UserService : IUserService
             // Send email notification
             try
             {
-                await _emailService.SendPaymentPlanUpdateEmailAsync(
-                    user.Email,
-                    $"{user.FirstName} {user.LastName}",
-                    paymentPlan);
+                await _emailService.SendPaymentPlanUpdateEmailAsync( user.Id, paymentPlan);
             }
             catch (Exception ex)
             {

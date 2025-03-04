@@ -52,9 +52,7 @@ public class PaymentService : IPaymentService
        await _emailService.SendPaymentCreatedConfirmationAsync(
            user.Email,
            payment.Amount,
-           payment.Reference,
-           user.PreferredLanguage
-       );
+           payment.Reference);
 
        return _mapper.Map<PaymentDto>(payment);
    }
@@ -132,11 +130,9 @@ public class PaymentService : IPaymentService
            await _paymentRepository.AddAsync(payment);
 
            await _emailService.SendPaymentConfirmationAsync(
-               user.Email,
+               user.Id,
                payment.Amount,
-               payment.Reference,
-               user.PreferredLanguage
-           );
+               payment.Reference);
        }
        catch (Exception ex)
        {
@@ -187,26 +183,5 @@ public class PaymentService : IPaymentService
         await _paymentRepository.UpdateAsync(payment);
                 
         return _mapper.Map<PaymentDto>(payment);
-   }
-
-   private async Task SendPaymentStatusUpdateEmail(Payment payment, ApplicationUser user, PaymentStatus previousStatus)
-   {
-       if (payment.Status == PaymentStatus.Completed && previousStatus != PaymentStatus.Completed)
-       {
-           await _emailService.SendPaymentConfirmationAsync(
-               user.Email,
-               payment.Amount,
-               payment.Reference,
-               user.PreferredLanguage
-           );
-       }
-       else if (payment.Status == PaymentStatus.Failed)
-       {
-           await _emailService.SendGeneralAnnouncementEmailAsync(
-               user.Email,
-               user.FirstName + " " + user.LastName,
-               $"Your payment of ${payment.Amount} has failed. Please try again or contact support."
-           );
-       }
    }
 }

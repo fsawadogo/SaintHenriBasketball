@@ -19,9 +19,9 @@ public interface IEmailService
     // Payment Related Emails
     Task SendPaymentCreatedConfirmationAsync(string? email, decimal amount, string? reference,
         EmailLanguage language = EmailLanguage.French);
-    Task SendPaymentConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language = EmailLanguage.English);
-    Task SendPaymentReminderEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan, string? customMessage = null);
-    Task SendPaymentPlanUpdateEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan);
+    Task SendPaymentConfirmationAsync(Guid userId, decimal amount, string? reference, EmailLanguage language = EmailLanguage.French);
+    Task SendPaymentReminderEmailAsync(Guid userId, PaymentPlan paymentPlan, string? customMessage = null);
+    Task SendPaymentPlanUpdateEmailAsync(Guid userId, PaymentPlan paymentPlan);
     
     // Attendance Related Emails
     Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance);

@@ -197,7 +197,7 @@ public static class EmailTemplates
         <p style='{Styles.Content}'>Si vous avez des questions concernant ce paiement, n'hésitez pas à nous contacter à <a href='mailto:info@sainthenribasketball.com'>info@sainthenribasketball.com</a>.</p>"
             );
         }
-
+    }
         public static class Attendance
         {
             public static string GetAttendanceConfirmationEmail(
@@ -484,5 +484,5 @@ public static class EmailTemplates
                 );
             }
         }
-    }
+    
 }

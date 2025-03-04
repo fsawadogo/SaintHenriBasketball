@@ -23,6 +23,7 @@ public class EmailService : IEmailService
     private readonly EmailAddress _fromAddress;
     private readonly ILogger<EmailService> _logger;
     private readonly IUserRepository _userRepository;
+    private readonly IPaymentRepository _paymentRepository;
     private readonly ISessionRepository _sessionRepository;
     private readonly IBackgroundJobClient _backgroundJobs;
     private readonly IWebHostEnvironment _webHostEnvironment;
@@ -32,6 +33,7 @@ public class EmailService : IEmailService
         IConfiguration configuration,
         ILogger<EmailService> logger,
         IUserRepository userRepository,
+        IPaymentRepository paymentRepository,
         IBackgroundJobClient backgroundJobs,
         IWebHostEnvironment webHostEnvironment, 
         ISessionRepository sessionRepository)
@@ -41,6 +43,7 @@ public class EmailService : IEmailService
         _backgroundJobs = backgroundJobs;
         _webHostEnvironment = webHostEnvironment;
         _sessionRepository = sessionRepository;
+        _paymentRepository = paymentRepository;
 
         var apiKey = configuration["SendGrid:ApiKey"] 
                      ?? throw new ArgumentNullException(nameof(configuration), "SendGrid API key is not configured");
@@ -162,14 +165,14 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendPaymentConfirmationAsync(string? email, decimal amount, string? reference)
+    public async Task SendPaymentConfirmationAsync(Guid userId, decimal amount, string? reference)
     {
+        var user = await _userRepository.GetByIdAsync(userId)
+                ?? throw new ArgumentException($"User not found for id: {userId}");
+
         try
         {
-            var user = await _userRepository.GetByEmailAsync(email)
-                ?? throw new ArgumentException($"User not found for email: {email}");
-
-            var userName = $"{user.FirstName} {user.LastName}";
+            var userName = $"{user.FirstName}";
             var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
                 userName,
                 amount,
@@ -179,7 +182,7 @@ public class EmailService : IEmailService
 
             var msg = new SendGridMessage();
             msg.SetFrom(_fromAddress);
-            msg.AddTo(new EmailAddress(email));
+            msg.AddTo(new EmailAddress(user.Email));
             msg.SetSubject("Confirmation de paiement - Saint Henri Basketball");
             msg.AddContent(MimeType.Html, content);
 
@@ -193,7 +196,7 @@ public class EmailService : IEmailService
                 var billDetails = new BillDetails
                 {
                     Name = userName,
-                    Email = email,
+                    Email = user.Email,
                     Description = description,
                     Amount = amount,
                     Reference = reference,
@@ -209,11 +212,11 @@ public class EmailService : IEmailService
             }
 
             await SendWithRetryAsync(msg);
-            await NotifyAdminOfPayment(email, userName, amount, reference);
+            await NotifyAdminOfPayment(user.Email, userName, amount, reference);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", email);
+            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", user.Email);
             throw;
         }
     }
@@ -241,22 +244,26 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendPaymentReminderEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan, string? customMessage = null)
+    public async Task SendPaymentReminderEmailAsync(Guid userId, PaymentPlan paymentPlan, string? customMessage = null)
     {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new ArgumentException($"User not found for ID: {userId}");
         try
         {
+            var payment = await _paymentRepository.GetPaymentsByUserAsync(userId)
+                ?? throw new ArgumentException($"Payment not found for email: {user.Email}");
             var amount = GetPaymentAmount(paymentPlan);
-            var content = EmailTemplates.Payments.GetPaymentReminderEmail(userName, amount);
+            var content = EmailTemplates.Payments.GetPaymentReminderEmail(user.FirstName, amount, user.PaymentPlan);
 
             await SendEmailAsync(
-                userEmail,
+                user.Email,
                 "Rappel de paiement - Saint Henri Basketball",
                 content
             );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment reminder email to {Email}", userEmail);
+            _logger.LogError(ex, "Failed to send payment reminder email to {Email}", user.Email);
             throw;
         }
     }
@@ -287,14 +294,13 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendPaymentConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language)
+    public async Task SendPaymentConfirmationAsync(Guid userId, decimal amount, string? reference, EmailLanguage language)
     {
+        var user = await _userRepository.GetByIdAsync(userId)
+                ?? throw new ArgumentException($"User not found for id: {userId}");
         try
         {
-            var user = await _userRepository.GetByEmailAsync(email)
-                ?? throw new ArgumentException($"User not found for email: {email}");
-
-            var userName = $"{user.FirstName} {user.LastName}";
+            var userName = $"{user.FirstName}";
             var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
                 userName,
                 amount,
@@ -304,7 +310,7 @@ public class EmailService : IEmailService
 
             var msg = new SendGridMessage();
             msg.SetFrom(_fromAddress);
-            msg.AddTo(new EmailAddress(email));
+            msg.AddTo(new EmailAddress(user.Email));
             msg.SetSubject("Confirmation de paiement - Saint Henri Basketball");
             msg.AddContent(MimeType.Html, content);
 
@@ -318,7 +324,7 @@ public class EmailService : IEmailService
                 var billDetails = new BillDetails
                 {
                     Name = userName,
-                    Email = email,
+                    Email = user.Email,
                     Description = description,
                     Amount = amount,
                     Reference = reference,
@@ -334,34 +340,38 @@ public class EmailService : IEmailService
             }
 
             await SendWithRetryAsync(msg);
-            await NotifyAdminOfPayment(email, userName, amount, reference);
+            await NotifyAdminOfPayment(user.Email, userName, amount, reference);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", email);
+            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", user);
             throw;
         }
     }
 
-    public async Task SendPaymentPlanUpdateEmailAsync(string? userEmail, string userName, PaymentPlan paymentPlan)
+    public async Task SendPaymentPlanUpdateEmailAsync(Guid userId, PaymentPlan paymentPlan)
     {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new ArgumentException($"User not found for ID: {userId}");
+
         try
         {
             var content = EmailTemplates.Payments.GetPaymentReminderEmail(
-                userName,
+                user.FirstName,
                 GetPaymentAmount(paymentPlan),
+                user.PaymentPlan,
                 $"Votre plan de paiement a été mis à jour vers: {GetPaymentPlanName(paymentPlan)}"
             );
 
             await SendEmailAsync(
-                userEmail,
+                user.Email,
                 "Mise à jour du plan de paiement - Saint Henri Basketball",
                 content
             );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment plan update email to {Email}", userEmail);
+            _logger.LogError(ex, "Failed to send payment plan update email to {Email}", user.Email);
             throw;
         }
     }
@@ -666,6 +676,7 @@ public class EmailService : IEmailService
                     EmailType.PaymentReminder => EmailTemplates.Payments.GetPaymentReminderEmail(
                         $"{user.FirstName}",
                         GetPaymentAmount(user.PaymentPlan),
+                        user.PaymentPlan,
                         customMessage),
 
                 
@@ -811,6 +822,7 @@ public class EmailService : IEmailService
             var content = EmailTemplates.Payments.GetPaymentReminderEmail(
                 userName,
                 registration.Season.Price,
+                PaymentPlan.Season,
                 "Veuillez effectuer le paiement pour confirmer votre inscription à la saison."
             );
 

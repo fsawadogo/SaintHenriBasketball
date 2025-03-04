@@ -109,19 +109,13 @@ public class PaymentsController : ControllerBase
            {
                case PaymentStatus.Completed:
                    await _emailService.SendPaymentConfirmationAsync(
-                       payment.UserEmail,
+                       payment.Id,
                        payment.Amount,
-                       payment.Reference,
-                       user.PreferredLanguage
-                   );
+                       payment.Reference);
                    break;
 
                case PaymentStatus.Pending:
-                   await _emailService.SendPaymentReminderEmailAsync(
-                       payment.UserEmail,
-                       user.FirstName + " " + user.LastName,
-                       user.PaymentPlan
-                   );
+                   await _emailService.SendPaymentReminderEmailAsync(payment.UserId,user.PaymentPlan);
                    break;
 
                case PaymentStatus.Failed:

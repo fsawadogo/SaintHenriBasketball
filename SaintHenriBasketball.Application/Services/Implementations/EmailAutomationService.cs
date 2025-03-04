@@ -234,8 +234,7 @@ public class EmailAutomationService : IEmailAutomationService
 
             // Using the properly styled payment reminder email with Stripe payment link
             await _emailService.SendPaymentReminderEmailAsync(
-                payment.UserEmail,
-                payment.UserName,
+                payment.UserId,
                 user.PaymentPlan,
                 $"Votre paiement de ${payment.Amount} du {payment.PaymentDate:dd MMMM yyyy} est toujours en attente. " +
                 $"Vous pouvez facilement effectuer votre paiement en utilisant nos options de paiement sécurisées ci-dessous."
@@ -285,8 +284,7 @@ public class EmailAutomationService : IEmailAutomationService
                         continue;
 
                     await _emailService.SendPaymentReminderEmailAsync(
-                        payment.UserEmail,
-                        payment.UserName,
+                        payment.UserId,
                         user.PaymentPlan,
                         $"Votre paiement de ${payment.Amount} est toujours en attente. " +
                         "Veuillez utiliser l'une des méthodes de paiement ci-dessous pour finaliser votre paiement."
