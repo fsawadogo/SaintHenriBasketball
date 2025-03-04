@@ -23,7 +23,7 @@ public static class HangfireExtensions
         return services;
     }
 
-    public static IApplicationBuilder UseHangfireJobs(this IApplicationBuilder app, IWebHostEnvironment env)
+    public static IApplicationBuilder UseHangfireJobs(this IApplicationBuilder app)
     {
         // Configure recurring jobs
         HangfireJobsConfiguration.ConfigureRecurringJobs();

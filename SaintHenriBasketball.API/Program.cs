@@ -131,7 +131,7 @@ app.UseAuthorization();
 // Use Hangfire Dashboard
 app.UseHangfireDashboard();
 // Configure Hangfire recurring jobs
-app.UseHangfireJobs(builder.Environment);
+app.UseHangfireJobs();
 
 app.MapControllers();
 
