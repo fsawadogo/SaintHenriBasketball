@@ -17,19 +17,27 @@ public class SessionService : ISessionService
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<SessionService> _logger;
+    private readonly ICacheService _cacheService;
+
+    // Cache keys
+    private const string UpcomingSessionsCacheKey = "UpcomingSessions";
+    private const string AvailableSessionsCacheKey = "AvailableSessions";
+    private const string SessionKeyPrefix = "Session_";
 
     public SessionService(
         ISessionRepository sessionRepository,
         ISessionRegistrationRepository registrationRepository,
         IUserRepository userRepository,
         IMapper mapper,
-        ILogger<SessionService> logger)
+        ILogger<SessionService> logger,
+        ICacheService cacheService)
     {
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
         _userRepository = userRepository;
         _mapper = mapper;
         _logger = logger;
+        _cacheService = cacheService;
     }
 
     public async Task<SessionDto> CreateSessionAsync(CreateSessionDto createSessionDto)
@@ -76,8 +84,22 @@ public class SessionService : ISessionService
 
     public async Task<IReadOnlyList<SessionDto>> GetUpcomingSessionsAsync()
     {
+        // Try to get from cache first
+        var cachedSessions = await _cacheService.GetAsync<IReadOnlyList<SessionDto>>(UpcomingSessionsCacheKey);
+
+        if (cachedSessions != null)
+        {
+            _logger.LogInformation("Upcoming sessions retrieved from cache");
+            return cachedSessions;
+        }
+
+        // If not in cache, get from database
         var sessions = await _sessionRepository.GetUpcomingSessionsAsync();
-        return _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
+        var sessionsDto = _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
+
+        await _cacheService.SetAsync(UpcomingSessionsCacheKey, sessionsDto, TimeSpan.FromMinutes(10));
+
+        return sessionsDto;
     }
 
     public async Task UpdateSessionAsync(Guid id, UpdateSessionDto updateDto)
@@ -117,6 +139,11 @@ public class SessionService : ISessionService
 
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("Session {SessionId} updated. New status: {Status}", id, session.Status);
+
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync($"{SessionKeyPrefix}{id}");
     }
     public async Task CancelSessionAsync(Guid id)
     {
@@ -138,8 +165,23 @@ public class SessionService : ISessionService
 
     public async Task<IReadOnlyList<SessionDto>> GetAvailableSessionsAsync()
     {
+        // Try to get from cache first
+        var cachedSessions = await _cacheService.GetAsync<IReadOnlyList<SessionDto>>(AvailableSessionsCacheKey);
+
+        if (cachedSessions != null)
+        {
+            _logger.LogInformation("Available sessions retrieved from cache");
+            return cachedSessions;
+        }
+
+        // If not in cache, get from database
         var sessions = await _sessionRepository.GetAvailableSessionsAsync();
-        return _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
+        var sessionsDto = _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
+
+        // Store in cache with a 10-minute expiration
+        await _cacheService.SetAsync(AvailableSessionsCacheKey, sessionsDto, TimeSpan.FromMinutes(10));
+
+        return sessionsDto;
     }
 
     public async Task<SessionRegistrationResponseDto> RegisterForSessionAsync(Guid sessionId, Guid userId)

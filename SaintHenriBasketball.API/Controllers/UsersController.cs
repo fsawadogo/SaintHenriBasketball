@@ -6,7 +6,6 @@ using SaintHenriBasketball.Application.DTOs.Users;
 using System.Security.Claims;
 using SaintHenriBasketball.Application.Exceptions;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
-using SaintHenriBasketball.Application.Services.Implementations;
 using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -18,11 +17,13 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly ILogger<UsersController> _logger;
+    private readonly ICacheService _cacheService;
 
-    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    public UsersController(IUserService userService, ILogger<UsersController> logger, ICacheService cacheService)
     {
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _cacheService = cacheService;
     }
 
     #region Authentication
@@ -107,23 +108,29 @@ public class UsersController : ControllerBase
     [Authorize]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public ActionResult<UserDto> GetCurrentUser()
+    public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        var emailClaim = User.FindFirst(ClaimTypes.Email);
-        var usernameClaim = User.FindFirst(ClaimTypes.Name);
-        var roleClaim = User.FindFirst(ClaimTypes.Role);
-
-        if (userIdClaim == null || emailClaim == null || usernameClaim == null)
+        if (userIdClaim == null)
             return Unauthorized("Invalid token claims");
 
-        var userDto = new UserDto
+        var userId = Guid.Parse(userIdClaim.Value);
+
+        // Check cache first
+        string cacheKey = $"Users:Current:{userId}";
+        var cachedUser = await _cacheService.GetAsync<UserDto>(cacheKey);
+
+        if (cachedUser != null)
         {
-            Id = Guid.Parse(userIdClaim.Value),
-            Email = emailClaim.Value,
-            Username = usernameClaim.Value,
-            IsAdmin = roleClaim?.Value == "Admin"
-        };
+            _logger.LogInformation("Current user retrieved from cache for user {UserId}", userId);
+            return Ok(cachedUser);
+        }
+
+        // Get from service if not in cache
+        var userDto = await _userService.GetUserAsync(userId);
+
+        // Cache for 15 minutes
+        await _cacheService.SetAsync(cacheKey, userDto, TimeSpan.FromMinutes(15));
 
         return Ok(userDto);
     }
@@ -138,32 +145,26 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateCurrentUser([FromBody] UpdateUserDto updateUserDto)
     {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+            return Unauthorized("Invalid token claims");
+
+        var userId = Guid.Parse(userIdClaim.Value);
+
         try
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-                return Unauthorized("Invalid token claims");
+            await _userService.UpdateUserAsync(userId, updateUserDto);
 
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if (!string.IsNullOrEmpty(updateUserDto.Email) && !new EmailAddressAttribute().IsValid(updateUserDto.Email))
-                return BadRequest("Invalid email format");
-
-            await _userService.UpdateUserAsync(Guid.Parse(userIdClaim.Value), updateUserDto);
-            _logger.LogInformation("User updated their profile successfully: {UserId}", userIdClaim.Value);
+            // Invalidate cache
+            await _cacheService.RemoveAsync($"Users:Current:{userId}");
+            await _cacheService.RemoveAsync($"Users:Detail:{userId}");
+            await _cacheService.RemoveAsync("Users:All");
 
             return NoContent();
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning("User profile update failed: {Message}", ex.Message);
             return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during profile update");
-            return StatusCode(500, "An unexpected error occurred during profile update");
         }
     }
 

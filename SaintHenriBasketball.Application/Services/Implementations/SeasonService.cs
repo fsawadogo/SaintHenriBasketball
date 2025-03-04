@@ -16,19 +16,28 @@ public class SeasonService : ISeasonService
     private readonly IMapper _mapper;
     private readonly ILogger<SeasonService> _logger;
     private readonly IEmailService _emailService;
+    private readonly ICacheService _cacheService;
+
+    // Cache keys
+    private const string CurrentSeasonCacheKey = "CurrentSeason";
+    private const string AllSeasonsCacheKey = "AllSeasons";
+    private const string SeasonKeyPrefix = "Season_";
+
 
     public SeasonService(
         ISeasonRepository seasonRepository,
         IUserRepository userRepository,
         IMapper mapper,
         IEmailService emailService,
-        ILogger<SeasonService> logger)
+        ILogger<SeasonService> logger,
+        ICacheService cacheService)
     {
         _seasonRepository = seasonRepository;
         _userRepository = userRepository;
         _mapper = mapper;
         _emailService = emailService;
         _logger = logger;
+        _cacheService = cacheService;
     }
 
     public async Task<SeasonDto> CreateSeasonAsync(CreateSeasonDto createSeasonDto)
@@ -52,32 +61,72 @@ public class SeasonService : ISeasonService
 
     public async Task<SeasonDto> GetSeasonAsync(Guid id)
     {
+        string cacheKey = $"{SeasonKeyPrefix}{id}";
+
+        // Try to get from cache first
+        var cachedSeason = await _cacheService.GetAsync<SeasonDto>(cacheKey);
+
+        if (cachedSeason != null)
+        {
+            _logger.LogInformation("Season {SeasonId} retrieved from cache", id);
+            return cachedSeason;
+        }
+
+        // If not in cache, get from database
         var seasonDto = await GetSeasonDtoAsync(id);
         if (seasonDto == null)
         {
             throw new NotFoundException($"Season with ID {id} not found");
         }
 
+        // Store in cache with a 1-hour expiration
+        await _cacheService.SetAsync(cacheKey, seasonDto, TimeSpan.FromHours(1));
+
         return seasonDto;
     }
 
     public async Task<IEnumerable<SeasonDto>> GetAllSeasonsAsync()
     {
+        // Try to get from cache first
+        var cachedSeasons = await _cacheService.GetAsync<IEnumerable<SeasonDto>>(AllSeasonsCacheKey);
+
+        if (cachedSeasons != null)
+        {
+            _logger.LogInformation("All seasons retrieved from cache");
+            return cachedSeasons;
+        }
+
+        // If not in cache, get from database
         var seasons = await _seasonRepository.GetAllWithRegistrationsAsync();
         var currentSeason = seasons.FirstOrDefault(s =>
             s.Status == SeasonStatus.Open &&
             s.StartDate <= DateTime.UtcNow &&
             s.EndDate >= DateTime.UtcNow);
 
-        return seasons.Select(season => {
+        var seasonsDto = seasons.Select(season => {
             var dto = _mapper.Map<SeasonDto>(season);
             dto.IsCurrentSeason = season.Id == currentSeason?.Id;
             return dto;
-        });
+        }).ToList();
+
+        // Store in cache with a 1-hour expiration
+        await _cacheService.SetAsync(AllSeasonsCacheKey, seasonsDto, TimeSpan.FromHours(1));
+
+        return seasonsDto;
     }
 
     public async Task<SeasonDto> GetCurrentSeasonAsync()
     {
+        // Try to get from cache first
+        var cachedSeason = await _cacheService.GetAsync<SeasonDto>(CurrentSeasonCacheKey);
+
+        if (cachedSeason != null)
+        {
+            _logger.LogInformation("Current season retrieved from cache");
+            return cachedSeason;
+        }
+
+        // If not in cache, get from database
         var season = await _seasonRepository.GetCurrentSeasonAsync();
         if (season == null)
         {
@@ -86,6 +135,10 @@ public class SeasonService : ISeasonService
 
         var seasonDto = _mapper.Map<SeasonDto>(season);
         seasonDto.IsCurrentSeason = true;
+
+        // Store in cache with a 30-minute expiration
+        await _cacheService.SetAsync(CurrentSeasonCacheKey, seasonDto, TimeSpan.FromMinutes(30));
+
         return seasonDto;
     }
 
@@ -110,6 +163,11 @@ public class SeasonService : ISeasonService
             season.Notes = updateSeasonDto.Notes;
 
         await _seasonRepository.UpdateAsync(season);
+
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(CurrentSeasonCacheKey);
+        await _cacheService.RemoveAsync(AllSeasonsCacheKey);
+        await _cacheService.RemoveAsync($"{SeasonKeyPrefix}{id}");
     }
 
     public async Task UpdateSeasonStatusAsync(Guid id, SeasonStatus status)

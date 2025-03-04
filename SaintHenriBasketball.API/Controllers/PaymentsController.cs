@@ -19,63 +19,97 @@ public class PaymentsController : ControllerBase
    private readonly IEmailService _emailService;
    private readonly IUserService _userService;
    private readonly ILogger<PaymentsController> _logger;
+   private readonly ICacheService _cacheService;
 
-   /// <inheritdoc />
-   public PaymentsController(
+    /// <inheritdoc />
+    public PaymentsController(
        IPaymentService paymentService,
        IEmailService emailService,
        IUserService userService, 
-       ILogger<PaymentsController> logger)
-   {
-       _paymentService = paymentService;
-       _emailService = emailService;
-       _userService = userService;
-       _logger = logger;
-   }
+       ILogger<PaymentsController> logger,
+       ICacheService cacheService)
+    {
+        _paymentService = paymentService;
+        _emailService = emailService;
+        _userService = userService;
+        _logger = logger;
+        _cacheService = cacheService;
+    }
 
-   [HttpPost]
+    [HttpPost]
    [Authorize(Roles = "Admin")]
    [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status201Created)]
    [ProducesResponseType(StatusCodes.Status400BadRequest)]
    public async Task<ActionResult<PaymentDto>> CreatePayment([FromBody] CreatePaymentDto createPaymentDto)
    {
-       try
-       {
-           var payment = await _paymentService.CreatePaymentAsync(createPaymentDto);
-           var user = await _userService.GetUserAsync(payment.UserId);
+        try
+        {
+            var payment = await _paymentService.CreatePaymentAsync(createPaymentDto);
 
-           return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
-       }
-       catch (ValidationException ex)
-       {
-           _logger.LogError(ex.Message);
-           return BadRequest(ex.Message);
-       }
-   }
+            // Invalidate relevant caches
+            await _cacheService.RemoveAsync("Payments:All");
+            await _cacheService.RemoveAsync("Payments:Pending");
+            await _cacheService.RemoveAsync("Payments:Summary");
+            await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
+
+            return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
    [HttpGet("{id}")]
    [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status200OK)]
    [ProducesResponseType(StatusCodes.Status404NotFound)]
    public async Task<ActionResult<PaymentDto>> GetPayment(Guid id)
    {
-       try
-       {
-           var payment = await _paymentService.GetPaymentAsync(id);
-           return Ok(payment);
-       }
-       catch (NotFoundException ex)
-       {
-           return NotFound(ex.Message);
-       }
-   }
+        // Check cache first
+        string cacheKey = $"Payments:Detail:{id}";
+        var cachedPayment = await _cacheService.GetAsync<PaymentDto>(cacheKey);
+
+        if (cachedPayment != null)
+        {
+            _logger.LogInformation("Payment {PaymentId} retrieved from cache", id);
+            return Ok(cachedPayment);
+        }
+
+        try
+        {
+            var payment = await _paymentService.GetPaymentAsync(id);
+
+            await _cacheService.SetAsync(cacheKey, payment, TimeSpan.FromMinutes(20));
+
+            return Ok(payment);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
 
    [HttpGet("user/{userId}")]
    [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
    public async Task<ActionResult<IEnumerable<PaymentDto>>> GetUserPayments(Guid userId)
    {
-       var payments = await _paymentService.GetUserPaymentsAsync(userId);
-       return Ok(payments);
-   }
+        // Check cache first
+        string cacheKey = $"Payments:User:{userId}";
+        var cachedPayments = await _cacheService.GetAsync<IEnumerable<PaymentDto>>(cacheKey);
+
+        if (cachedPayments != null)
+        {
+            _logger.LogInformation("User payments for {UserId} retrieved from cache", userId);
+            return Ok(cachedPayments);
+        }
+
+        var payments = await _paymentService.GetUserPaymentsAsync(userId);
+
+        // Cache for 10 minutes
+        await _cacheService.SetAsync(cacheKey, payments, TimeSpan.FromMinutes(10));
+
+        return Ok(payments);
+    }
 
    [HttpPut("{id}")]
    [Authorize(Roles = "Admin")]
@@ -103,8 +137,14 @@ public class PaymentsController : ControllerBase
    {
        try
        {
-           var payment = await _paymentService.UpdatePaymentStatusAsync(id, updateDto.Status);
-           var user = await _userService.GetUserAsync(payment.UserId);
+            var payment = await _paymentService.UpdatePaymentStatusAsync(id, updateDto.Status);
+
+            // Invalidate all relevant caches
+            await _cacheService.RemoveAsync($"Payments:Detail:{id}");
+            await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
+            await _cacheService.RemoveAsync("Payments:All");
+            await _cacheService.RemoveAsync("Payments:Pending");
+            await _cacheService.RemoveAsync("Payments:Summary"); var user = await _userService.GetUserAsync(payment.UserId);
 
            switch (payment.Status)
            {
@@ -143,27 +183,69 @@ public class PaymentsController : ControllerBase
    [ProducesResponseType(typeof(PaymentSummaryDto), StatusCodes.Status200OK)]
    public async Task<ActionResult<PaymentSummaryDto>> GetPaymentSummary()
    {
-       var summary = await _paymentService.GetPaymentSummaryAsync();
-       return Ok(summary);
-   }
+        // Check cache first
+        string cacheKey = "Payments:Summary";
+        var cachedSummary = await _cacheService.GetAsync<PaymentSummaryDto>(cacheKey);
+
+        if (cachedSummary != null)
+        {
+            _logger.LogInformation("Payment summary retrieved from cache");
+            return Ok(cachedSummary);
+        }
+
+        var summary = await _paymentService.GetPaymentSummaryAsync();
+
+        // Cache for 30 minutes - summary data changes less frequently
+        await _cacheService.SetAsync(cacheKey, summary, TimeSpan.FromMinutes(30));
+
+        return Ok(summary);
+    }
 
    [HttpGet("pending")]
    [Authorize(Roles = "Admin")]
    [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
    public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPendingPayments()
    {
-       var payments = await _paymentService.GetPendingPaymentsAsync();
-       return Ok(payments);
-   }
+        // Check cache first, but with a shorter duration since this is more time-sensitive
+        string cacheKey = "Payments:Pending";
+        var cachedPayments = await _cacheService.GetAsync<IEnumerable<PaymentDto>>(cacheKey);
+
+        if (cachedPayments != null)
+        {
+            _logger.LogInformation("Pending payments retrieved from cache");
+            return Ok(cachedPayments);
+        }
+
+        var payments = await _paymentService.GetPendingPaymentsAsync();
+
+        // Cache for only 5 minutes since pending status might change frequently
+        await _cacheService.SetAsync(cacheKey, payments, TimeSpan.FromMinutes(5));
+
+        return Ok(payments);
+    }
 
    [HttpGet]
    [Authorize(Roles = "Admin")]
    [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
    public async Task<ActionResult<IEnumerable<PaymentDto>>> GetAllPayments()
    {
-       var payments = await _paymentService.GetAllPayments();
-       return Ok(payments);
-   }
+        // Check cache first
+        string cacheKey = "Payments:All";
+        var cachedPayments = await _cacheService.GetAsync<IEnumerable<PaymentDto>>(cacheKey);
+
+        if (cachedPayments != null)
+        {
+            _logger.LogInformation("All payments retrieved from cache");
+            return Ok(cachedPayments);
+        }
+
+        var payments = await _paymentService.GetAllPayments();
+
+        // Cache for 10 minutes
+        await _cacheService.SetAsync(cacheKey, payments, TimeSpan.FromMinutes(10));
+
+        return Ok(payments);
+    }
 
    [HttpPost("reminder")]
    [Authorize(Roles = "Admin")]

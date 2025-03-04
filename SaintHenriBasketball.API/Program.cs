@@ -115,6 +115,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Add memory caching
+builder.Services.AddMemoryCache();
+
+// Enable caching profiles in controllers
+builder.Services.AddControllers(options =>
+{
+    options.CacheProfiles.Add("Default30",
+        new CacheProfile { Duration = 30 });
+    options.CacheProfiles.Add("Default60",
+        new CacheProfile { Duration = 60 });
+});
+
+
 // Add application services
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -190,6 +203,9 @@ app.UseAuthorization();
 app.UseHangfireDashboard();
 // Configure Hangfire recurring jobs
 app.UseHangfireJobs();
+
+// In the HTTP pipeline
+app.UseResponseCaching();
 
 app.MapControllers();
 

@@ -80,7 +80,8 @@ public class SessionsController : BaseApiController
     /// Get upcoming sessions
     /// </summary>
     [HttpGet]
-    [AllowAnonymous] // Allow non-authenticated users to view upcoming sessions
+    [ResponseCache(CacheProfileName = "Default30")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<SessionDto>>> GetUpcomingSessions()
     {

@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<ISeasonService, SeasonService>();
         services.AddScoped<IEmailAutomationService, EmailAutomationService>();
+        services.AddScoped<ICacheService, MemoryCacheService>();
 
         services.AddAutoMapper(typeof(UserService).Assembly);
         services.AddLogging();
