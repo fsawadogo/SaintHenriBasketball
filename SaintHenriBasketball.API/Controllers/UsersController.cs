@@ -199,7 +199,7 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
     #endregion
 
     #region Admin Operations
-    /// <summary>
+     /// <summary>
     /// Get all users (Admin only)
     /// </summary>
     [HttpGet]
@@ -281,6 +281,8 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             return StatusCode(500, "An unexpected error occurred during user deletion");
         }
     }
+
+    
     #endregion
 
     #region Account Management
@@ -429,6 +431,123 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             _logger.LogError(ex, "Unexpected error making user admin {UserId}", userId);
             return StatusCode(500, "An unexpected error occurred while making user admin");
         }
+    }
+
+    /// <summary>
+    /// Create a new user with temporary password and send password reset email (Admin only)
+    /// </summary>
+    [HttpPost("create-user")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] RegisterUserDto createUserDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!new EmailAddressAttribute().IsValid(createUserDto.Email))
+                return BadRequest("Invalid email format");
+
+            // Generate a secure temporary password
+            string temporaryPassword = GenerateTemporaryPassword();
+
+            var registerDto = new RegisterUserDto
+            {
+                Username = createUserDto.Username,
+                Email = createUserDto.Email,
+                Password = temporaryPassword,
+                FirstName = createUserDto.FirstName,
+                LastName = createUserDto.LastName
+            };
+
+            // Register the user with temporary password
+            var result = await _userService.RegisterAsync(registerDto);
+
+            _logger.LogInformation("User created by admin successfully: {Email}", createUserDto.Email);
+
+            // Invalidate cache
+            await cacheService.RemoveAsync("Users:All");
+
+            // Immediately send password reset email to the user
+            await _userService.ForgotPasswordAsync(createUserDto.Email);
+
+            _logger.LogInformation("Password reset email sent to newly created user: {Email}", createUserDto.Email);
+
+            // Send email notification about account creation
+            var emailResult = await _userService.SendTargetedEmailsAsync(
+                EmailType.AccountCreated,
+                new List<string?> { createUserDto.Email },
+                EmailLanguage.English,
+                "Your account has been created by an administrator. Please check your email to set your password."
+            );
+
+            if (!emailResult.AllSucceeded)
+            {
+                _logger.LogWarning("Failed to send account creation notification email to {Email}", createUserDto.Email);
+            }
+
+            return CreatedAtAction(nameof(GetCurrentUser), new { email = result.Email }, result);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("User creation failed for {Email}: {Message}", createUserDto.Email, ex.Message);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during user creation for {Email}", createUserDto.Email);
+            return StatusCode(500, "An unexpected error occurred during user creation");
+        }
+    }
+
+    /// <summary>
+    /// Send a password reset link to a specific user (Admin only)
+    /// </summary>
+    [HttpPost("{userId}/send-password-reset")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendPasswordResetLink(Guid userId)
+    {
+        try
+        {
+            var user = await _userService.GetUserAsync(userId);
+
+            if (user == null)
+                return NotFound($"User with ID {userId} not found");
+
+            await _userService.ForgotPasswordAsync(user.Email);
+            _logger.LogInformation("Admin sent password reset link to user: {UserId}, {Email}", userId, user.Email);
+
+            return Ok($"Password reset link has been sent to {user.Email}");
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning("Send password reset failed - user not found: {UserId}", userId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error sending password reset for user {UserId}", userId);
+            return StatusCode(500, "An unexpected error occurred while sending password reset");
+        }
+    }
+
+    /// <summary>
+    /// Generates a secure temporary password
+    /// </summary>
+    private string GenerateTemporaryPassword(int length = 12)
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        var random = new Random();
+
+        return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 
     #endregion

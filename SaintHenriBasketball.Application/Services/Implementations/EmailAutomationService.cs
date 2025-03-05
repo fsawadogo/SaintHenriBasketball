@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using Hangfire;
 using Microsoft.Extensions.Logging;
-using PdfSharpCore.Pdf.Filters;
+using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
-using static SaintHenriBasketball.Application.Templates.EmailTemplates;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -60,8 +60,8 @@ public class EmailAutomationService : IEmailAutomationService
             var upcomingSessions = await _sessionService.GetUpcomingSessionsAsync();
 
             // Filter sessions that are 1 - 3 days ahead(based on today)
-        // Ensure we're comparing dates with the same timezone basis
-        var localToday = DateTime.Now.Date;
+            // Ensure we're comparing dates with the same timezone basis
+            var localToday = DateTime.Now.Date;
             var sessionsToRemind = upcomingSessions.Where(session => {
                 // Convert session date to local time for comparison if needed
                 var sessionLocalDate = TimeZoneInfo.ConvertTimeFromUtc(
@@ -232,12 +232,15 @@ public class EmailAutomationService : IEmailAutomationService
                 return;
             }
 
+            // Custom message with payment details
+            string customMessage = $"Votre paiement de {payment.Amount:C} du {payment.PaymentDate:dd MMMM yyyy} est toujours en attente. " +
+                "Vous pouvez facilement effectuer votre paiement en utilisant nos options de paiement sécurisées ci-dessous.";
+
             // Using the properly styled payment reminder email with Stripe payment link
             await _emailService.SendPaymentReminderEmailAsync(
                 payment.UserId,
                 user.PaymentPlan,
-                $"Votre paiement de ${payment.Amount} du {payment.PaymentDate:dd MMMM yyyy} est toujours en attente. " +
-                $"Vous pouvez facilement effectuer votre paiement en utilisant nos options de paiement sécurisées ci-dessous."
+                customMessage
             );
 
             _logger.LogInformation("Sent payment reminder to user {UserId} for payment {PaymentId}", userId, paymentId);
@@ -267,42 +270,33 @@ public class EmailAutomationService : IEmailAutomationService
                 return;
             }
 
-            int successCount = 0;
-            int failureCount = 0;
-            var failedEmails = new List<string?>();
+            // Collect emails for bulk sending
+            var userEmails = new List<string>();
+            var customMessage = "Un rappel amical concernant votre paiement en attente. " +
+                "Veuillez utiliser l'une des méthodes de paiement ci-dessous pour finaliser votre transaction.";
 
             foreach (var payment in pendingPayments)
             {
-                try
-                {
-                    if (string.IsNullOrEmpty(payment.UserEmail))
-                        continue;
+                // Skip null emails
+                if (string.IsNullOrEmpty(payment.UserEmail))
+                    continue;
 
-                    // Get user to determine payment plan
-                    var user = await _userService.GetUserAsync(payment.UserId);
-                    if (user == null)
-                        continue;
-
-                    await _emailService.SendPaymentReminderEmailAsync(
-                        payment.UserId,
-                        user.PaymentPlan,
-                        $"Votre paiement de ${payment.Amount} est toujours en attente. " +
-                        "Veuillez utiliser l'une des méthodes de paiement ci-dessous pour finaliser votre paiement."
-                    );
-
-                    successCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to send payment reminder to {Email}", payment.UserEmail);
-                    failureCount++;
-                    failedEmails.Add(payment.UserEmail);
-                }
+                userEmails.Add(payment.UserEmail);
             }
 
-            _logger.LogInformation(
-                "Sent {SuccessCount} bulk payment reminders, {FailureCount} failed",
-                successCount, failureCount);
+            // Send bulk reminders
+            if (userEmails.Any())
+            {
+                var result = await _emailService.SendPaymentRemindersAsync(
+                    userEmails,
+                    EmailLanguage.French,
+                    customMessage
+                );
+
+                _logger.LogInformation(
+                    "Sent {SuccessCount} bulk payment reminders, {FailureCount} failed",
+                    result.SuccessCount, result.FailureCount);
+            }
         }
         catch (Exception ex)
         {
@@ -380,6 +374,58 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending cancellation notifications for session {SessionId}", sessionId);
+            throw; // Allow Hangfire to retry
+        }
+    }
+    /// <summary>
+    /// Checks for sessions with low attendance and sends warnings
+    /// </summary>
+    [AutomaticRetry(Attempts = 2)]
+    public async Task CheckLowAttendanceSessions()
+    {
+        try
+        {
+            // Get upcoming sessions in the next 48 hours
+            var upcomingSessions = await _sessionService.GetUpcomingSessionsAsync();
+            var soonSessions = upcomingSessions.Where(s =>
+                (s.SessionDate - DateTime.UtcNow).TotalHours <= 48 &&
+                s.Status == SessionStatus.Open).ToList();
+
+            foreach (var session in soonSessions)
+            {
+                // Get attendance summary
+                var summary = await _attendanceService.GetSessionAttendanceSummaryAsync(session.Id);
+                var confirmedAttendees = summary.Attendances.Count(a => a.IsAttending);
+
+                // Check if attendance is below minimum
+                if (confirmedAttendees < 3)
+                {
+                    // Get all attendees
+                    var attendees = await _attendanceService.GetSessionAttendeesAsync(session.Id);
+                    var users = new List<UserDto>();
+
+                    foreach (var attendee in attendees)
+                    {
+                        var user = await _userService.GetUserAsync(attendee.UserId);
+                        if (user != null)
+                        {
+                            users.Add(user);
+                        }
+                    }
+
+                    if (users.Any())
+                    {
+                        await _emailService.SendLowAttendanceWarningEmailAsync(session, users);
+                        _logger.LogInformation(
+                            "Sent low attendance warnings for session {SessionId} ({Date}) - {Confirmed}/{Required} confirmed",
+                            session.Id, session.SessionDate, confirmedAttendees, 3);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking for low attendance sessions");
             throw; // Allow Hangfire to retry
         }
     }

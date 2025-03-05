@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Hangfire;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Templates;
+using SaintHenriBasketball.Application.DTOs.Session;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -35,7 +36,7 @@ public class EmailService : IEmailService
         IUserRepository userRepository,
         IPaymentRepository paymentRepository,
         IBackgroundJobClient backgroundJobs,
-        IWebHostEnvironment webHostEnvironment, 
+        IWebHostEnvironment webHostEnvironment,
         ISessionRepository sessionRepository)
     {
         _logger = logger;
@@ -45,7 +46,7 @@ public class EmailService : IEmailService
         _sessionRepository = sessionRepository;
         _paymentRepository = paymentRepository;
 
-        var apiKey = configuration["SendGrid:ApiKey"] 
+        var apiKey = configuration["SendGrid:ApiKey"]
                      ?? throw new ArgumentNullException(nameof(configuration), "SendGrid API key is not configured");
         var fromEmail = configuration["SendGrid:FromEmail"]
             ?? throw new ArgumentNullException(nameof(configuration), "SendGrid From Email is not configured");
@@ -72,7 +73,7 @@ public class EmailService : IEmailService
         try
         {
             var response = await _client.SendEmailAsync(msg);
-            
+
             if (!response.IsSuccessStatusCode && retryCount < MaxRetries)
             {
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
@@ -103,7 +104,7 @@ public class EmailService : IEmailService
                 ?? throw new ArgumentException($"User not found for email: {to}");
 
             var content = EmailTemplates.Authentication.GetConfirmationEmail(
-                $"{user.FirstName} {user.LastName}",
+                $"{user.FirstName}",
                 confirmationLink
             );
 
@@ -124,7 +125,7 @@ public class EmailService : IEmailService
                 ?? throw new ArgumentException($"User not found for email: {to}");
 
             var content = EmailTemplates.Authentication.GetPasswordResetEmail(
-                $"{user.FirstName} {user.LastName}",
+                $"{user.FirstName}",
                 resetLink
             );
 
@@ -133,6 +134,28 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send password reset email to {Email}", to);
+            throw;
+        }
+    }
+
+    public async Task SendAccountCreatedEmailAsync(string? to, string password, string loginLink)
+    {
+        try
+        {
+            var user = await _userRepository.GetByEmailAsync(to)
+                ?? throw new ArgumentException($"User not found for email: {to}");
+
+            var content = EmailTemplates.Authentication.GetAccountCreatedEmail(
+                $"{user.FirstName}",
+                password,
+                loginLink
+            );
+
+            await SendEmailAsync(to, "Votre compte a été créé - Saint Henri Basketball", content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send account created email to {Email}", to);
             throw;
         }
     }
@@ -225,11 +248,12 @@ public class EmailService : IEmailService
     {
         try
         {
-            var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
-                userName,
-                amount,
-                reference ?? GenerateReference("PAY"),
-                DateTime.UtcNow
+            var content = EmailTemplates.Admin.GetAdminNotificationEmail(
+                "Admin",
+                "Nouveau paiement reçu",
+                $"Un paiement de {amount:C} a été reçu de {userName} (référence: {reference ?? "N/A"}).",
+                "https://sainthenribasketball.com/admin/payments",
+                "Voir les paiements"
             );
 
             await SendEmailAsync(
@@ -253,7 +277,7 @@ public class EmailService : IEmailService
             var payment = await _paymentRepository.GetPaymentsByUserAsync(userId)
                 ?? throw new ArgumentException($"Payment not found for email: {user.Email}");
             var amount = GetPaymentAmount(paymentPlan);
-            var content = EmailTemplates.Payments.GetPaymentReminderEmail(user.FirstName, amount, user.PaymentPlan);
+            var content = EmailTemplates.Payments.GetPaymentReminderEmail(user.FirstName, amount, user.PaymentPlan, customMessage);
 
             await SendEmailAsync(
                 user.Email,
@@ -267,8 +291,8 @@ public class EmailService : IEmailService
             throw;
         }
     }
-    
-       public async Task SendPaymentCreatedConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language)
+
+    public async Task SendPaymentCreatedConfirmationAsync(string? email, decimal amount, string? reference, EmailLanguage language)
     {
         try
         {
@@ -349,23 +373,24 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendPaymentPlanUpdateEmailAsync(Guid userId, PaymentPlan paymentPlan)
+    public async Task SendPaymentPlanUpdateEmailAsync(Guid userId, PaymentPlan newPaymentPlan)
     {
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new ArgumentException($"User not found for ID: {userId}");
 
         try
         {
-            var content = EmailTemplates.Payments.GetPaymentReminderEmail(
+            var content = EmailTemplates.Payments.GetPaymentPlanUpdateEmail(
                 user.FirstName,
-                GetPaymentAmount(paymentPlan),
-                user.PaymentPlan,
-                $"Votre plan de paiement a été mis à jour vers: {GetPaymentPlanName(paymentPlan)}"
+                newPaymentPlan,
+                GetPaymentAmount(newPaymentPlan),
+                DateTime.UtcNow,
+                "Votre forfait a été mis à jour. Si vous avez des questions, n'hésitez pas à nous contacter."
             );
 
             await SendEmailAsync(
                 user.Email,
-                "Mise à jour du plan de paiement - Saint Henri Basketball",
+                "Mise à jour du forfait - Saint Henri Basketball",
                 content
             );
         }
@@ -375,7 +400,7 @@ public class EmailService : IEmailService
             throw;
         }
     }
-    
+
     public async Task<EmailSendResult> SendPaymentRemindersAsync(
         List<string?> emails,
         EmailLanguage language,
@@ -383,7 +408,7 @@ public class EmailService : IEmailService
         string? customMessageFr = null)
     {
         var validEmails = emails.Where(e => !string.IsNullOrEmpty(e)).Select(e => e!).ToList();
-        
+
         if (!validEmails.Any())
             throw new ArgumentException("At least one valid email address is required", nameof(emails));
 
@@ -401,7 +426,7 @@ public class EmailService : IEmailService
         try
         {
             var content = EmailTemplates.Attendance.GetAttendanceConfirmationEmail(
-                $"{attendance.User.FirstName} {attendance.User.LastName}",
+                $"{attendance.User.FirstName}",
                 attendance.Session.SessionDate,
                 attendance.Session.StartTime,
                 attendance.Session.EndTime,
@@ -430,7 +455,7 @@ public class EmailService : IEmailService
         string? customMessageFr = null)
     {
         var validEmails = emails.Where(e => !string.IsNullOrEmpty(e)).Select(e => e!).ToList();
-        
+
         if (!validEmails.Any())
             throw new ArgumentException("At least one valid email address is required", nameof(emails));
 
@@ -441,18 +466,19 @@ public class EmailService : IEmailService
         );
     }
 
-    public async Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance)
+    public async Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance, bool previousStatus, string? reason = null)
     {
         try
         {
-            var content = EmailTemplates.Attendance.GetAttendanceConfirmationEmail(
-                $"{attendance.User.FirstName} {attendance.User.LastName}",
+            var content = EmailTemplates.Attendance.GetAttendanceUpdateEmail(
+                $"{attendance.User.FirstName}",
                 attendance.Session.SessionDate,
-                attendance.Session.StartTime.ToString(),
+                attendance.Session.StartTime,
                 attendance.Session.EndTime,
                 attendance.Session.Location,
+                previousStatus,
                 attendance.IsAttending,
-                attendance.Notes
+                reason ?? attendance.Notes
             );
 
             await SendEmailAsync(
@@ -481,7 +507,7 @@ public class EmailService : IEmailService
                 user.Id,
                 nextSession.Id,
                 nextSession.SessionDate,
-                $"{user.FirstName} {user.LastName}",
+                $"{user.FirstName}",
                 nextSession.StartTime,
                 nextSession.EndTime,
                 nextSession.Location,
@@ -499,6 +525,73 @@ public class EmailService : IEmailService
             _logger.LogError(ex, "Failed to send attendance reminder email to {Email}", user.Email);
             throw;
         }
+    }
+
+    public async Task SendLowAttendanceWarningEmailAsync(SessionDto session, List<UserDto> registeredUsers)
+    {
+        foreach (var user in registeredUsers)
+        {
+            try
+            {
+                var content = EmailTemplates.General.GetLowAttendanceWarningEmail(
+                    $"{user.FirstName} {user.LastName}",
+                    session.SessionDate,
+                    session.StartTime,
+                    session.Location ?? string.Empty);
+
+                await SendEmailAsync(
+                    user.Email,
+                    "Alerte: Faible participation à la session - Saint Henri Basketball",
+                    content
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send low attendance warning email to {Email}", user.Email);
+            }
+        }
+    }
+    #endregion
+
+    #region Session Emails
+    public async Task SendSessionCancellationEmailAsync(Session session, List<ApplicationUser> registeredUsers, string? cancellationReason = null, Session? alternativeSession = null)
+    {
+        foreach (var user in registeredUsers)
+        {
+            try
+            {
+                var content = EmailTemplates.Sessions.GetSessionCancellationEmail(
+                    $"{user.FirstName}",
+                    session.SessionDate,
+                    session.StartTime,
+                    session.Location,
+                    cancellationReason,
+                    alternativeSession != null ? MapToSessionDto(alternativeSession) : null
+                );
+
+                await SendEmailAsync(
+                    user.Email,
+                    "Session annulée - Saint Henri Basketball",
+                    content
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send session cancellation email to {Email}", user.Email);
+            }
+        }
+    }
+
+    private SessionDto MapToSessionDto(Session session)
+    {
+        return new SessionDto
+        {
+            Id = session.Id,
+            SessionDate = session.SessionDate,
+            StartTime = session.StartTime,
+            EndTime = session.EndTime,
+            Location = session.Location ?? string.Empty,
+        };
     }
     #endregion
 
@@ -553,13 +646,20 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendSeasonRegistrationReminderEmailAsync(string? userEmail, string userName, string? customMessage = null)
+    public async Task SendSeasonRegistrationReminderEmailAsync(string? userEmail, Season season, string? customMessage = null)
     {
         try
         {
-            var content = EmailTemplates.General.GetAnnouncementEmail(
-                userName,
-                "N'oubliez pas de vous inscrire pour la prochaine saison de basketball!",
+            var user = await _userRepository.GetByEmailAsync(userEmail)
+                ?? throw new ArgumentException($"User not found for email: {userEmail}");
+
+            var content = EmailTemplates.Season.GetSeasonRegistrationReminderEmail(
+                $"{user.FirstName} {user.LastName}",
+                season.Name,
+                season.StartDate,
+                season.EndDate,
+                season.Price,
+                $"https://sainthenribasketball.com/season/{season.Id}/register",
                 customMessage
             );
 
@@ -582,9 +682,12 @@ public class EmailService : IEmailService
     {
         try
         {
-            var content = EmailTemplates.General.GetAnnouncementEmail(
+            var content = EmailTemplates.Admin.GetNewUserNotificationEmail(
                 "Admin",
-                $"Un nouvel utilisateur s'est inscrit:\n\nNom: {newUser.FirstName} {newUser.LastName}\nEmail: {newUser.Email}\nPlan: {newUser.PaymentPlan}"
+                $"{newUser.FirstName}",
+                newUser.Email,
+                DateTime.UtcNow,
+                GetPaymentPlanName(newUser.PaymentPlan)
             );
 
             await SendEmailAsync(
@@ -596,6 +699,30 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send new user notification email for {Email}", newUser.Email);
+        }
+    }
+
+    public async Task SendAdminNotificationAsync(string subject, string message, string? actionLink = null, string? actionText = null)
+    {
+        try
+        {
+            var content = EmailTemplates.Admin.GetAdminNotificationEmail(
+                "Admin",
+                subject,
+                message,
+                actionLink,
+                actionText
+            );
+
+            await SendEmailAsync(
+                "admin@sainthenribasketball.com",
+                $"Admin: {subject} - Saint Henri Basketball",
+                content
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send admin notification email: {Subject}", subject);
         }
     }
     #endregion
@@ -619,6 +746,60 @@ public class EmailService : IEmailService
             throw;
         }
     }
+
+    public async Task SendScheduleChangeEmailAsync(Session session, List<ApplicationUser> affectedUsers, string details, DateTime? newDate = null, TimeSpan? newTime = null)
+    {
+        foreach (var user in affectedUsers)
+        {
+            try
+            {
+                var content = EmailTemplates.General.GetScheduleChangeEmail(
+                    $"{user.FirstName}",
+                    details,
+                    newDate,
+                    newTime
+                );
+
+                await SendEmailAsync(
+                    user.Email,
+                    "Changement d'horaire - Saint Henri Basketball",
+                    content
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send schedule change email to {Email}", user.Email);
+            }
+        }
+    }
+
+    public async Task SendFacilityUpdateEmailAsync(string? userEmail, string facilityName, string updateDetails, DateTime effectiveDate, string? alternativeFacility = null)
+    {
+        try
+        {
+            var user = await _userRepository.GetByEmailAsync(userEmail)
+                ?? throw new ArgumentException($"User not found for email: {userEmail}");
+
+            var content = EmailTemplates.General.GetFacilityUpdateEmail(
+                $"{user.FirstName}",
+                facilityName,
+                updateDetails,
+                effectiveDate,
+                alternativeFacility
+            );
+
+            await SendEmailAsync(
+                userEmail,
+                "Mise à jour des installations - Saint Henri Basketball",
+                content
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send facility update email to {Email}", userEmail);
+            throw;
+        }
+    }
     #endregion
 
     #region Helper Methods
@@ -628,7 +809,7 @@ public class EmailService : IEmailService
         PaymentPlan.DropIn => 10.00m,
         _ => throw new ArgumentException($"Invalid payment plan: {plan}")
     };
-    
+
     private static string GetPaymentPlanName(PaymentPlan plan) => plan switch
     {
         PaymentPlan.Season => "Forfait de saison",
@@ -679,27 +860,27 @@ public class EmailService : IEmailService
                         user.PaymentPlan,
                         customMessage),
 
-                
+
                     EmailType.AttendanceReminder => EmailTemplates.Attendance.GetAttendanceReminderEmail(
                         user.Id,
                         nextSession.Id,
                         nextSession.SessionDate,
-                        user.Username,
+                        user.FirstName,
                         nextSession.StartTime,
                         nextSession.EndTime,
                         nextSession.Location,
                         customMessage
                     ),
-                        
+
                     EmailType.SeasonRegistrationReminder => EmailTemplates.General.GetAnnouncementEmail(
-                        $"{user.FirstName} {user.LastName}",
+                        $"{user.FirstName}",
                         "N'oubliez pas de vous inscrire pour la prochaine saison de basketball!",
                         customMessage),
-                        
+
                     EmailType.GeneralAnnouncement => EmailTemplates.General.GetAnnouncementEmail(
-                        $"{user.FirstName} {user.LastName}",
+                        $"{user.FirstName}",
                         customMessage ?? "Annonce importante de Saint Henri Basketball"),
-                        
+
                     _ => throw new ArgumentException($"Unsupported email type: {emailType}")
                 };
 
@@ -769,10 +950,12 @@ public class EmailService : IEmailService
         {
             try
             {
-                var content = EmailTemplates.General.GetAnnouncementEmail(
+                var content = EmailTemplates.Season.GetSeasonStatusUpdateEmail(
                     user.FirstName,
-                    $"Le statut de la saison a été mis à jour à: {season.Status}",
-                    $"Période: {season.StartDate:dd MMMM yyyy} - {season.EndDate:dd MMMM yyyy}\nPrix: {season.Price:C}"
+                    season.Name,
+                    season.Status.ToString(),
+                    $"Changement de statut effectif à partir du {DateTime.UtcNow:dd MMMM yyyy}",
+                    season.Notes
                 );
 
                 await SendEmailAsync(
@@ -794,11 +977,17 @@ public class EmailService : IEmailService
         {
             try
             {
+                var updateSubject = "Mise à jour des détails de la saison";
                 var changes = string.Join(", ", changedProperties.Select(p => p.ToLower()));
-                var content = EmailTemplates.General.GetAnnouncementEmail(
+                var updateDetails = $"Les détails suivants ont été mis à jour: {changes}. Période: {season.StartDate:dd MMMM yyyy} - {season.EndDate:dd MMMM yyyy}. Prix: {season.Price:C}. {season.Notes}";
+
+                var content = EmailTemplates.Season.GetSeasonUpdateEmail(
                     user.FirstName,
-                    $"Les détails suivants ont été mis à jour: {changes}",
-                    $"Période: {season.StartDate:dd MMMM yyyy} - {season.EndDate:dd MMMM yyyy}\nPrix: {season.Price:C}\n\n{season.Notes}"
+                    season.Name,
+                    updateSubject,
+                    updateDetails,
+                    $"https://sainthenribasketball.com/season/{season.Id}",
+                    "Voir les détails de la saison"
                 );
 
                 await SendEmailAsync(
@@ -819,10 +1008,12 @@ public class EmailService : IEmailService
         try
         {
             var userName = $"{registration.User.FirstName} {registration.User.LastName}";
-            var content = EmailTemplates.Payments.GetPaymentReminderEmail(
+            var content = EmailTemplates.Season.GetSeasonPaymentReminderEmail(
                 userName,
+                registration.Season.Name,
                 registration.Season.Price,
-                PaymentPlan.Season,
+                $"https://sainthenribasketball.com/season/{registration.SeasonId}/payment",
+                GenerateReference("SEASON"),
                 "Veuillez effectuer le paiement pour confirmer votre inscription à la saison."
             );
 
@@ -838,7 +1029,7 @@ public class EmailService : IEmailService
             throw;
         }
     }
-    
+
     public async Task<EmailSendResult> SendSeasonRegistrationRemindersAsync(
         List<string?> emails,
         EmailLanguage language,
@@ -846,7 +1037,7 @@ public class EmailService : IEmailService
         string? customMessageFr = null)
     {
         var validEmails = emails.Where(e => !string.IsNullOrEmpty(e)).Select(e => e!).ToList();
-        
+
         if (!validEmails.Any())
             throw new ArgumentException("At least one valid email address is required", nameof(emails));
 
@@ -858,6 +1049,30 @@ public class EmailService : IEmailService
     }
     #endregion
 
+    #region General
+    public async Task<EmailSendResult> SendGeneralAnnouncementsAsync(
+        List<string?> emails,
+        EmailLanguage language,
+        string? customMessage = null,
+        string? customMessageFr = null)
+    {
+        var validEmails = emails.Where(e => !string.IsNullOrEmpty(e)).Select(e => e!).ToList();
+
+        if (!validEmails.Any())
+            throw new ArgumentException("At least one valid email address is required", nameof(emails));
+
+        if (string.IsNullOrEmpty(customMessage) && string.IsNullOrEmpty(customMessageFr))
+            throw new ArgumentException("Either customMessage or customMessageFr is required for general announcements");
+
+        return await SendTargetedEmailsAsync(
+            EmailType.GeneralAnnouncement,
+            validEmails,
+            customMessageFr ?? customMessage
+        );
+    }
+    #endregion
+
+    #region Custom Email
     public async Task<EmailSendResult> SendTargetedEmailsAsync(
         EmailType emailType,
         List<string> emails,
@@ -873,29 +1088,5 @@ public class EmailService : IEmailService
             customMessageFr ?? customMessage
         );
     }
-
-
-    #region General
-    public async Task<EmailSendResult> SendGeneralAnnouncementsAsync(
-        List<string?> emails,
-        EmailLanguage language,
-        string? customMessage = null,
-        string? customMessageFr = null)
-    {
-        var validEmails = emails.Where(e => !string.IsNullOrEmpty(e)).Select(e => e!).ToList();
-        
-        if (!validEmails.Any())
-            throw new ArgumentException("At least one valid email address is required", nameof(emails));
-
-        if (string.IsNullOrEmpty(customMessage) && string.IsNullOrEmpty(customMessageFr))
-            throw new ArgumentException("Either customMessage or customMessageFr is required for general announcements");
-
-        return await SendTargetedEmailsAsync(
-            EmailType.GeneralAnnouncement,
-            validEmails,
-            customMessageFr ?? customMessage
-        );
-    }
     #endregion
-    
 }

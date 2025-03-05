@@ -133,7 +133,7 @@ public class AttendanceService : IAttendanceService
         await _attendanceRepository.UpdateAsync(attendance);
 
         // Send update confirmation email
-        await _emailService.SendAttendanceUpdateEmailAsync(attendance);
+        await _emailService.SendAttendanceUpdateEmailAsync(attendance, wasAttending, updateReason);
 
         return _mapper.Map<AttendanceResponseDto>(attendance);
     }

@@ -32,5 +32,6 @@ public enum EmailType
     
     // Admin Notifications
     AdminNotification = 18,
-    NewUserNotification = 19
+    NewUserNotification = 19,
+    AccountCreated = 20
 }

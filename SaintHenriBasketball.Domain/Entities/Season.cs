@@ -5,6 +5,8 @@ namespace SaintHenriBasketball.Domain.Entities;
 public class Season
 {
     public Guid Id { get; private set; }
+    
+    public string Name => $"{StartDate.Year} - {EndDate.Year}";
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal Price { get; set; }
