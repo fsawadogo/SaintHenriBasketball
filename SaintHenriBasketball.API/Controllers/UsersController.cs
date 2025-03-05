@@ -13,18 +13,11 @@ namespace SaintHenriBasketball.API.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-public class UsersController : ControllerBase
+public class UsersController(IUserService userService, ILogger<UsersController> logger, ICacheService cacheService)
+    : ControllerBase
 {
-    private readonly IUserService _userService;
-    private readonly ILogger<UsersController> _logger;
-    private readonly ICacheService _cacheService;
-
-    public UsersController(IUserService userService, ILogger<UsersController> logger, ICacheService cacheService)
-    {
-        _userService = userService ?? throw new ArgumentNullException(nameof(userService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _cacheService = cacheService;
-    }
+    private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
+    private readonly ILogger<UsersController> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     #region Authentication
     /// <summary>
@@ -118,7 +111,7 @@ public class UsersController : ControllerBase
 
         // Check cache first
         string cacheKey = $"Users:Current:{userId}";
-        var cachedUser = await _cacheService.GetAsync<UserDto>(cacheKey);
+        var cachedUser = await cacheService.GetAsync<UserDto>(cacheKey);
 
         if (cachedUser != null)
         {
@@ -130,7 +123,7 @@ public class UsersController : ControllerBase
         var userDto = await _userService.GetUserAsync(userId);
 
         // Cache for 15 minutes
-        await _cacheService.SetAsync(cacheKey, userDto, TimeSpan.FromMinutes(15));
+        await cacheService.SetAsync(cacheKey, userDto, TimeSpan.FromMinutes(15));
 
         return Ok(userDto);
     }
@@ -156,9 +149,9 @@ public class UsersController : ControllerBase
             await _userService.UpdateUserAsync(userId, updateUserDto);
 
             // Invalidate cache
-            await _cacheService.RemoveAsync($"Users:Current:{userId}");
-            await _cacheService.RemoveAsync($"Users:Detail:{userId}");
-            await _cacheService.RemoveAsync("Users:All");
+            await cacheService.RemoveAsync($"Users:Current:{userId}");
+            await cacheService.RemoveAsync($"Users:Detail:{userId}");
+            await cacheService.RemoveAsync("Users:All");
 
             return NoContent();
         }
@@ -368,8 +361,6 @@ public class UsersController : ControllerBase
                 return BadRequest(ModelState);
 
             var user = await _userService.GetUserByEmailAsync(email);
-            if (user == null)
-                return NotFound("User not found");
 
             await _userService.UpdateUserPaymentPlanAsync(user.Id, updatePaymentPlanDto.PaymentPlan);
             _logger.LogInformation("User payment plan updated successfully: {Email}", email);
@@ -399,8 +390,6 @@ public class UsersController : ControllerBase
         try
         {
             var user = await _userService.GetUserAsync(userId);
-            if (user == null)
-                return NotFound("User not found");
 
             var updateUserDto = new UpdateUserDto
             {
