@@ -3,7 +3,7 @@
 
 
 ### Login
-POST {{baseUrl}}/api/users/login
+POST {{baseUrl}}/api/v1/users/login
 Accept: application/json
 Content-Type: application/json
 
