@@ -54,28 +54,3 @@ jobs:
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_42A4D5A4AE3A45468663F992A9E512DE }}
-
-      - name: Configure App Settings
-        uses: azure/appservice-settings@v1
-        with:
-          app-name: 'SaintHenri-Basketball'
-          slot-name: 'Production'
-          app-settings-json: |
-            [
-              {
-                "name": "SendGrid__ApiKey",
-                "value": "${{ secrets.SENDGRIDAPIKEY }}"
-              },
-              {
-                "name": "JwtSettings__Key",
-                "value": "${{ secrets.JWTSETTINGS }}"
-              }
-            ]
-          connection-strings-json: |
-            [
-              {
-                "name": "DefaultConnection",
-                "value": "${{ secrets.CONNECTIONSTRINGS }}",
-                "type": "SQLAzure"
-              }
-            ]
