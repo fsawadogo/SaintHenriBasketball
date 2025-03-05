@@ -372,3 +372,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /SaintHenriBasketball.API/SaintHenriBasketball.API.http
+/SaintHenriBasketball.API/api.http
+/SaintHenriBasketball.API/app.http
