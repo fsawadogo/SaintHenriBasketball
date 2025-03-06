@@ -85,41 +85,6 @@ The application uses a tiered configuration approach:
 - `appsettings.Development.json` - Development-specific settings
 - `appsettings.Production.json` - Production-specific settings (if needed)
 
-### Settings Structure
-
-```json
-{
-  "KeyVaultName": "SHB-SendGridApiKey", // Only used in production
-  "ConnectionStrings": {
-    "DefaultConnection": "your-connection-string"
-  },
-  "SendGrid": {
-    "FromEmail": "noreply@sainthenribasketball.com",
-    "FromName": "Saint Henri Basketball",
-    "Enabled": true
-  },
-  "JwtSettings": {
-    "Issuer": "SaintHenriBasketball",
-    "Audience": "SaintHenriBasketballClients",
-    "ExpiryInMinutes": 60
-  }
-}
-```
-
-## Azure Key Vault Integration
-
-In production, sensitive data like API keys are stored in Azure Key Vault.
-
-### Adding Secrets to Key Vault
-
-1. Create secrets in Azure Key Vault with double hyphens for nesting:
-    - `SendGrid--ApiKey`
-    - `JwtSettings--Key`
-
-2. Grant your application access to the Key Vault:
-    - Use Managed Identity for Azure-hosted applications
-    - Configure access policies or RBAC permissions
-
 ## Database
 
 The application uses Entity Framework Core with SQL Server. Migrations are automatically applied on startup.
