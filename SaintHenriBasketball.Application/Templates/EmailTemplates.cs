@@ -333,7 +333,7 @@ public static class EmailTemplates
                 </tr>
                 <tr>
                     <td style='{Styles.TableCell}'><strong>Heure:</strong></td>
-                    <td style='{Styles.TableCell}'>{startTime} - {endTime}</td>
+                    <td style='{Styles.TableCell}'>10:00 - {endTime}</td>
                 </tr>
                 <tr>
                     <td style='{Styles.TableCell}'><strong>Lieu:</strong></td>
@@ -393,7 +393,7 @@ public static class EmailTemplates
                         </tr>
                         <tr>
                             <td style='{Styles.TableCell}'>Heure:</td>
-                            <td style='{Styles.TableCell}'>{startTime} - {endTime}</td>
+                            <td style='{Styles.TableCell}'>10:00 - {endTime}</td>
                         </tr>
                         <tr>
                             <td style='{Styles.TableCell}'>Lieu:</td>
