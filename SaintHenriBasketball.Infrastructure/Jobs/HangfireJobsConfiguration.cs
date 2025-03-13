@@ -29,11 +29,5 @@ public class HangfireJobsConfiguration
             "schedule-payment-reminders",
             service => service.SchedulePaymentReminders(),
             Cron.Daily(17, 30));
-
-        // Bulk payment reminders
-        RecurringJob.AddOrUpdate<IEmailAutomationService>(
-            "send-bulk-payment-reminders",
-            service => service.SendBulkPaymentReminders(),
-            Cron.Weekly(DayOfWeek.Monday, 17, 0));
     }
 }
