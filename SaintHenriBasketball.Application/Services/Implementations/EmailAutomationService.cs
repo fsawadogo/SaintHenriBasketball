@@ -493,7 +493,7 @@ public class EmailAutomationService : IEmailAutomationService
 
             // Determine the message based on threshold
             string urgencyLevel = isAt85PercentCapacity ? "URGENT" : "Important";
-            string spotsMessage = $"Only {spotsRemaining} spots remaining!";
+            string spotsMessage = $"Il ne reste que {spotsRemaining} places!";
 
             foreach (var user in unconfirmedUsers)
             {
@@ -503,8 +503,9 @@ public class EmailAutomationService : IEmailAutomationService
                         continue;
 
                     // Send capacity threshold email
-                    string message = $"{urgencyLevel}: {spotsMessage} Please confirm your attendance for the upcoming basketball session on {session.SessionDate:dddd, MMMM d} at 10:00. " +
-                                    "If you're unable to attend, please let us know so others can join.";
+                    string message = $"{urgencyLevel}: {spotsMessage} Veuillez confirmer votre présence pour la prochaine session de basketball le {session.SessionDate:dddd, MMMM d} à 10:00. " +
+                 "Si vous ne pouvez pas y assister, veuillez nous en informer afin que d'autres puissent se joindre.";
+
 
                     await _emailService.SendAttendanceReminderEmailAsync(
                         user.UserId,
