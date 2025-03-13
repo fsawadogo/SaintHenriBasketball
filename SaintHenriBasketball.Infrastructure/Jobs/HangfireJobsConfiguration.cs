@@ -29,5 +29,17 @@ public class HangfireJobsConfiguration
             "schedule-payment-reminders",
             service => service.SchedulePaymentReminders(),
             Cron.Daily(17, 30));
+
+        // Check session capacities and send reminders if needed
+        // Run twice daily at 9:00 AM and 6:00 PM
+        RecurringJob.AddOrUpdate<IEmailAutomationService>(
+            "check-session-capacities-morning",
+            service => service.CheckSessionsCapacityAndSendReminders(),
+            Cron.Daily(9, 0));
+
+        RecurringJob.AddOrUpdate<IEmailAutomationService>(
+            "check-session-capacities-evening",
+            service => service.CheckSessionsCapacityAndSendReminders(),
+            Cron.Daily(18, 0));
     }
 }

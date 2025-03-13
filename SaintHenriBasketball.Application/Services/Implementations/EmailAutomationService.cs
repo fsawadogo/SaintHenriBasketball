@@ -15,6 +15,7 @@ public class EmailAutomationService : IEmailAutomationService
     private readonly IUserService _userService;
     private readonly IAttendanceService _attendanceService;
     private readonly IEmailService _emailService;
+    private readonly ICacheService _cacheService;
     private readonly IMapper _mapper;
     private readonly ILogger<EmailAutomationService> _logger;
 
@@ -24,6 +25,7 @@ public class EmailAutomationService : IEmailAutomationService
         IUserService userService,
         IAttendanceService attendanceService,
         IEmailService emailService,
+        ICacheService cacheService,
         IMapper mapper,
         ILogger<EmailAutomationService> logger)
     {
@@ -32,6 +34,7 @@ public class EmailAutomationService : IEmailAutomationService
         _userService = userService;
         _attendanceService = attendanceService;
         _emailService = emailService;
+        _cacheService = cacheService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -427,6 +430,167 @@ public class EmailAutomationService : IEmailAutomationService
         {
             _logger.LogError(ex, "Error checking for low attendance sessions");
             throw; // Allow Hangfire to retry
+        }
+    }
+
+    /// <summary>
+    /// Sends reminder emails to users who haven't confirmed their attendance
+    /// when the capacity reaches specified thresholds (75% and 85%)
+    /// </summary>
+    [AutomaticRetry(Attempts = 3)]
+    public async Task SendCapacityThresholdRemindersAsync(Guid sessionId)
+    {
+        try
+        {
+            // Get session details
+            var session = await _sessionService.GetSessionAsync(sessionId);
+            if (session == null || session.Status != SessionStatus.Open)
+            {
+                _logger.LogWarning($"Cannot send capacity reminders for session {sessionId}: Session not found or not open", sessionId);
+                return;
+            }
+
+            // Calculate capacity and thresholds
+            int totalCapacity = session.MaxCapacity;
+            int spotsReserved = session.RegisteredPlayersCount;
+            int spotsRemaining = totalCapacity - spotsReserved;
+            int spotsRemainingPercentage = (int)((spotsRemaining / (double)totalCapacity) * 100);
+
+            // Check if we're at one of our threshold points (25% spots remaining = 75% full, or 15% spots remaining = 85% full)
+            bool isAt75PercentCapacity = spotsRemainingPercentage <= 25 && spotsRemainingPercentage > 15;
+            bool isAt85PercentCapacity = spotsRemainingPercentage <= 15;
+
+            // If we're not at a threshold, exit early
+            if (!isAt75PercentCapacity && !isAt85PercentCapacity)
+            {
+                _logger.LogInformation(
+                    $"Session {sessionId} capacity ({spotsRemaining}/{totalCapacity}) not at a notification threshold",
+                    sessionId, spotsRemaining, totalCapacity);
+                return;
+            }
+
+            // Get attendance information
+            var attendanceSummary = await _attendanceService.GetSessionAttendanceSummaryAsync(sessionId);
+
+            // Get all registered users for this session
+            var registeredUsers = await _attendanceService.GetSessionAttendeesAsync(sessionId);
+
+            // Filter users who haven't confirmed attendance yet
+            var unconfirmedUsers = registeredUsers
+                .Where(user => !attendanceSummary.Attendances.Any(a => a.UserId == user.UserId))
+                .ToList();
+
+            if (!unconfirmedUsers.Any())
+            {
+                _logger.LogInformation("No unconfirmed users for session {SessionId}", sessionId);
+                return;
+            }
+
+            // Track email send results
+            int successCount = 0;
+            int failureCount = 0;
+            var failedEmails = new List<string>();
+
+            // Determine the message based on threshold
+            string urgencyLevel = isAt85PercentCapacity ? "URGENT" : "Important";
+            string spotsMessage = $"Only {spotsRemaining} spots remaining!";
+
+            foreach (var user in unconfirmedUsers)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(user.Email))
+                        continue;
+
+                    // Send capacity threshold email
+                    string message = $"{urgencyLevel}: {spotsMessage} Please confirm your attendance for the upcoming basketball session on {session.SessionDate:dddd, MMMM d} at 10:00. " +
+                                    "If you're unable to attend, please let us know so others can join.";
+
+                    await _emailService.SendAttendanceReminderEmailAsync(
+                        user.UserId,
+                        message
+                    );
+
+                    successCount++;
+
+                    // Add a small delay to avoid overloading email service
+                    await Task.Delay(100);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send capacity threshold email to user {UserId}", user.UserId);
+                    failureCount++;
+                    failedEmails.Add(user.Email);
+                }
+            }
+
+            _logger.LogInformation(
+                $"Sent {successCount} capacity threshold ({spotsRemainingPercentage}%) notifications for session {sessionId}, {failureCount} failed",
+                successCount,
+                isAt85PercentCapacity ? 85 : 75,
+                sessionId,
+                failureCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending capacity threshold notifications for session {SessionId}", sessionId);
+            throw; // Allow Hangfire to retry
+        }
+    }
+
+    /// <summary>
+    /// Checks all upcoming sessions and triggers capacity threshold reminders if needed
+    /// </summary>
+    public async Task CheckSessionsCapacityAndSendReminders()
+    {
+        try
+        {
+            // Get upcoming sessions
+            var upcomingSessions = await _sessionService.GetUpcomingSessionsAsync();
+
+            foreach (var session in upcomingSessions)
+            {
+                // Calculate capacity and thresholds
+                int totalCapacity = session.MaxCapacity;
+                int spotsReserved = session.RegisteredPlayersCount;
+                int spotsRemaining = totalCapacity - spotsReserved;
+                int spotsRemainingPercentage = (int)((spotsRemaining / (double)totalCapacity) * 100);
+
+                // Check if we're at one of our threshold points
+                bool isAt75PercentCapacity = spotsRemainingPercentage <= 25 && spotsRemainingPercentage > 15;
+                bool isAt85PercentCapacity = spotsRemainingPercentage <= 15;
+
+                if (isAt75PercentCapacity || isAt85PercentCapacity)
+                {
+                    // Check if we've already sent notifications for this threshold
+                    string cacheKey = $"CapacityNotification:{session.Id}:{(isAt85PercentCapacity ? 85 : 75)}";
+                    var alreadySent = await _cacheService.GetAsync<bool>(cacheKey);
+
+                    if (alreadySent)
+                    {
+                        _logger.LogInformation(
+                            "Capacity notifications already sent for session {SessionId} at {Threshold}% threshold",
+                            session.Id,
+                            isAt85PercentCapacity ? 85 : 75);
+                        continue;
+                    }
+
+                    // Schedule notification job
+                    BackgroundJob.Enqueue(() => SendCapacityThresholdRemindersAsync(session.Id));
+
+                    // Mark this threshold as processed to avoid duplicate notifications
+                    await _cacheService.SetAsync(cacheKey, true, TimeSpan.FromDays(7));
+
+                    _logger.LogInformation(
+                        "Scheduled capacity notifications for session {SessionId} at {Threshold}% threshold",
+                        session.Id,
+                        isAt85PercentCapacity ? 85 : 75);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking sessions capacity for threshold notifications");
         }
     }
 }

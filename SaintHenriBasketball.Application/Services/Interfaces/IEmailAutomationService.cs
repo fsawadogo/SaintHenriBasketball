@@ -31,4 +31,15 @@ public interface IEmailAutomationService
     /// Sends session cancellation notifications to all registered users
     /// </summary>
     Task SendSessionCancellationNotifications(Guid sessionId, string? cancellationReason = null);
+
+    /// <summary>
+    /// Sends reminder emails to users who haven't confirmed their attendance
+    /// when the capacity reaches specified thresholds (75% and 85%)
+    /// </summary>
+    Task SendCapacityThresholdRemindersAsync(Guid sessionId);
+
+    /// <summary>
+    /// Checks all upcoming sessions and triggers capacity threshold reminders if needed
+    /// </summary>
+    Task CheckSessionsCapacityAndSendReminders();
 }
