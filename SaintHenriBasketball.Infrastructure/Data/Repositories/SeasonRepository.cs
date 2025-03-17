@@ -57,9 +57,6 @@ public class SeasonRepository : ISeasonRepository
             .Include(s => s.Registrations)
                 .ThenInclude(r => r.User)
             .FirstOrDefaultAsync(s => s.Status == SeasonStatus.Open);
-                //s.Status == SeasonStatus.Open &&
-                //s.StartDate <= now &&
-                //s.EndDate >= now);
     }
 
     public async Task<bool> HasUserRegisteredAsync(Guid seasonId, Guid userId)
