@@ -261,4 +261,10 @@ public class SessionService : ISessionService
     {
         return await _registrationRepository.ExistsAsync(userId, sessionId);
     }
+
+    public async Task<IReadOnlyList<SessionDto>> GetAllSessionsAsync()
+    {
+        var sessions = await _sessionRepository.GetAllSessionsAsync();
+        return _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
+    }
 }

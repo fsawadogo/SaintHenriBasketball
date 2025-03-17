@@ -6,6 +6,7 @@ namespace SaintHenriBasketball.Application.Services.Interfaces;
 public interface ISessionService
 {
     Task<SessionDto> CreateSessionAsync(CreateSessionDto createSessionDto);
+    Task<IReadOnlyList<SessionDto>> GetAllSessionsAsync();
     Task<SessionDetailDto> GetSessionAsync(Guid id);
     Task<IReadOnlyList<SessionDto>> GetUpcomingSessionsAsync();
     Task UpdateSessionAsync(Guid id, UpdateSessionDto updateSessionDto);

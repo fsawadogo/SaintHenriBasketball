@@ -108,4 +108,9 @@ public class SessionRepository : ISessionRepository
             .OrderBy(s => s.SessionDate)
             .FirstOrDefaultAsync();
     }
+
+    public async Task<IReadOnlyList<Session>> GetAllSessionsAsync()
+    {
+        return await _context.Sessions.ToListAsync();
+    }
 }

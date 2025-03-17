@@ -243,4 +243,24 @@ public class SessionsController : BaseApiController
             return StatusCode(500, "An error occurred while updating the session");
         }
     }
+
+    /// <summary>
+    /// Get all sessions regardless of their status
+    /// </summary>
+    [HttpGet("all")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SessionDto>>> GetAllSessions()
+    {
+        try
+        {
+            var sessions = await _sessionService.GetAllSessionsAsync();
+            return Ok(sessions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all sessions");
+            return StatusCode(500, "An error occurred while retrieving all sessions");
+        }
+    }
 }

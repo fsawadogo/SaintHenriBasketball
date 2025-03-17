@@ -15,6 +15,7 @@ public interface ISessionRepository
     Task<bool> ExistsAsync(Guid id);
     Task<Session> GetClosestSessionAsync();
     Task<Session> GetNextSessionAsync();
+    Task<IReadOnlyList<Session>> GetAllSessionsAsync();
 }
 
 
