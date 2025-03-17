@@ -23,6 +23,6 @@ public class Payment
         Amount = amount;
         Plan = plan;
         Status = PaymentStatus.Pending;
-        PaymentDate = DateTime.Now;
+        PaymentDate = DateTime.UtcNow;
     }
 }

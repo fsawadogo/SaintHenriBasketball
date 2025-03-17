@@ -40,8 +40,8 @@ public class PaymentService : IPaymentService
        var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan);
        
        var reference = user.PaymentPlan == PaymentPlan.Season 
-           ? $"SEASON-{DateTime.Now:yyMM}-{Random.Shared.Next(1000, 9999)}"
-           : $"DROPIN-{DateTime.Now:yyMM}-{Random.Shared.Next(1000, 9999)}";
+           ? $"SEASON-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}"
+           : $"DROPIN-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
        
        payment.Reference = reference;
        

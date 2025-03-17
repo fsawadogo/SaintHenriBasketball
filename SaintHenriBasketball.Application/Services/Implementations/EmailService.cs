@@ -818,7 +818,7 @@ public class EmailService : IEmailService
     };
     private static string GenerateReference(string prefix)
     {
-        return $"{prefix}-{DateTime.Now:yyMM}-{Random.Shared.Next(1000, 9999)}";
+        return $"{prefix}-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
     }
     #endregion
 

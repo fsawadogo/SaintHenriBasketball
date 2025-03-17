@@ -70,7 +70,7 @@ public static class EmailTemplates
                 </div>
                 <div style='margin-top: 30px; text-align: center; color: #666; font-size: 12px;'>
                     <p>Saint Henri Basketball</p>
-                    <p>{DateTime.Now.Year} © Tous droits réservés</p>
+                    <p>{DateTime.UtcNow.Year} © Tous droits réservés</p>
                 </div>
             </div>
         </body>

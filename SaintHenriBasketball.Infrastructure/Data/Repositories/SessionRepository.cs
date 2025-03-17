@@ -39,7 +39,7 @@ public class SessionRepository : ISessionRepository
     {
         return await _context.Sessions
             .Include(s => s.Registrations)
-            .Where(s => s.SessionDate >= DateTime.Now)
+            .Where(s => s.SessionDate >= DateTime.UtcNow)
             .OrderBy(s => s.SessionDate)
             .ToListAsync();
     }
@@ -49,7 +49,7 @@ public class SessionRepository : ISessionRepository
         return await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s =>
-                s.SessionDate >= DateTime.Now &&
+                s.SessionDate >= DateTime.UtcNow &&
                 s.Status == SessionStatus.Open &&
                 s.RegisteredPlayersCount < s.MaxCapacity)
             .OrderBy(s => s.SessionDate)
@@ -91,7 +91,7 @@ public class SessionRepository : ISessionRepository
     {
         return (await _context.Sessions
             .Include(s => s.Registrations)
-            .Where(s => s.SessionDate > DateTime.Now)
+            .Where(s => s.SessionDate > DateTime.UtcNow)
             .OrderBy(s => s.SessionDate)
             .FirstOrDefaultAsync())!;
     }
@@ -102,7 +102,7 @@ public class SessionRepository : ISessionRepository
             .Include(s => s.Registrations)
             .ThenInclude(r => r.User)
             .Where(s => 
-                s.SessionDate > DateTime.Now &&
+                s.SessionDate > DateTime.UtcNow &&
                 s.Status == SessionStatus.Open &&
                 s.RegisteredPlayersCount < s.MaxCapacity)
             .OrderBy(s => s.SessionDate)
@@ -111,6 +111,8 @@ public class SessionRepository : ISessionRepository
 
     public async Task<IReadOnlyList<Session>> GetAllSessionsAsync()
     {
-        return await _context.Sessions.ToListAsync();
+        return await _context.Sessions
+            .OrderByDescending(s => s.SessionDate)
+            .ToListAsync();
     }
 }

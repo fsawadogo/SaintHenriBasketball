@@ -48,7 +48,7 @@ public class EmailAutomationService : IEmailAutomationService
         try
         {
             // Get today's date in local time
-            var today = DateTime.Now.Date;
+            var today = DateTime.UtcNow.Date;
 
             // Only run this on Wednesday, Thursday, or Friday
             if (today.DayOfWeek != DayOfWeek.Tuesday &&
@@ -64,7 +64,7 @@ public class EmailAutomationService : IEmailAutomationService
 
             // Filter sessions that are 1 - 3 days ahead(based on today)
             // Ensure we're comparing dates with the same timezone basis
-            var localToday = DateTime.Now.Date;
+            var localToday = DateTime.UtcNow.Date;
             var sessionsToRemind = upcomingSessions.Where(session => {
                 // Convert session date to local time for comparison if needed
                 var sessionLocalDate = TimeZoneInfo.ConvertTimeFromUtc(

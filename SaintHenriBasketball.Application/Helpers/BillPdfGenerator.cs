@@ -85,7 +85,7 @@ public class BillPdfGenerator
             new XRect(50, yPos, page.Width - 100, 30), XStringFormats.TopRight);
         
         // Footer
-        var footerText = $"{GetTranslation("BILL_GENERATED", language)} {DateTime.Now.ToString("MMMM dd, yyyy", GetCulture(language))}";
+        var footerText = $"{GetTranslation("BILL_GENERATED", language)} {DateTime.UtcNow.ToString("MMMM dd, yyyy", GetCulture(language))}";
         gfx.DrawString(footerText, normalFont, XBrushes.Gray, 
             new XRect(0, page.Height - 50, page.Width, 30), XStringFormats.Center);
 
