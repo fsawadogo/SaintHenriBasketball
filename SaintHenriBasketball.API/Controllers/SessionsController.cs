@@ -183,31 +183,6 @@ public class SessionsController : BaseApiController
     }
 
     /// <summary>
-    /// Get sessions registered by current user
-    /// </summary>
-    [HttpGet("my-sessions")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<SessionDto>>> GetMyRegisteredSessions()
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized();
-            }
-
-            var sessions = await _sessionService.GetUserSessionsAsync(Guid.Parse(userId));
-            return Ok(sessions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting user's registered sessions");
-            return StatusCode(500, "An error occurred while retrieving your sessions");
-        }
-    }
-
-    /// <summary>
     /// Cancel a session (Admin only)
     /// </summary>
     [HttpPost("{id}/cancel")]
