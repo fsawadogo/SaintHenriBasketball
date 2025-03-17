@@ -15,12 +15,12 @@ public class SessionRepository : ISessionRepository
         _context = context;
     }
 
-    public async Task<Session> GetByIdAsync(Guid id)
+    public async Task<Session?> GetByIdAsync(Guid id)
     {
-        return (await _context.Sessions
+        return await _context.Sessions
             .Include(s => s.Registrations)
             .ThenInclude(r => r.User)
-            .FirstOrDefaultAsync(s => s.Id == id))!;
+            .FirstOrDefaultAsync(s => s.Id == id);
     }
 
     public async Task AddAsync(Session session)
@@ -87,21 +87,21 @@ public class SessionRepository : ISessionRepository
         return await _context.Sessions.AnyAsync(s => s.Id == id);
     }
 
-    public async Task<Session> GetClosestSessionAsync()
+    public async Task<Session?> GetClosestSessionAsync()
     {
-        return (await _context.Sessions
+        return await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s => s.SessionDate > DateTime.UtcNow)
             .OrderBy(s => s.SessionDate)
-            .FirstOrDefaultAsync())!;
+            .FirstOrDefaultAsync();
     }
 
-    public async Task<Session> GetNextSessionAsync()
+    public async Task<Session?> GetNextSessionAsync()
     {
         return await _context.Sessions
             .Include(s => s.Registrations)
             .ThenInclude(r => r.User)
-            .Where(s => 
+            .Where(s =>
                 s.SessionDate > DateTime.UtcNow &&
                 s.Status == SessionStatus.Open &&
                 s.RegisteredPlayersCount < s.MaxCapacity)
