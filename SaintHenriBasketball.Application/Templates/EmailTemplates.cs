@@ -244,7 +244,7 @@ public static class EmailTemplates
                         </tr>
                         <tr>
                             <td style='{Styles.TableCell}'><strong>Nouveau tarif:</strong></td>
-                            <td style='{Styles.TableCell}'>À déterminer</td>
+                            <td style='{Styles.TableCell}'>{newAmount:C}</td>
                         </tr>
                         <tr>
                             <td style='{Styles.TableCell}'><strong>Date d'effet:</strong></td>
