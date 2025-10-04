@@ -9,5 +9,7 @@ public interface IAttendanceService
     Task<IEnumerable<AttendanceResponseDto>> GetUserAttendanceHistoryAsync(Guid userId);
     Task<SessionAttendanceSummaryDto> GetSessionAttendanceSummaryAsync(Guid sessionId);
     Task<IEnumerable<AttendanceUserDto>> GetSessionAttendeesAsync(Guid sessionId);
+    Task<AddParticipantsResponseDto> AddParticipantsToSessionAsync(Guid sessionId, AddParticipantsRequest request);
+    Task<RemoveParticipantsResponseDto> RemoveParticipantsFromSessionAsync(Guid sessionId, RemoveParticipantsRequest request);
 
 }

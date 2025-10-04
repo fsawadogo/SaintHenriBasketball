@@ -299,4 +299,196 @@ public class AttendanceService : IAttendanceService
             throw;
         }
     }
+
+    public async Task<AddParticipantsResponseDto> AddParticipantsToSessionAsync(Guid sessionId, AddParticipantsRequest request)
+    {
+        try
+        {
+            var response = new AddParticipantsResponseDto
+            {
+                TotalRequested = request.UserIds.Count
+            };
+
+            // Check if session exists
+            var session = await _sessionRepository.GetByIdAsync(sessionId);
+            if (session == null)
+            {
+                throw new NotFoundException($"Session {sessionId} not found");
+            }
+
+            // Check if session is still open for registration
+            if (session.Status == SessionStatus.Completed || session.Status == SessionStatus.Cancelled)
+            {
+                throw new ValidationException("Cannot add participants to a completed or cancelled session");
+            }
+
+            foreach (var userId in request.UserIds)
+            {
+                try
+                {
+                    // Check if user already has attendance marked
+                    var hasMarkedAttendance = await _attendanceRepository.HasUserMarkedAttendanceAsync(sessionId, userId);
+                    if (hasMarkedAttendance)
+                    {
+                        response.AlreadyRegistered++;
+                        response.AlreadyRegisteredUserIds.Add(userId);
+                        continue;
+                    }
+
+                    // Check if session is full
+                    if (request.IsAttending && session.RegisteredPlayersCount >= session.MaxCapacity)
+                    {
+                        response.Failed++;
+                        response.FailedAdditions.Add(new ParticipantAddFailureDto
+                        {
+                            UserId = userId,
+                            Reason = "Session is at maximum capacity"
+                        });
+                        continue;
+                    }
+
+                    // Create attendance record
+                    var attendance = new SessionAttendance
+                    {
+                        SessionId = sessionId,
+                        UserId = userId,
+                        IsAttending = request.IsAttending,
+                        Notes = request.Notes,
+                        CheckInTime = request.IsAttending ? DateTime.UtcNow : null,
+                        CreatedOn = DateTime.UtcNow,
+                        LastUpdated = DateTime.UtcNow
+                    };
+
+                    await _attendanceRepository.AddAsync(attendance);
+
+                    // Update session count if attending
+                    if (request.IsAttending)
+                    {
+                        session.RegisteredPlayersCount++;
+                        if (session.RegisteredPlayersCount >= session.MaxCapacity)
+                        {
+                            session.Status = SessionStatus.Full;
+                        }
+                    }
+
+                    response.SuccessfullyAdded++;
+                    response.SuccessfullyAddedUserIds.Add(userId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to add participant {UserId} to session {SessionId}", userId, sessionId);
+                    response.Failed++;
+                    response.FailedAdditions.Add(new ParticipantAddFailureDto
+                    {
+                        UserId = userId,
+                        Reason = ex.Message
+                    });
+                }
+            }
+
+            // Update session if any participants were added
+            if (response.SuccessfullyAdded > 0)
+            {
+                await _sessionRepository.UpdateAsync(session);
+            }
+
+            // Invalidate cache
+            string sessionCacheKey = $"Attendance:Session:{sessionId}";
+            await _cacheService.RemoveAsync(sessionCacheKey);
+
+            response.Message = $"Successfully added {response.SuccessfullyAdded} participants. " +
+                              $"{response.AlreadyRegistered} were already registered. " +
+                              $"{response.Failed} failed to be added.";
+
+            return response;
+        }
+        catch (Exception ex) when (ex is not NotFoundException && ex is not ValidationException)
+        {
+            _logger.LogError(ex, "Error adding participants to session {SessionId}", sessionId);
+            throw;
+        }
+    }
+
+    public async Task<RemoveParticipantsResponseDto> RemoveParticipantsFromSessionAsync(Guid sessionId, RemoveParticipantsRequest request)
+    {
+        try
+        {
+            var response = new RemoveParticipantsResponseDto
+            {
+                TotalRequested = request.UserIds.Count
+            };
+
+            // Check if session exists
+            var session = await _sessionRepository.GetByIdAsync(sessionId);
+            if (session == null)
+            {
+                throw new NotFoundException($"Session {sessionId} not found");
+            }
+
+            foreach (var userId in request.UserIds)
+            {
+                try
+                {
+                    // Get existing attendance record
+                    var attendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
+                    if (attendance == null)
+                    {
+                        response.NotRegistered++;
+                        response.NotRegisteredUserIds.Add(userId);
+                        continue;
+                    }
+
+                    // Track if user was attending for session count update
+                    var wasAttending = attendance.IsAttending;
+
+                    // Remove attendance record
+                    await _attendanceRepository.DeleteAsync(sessionId, userId);
+
+                    // Update session count if user was attending
+                    if (wasAttending)
+                    {
+                        session.RegisteredPlayersCount--;
+                        if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
+                        {
+                            session.Status = SessionStatus.Open;
+                        }
+                    }
+
+                    response.SuccessfullyRemoved++;
+                    response.SuccessfullyRemovedUserIds.Add(userId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to remove participant {UserId} from session {SessionId}", userId, sessionId);
+                    response.Failed++;
+                    response.FailedRemovals.Add(new ParticipantRemoveFailureDto
+                    {
+                        UserId = userId,
+                        Reason = ex.Message
+                    });
+                }
+            }
+
+            // Update session if any participants were removed
+            if (response.SuccessfullyRemoved > 0)
+            {
+                await _sessionRepository.UpdateAsync(session);
+            }
+
+            // Invalidate cache
+            string sessionCacheKey = $"Attendance:Session:{sessionId}";
+            await _cacheService.RemoveAsync(sessionCacheKey);
+
+            response.Message = $"Successfully removed {response.SuccessfullyRemoved} participants. " +
+                              $"{response.NotRegistered} were not registered. " +
+                              $"{response.Failed} failed to be removed.";
+
+            return response;
+        }
+        catch (Exception ex) when (ex is not NotFoundException && ex is not ValidationException)
+        {
+            _logger.LogError(ex, "Error removing participants from session {SessionId}", sessionId);
+            throw;
+        }
+    }
 }

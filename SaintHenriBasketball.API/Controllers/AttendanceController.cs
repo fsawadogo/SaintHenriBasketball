@@ -218,7 +218,7 @@ public class AttendanceController : BaseApiController
             }
 
             // Check if attendance is already marked
-            var existingAttendance = await _attendanceService.UpdateAttendanceAsync(sessionId,userId,attending);
+            var existingAttendance = await _attendanceService.UpdateAttendanceAsync(sessionId, userId, attending, null, "Updated via email link");
 
             AttendanceResponseDto response;
             string message;
