@@ -273,4 +273,94 @@ public class AttendanceController : BaseApiController
             return StatusCode(500, "An unexpected error occurred while confirming attendance");
         }
     }
+
+    /// <summary>
+    /// Add multiple participants to a session (Admin only)
+    /// </summary>
+    [HttpPost("sessions/{sessionId}/add-participants")]
+    [ProducesResponseType(typeof(AddParticipantsResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AddParticipantsResponseDto>> AddParticipantsToSession(
+        Guid sessionId,
+        [FromBody] AddParticipantsRequest request)
+    {
+        try
+        {
+            // Check if user is authenticated
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User must be authenticated to add participants");
+            }
+
+            // TODO: Add admin role check here when role-based authorization is implemented
+            // For now, we'll allow any authenticated user to add participants
+            // This should be changed to require admin role in production
+
+            var response = await _attendanceService.AddParticipantsToSessionAsync(sessionId, request);
+            return Ok(response);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Validation failed when adding participants to session {SessionId}", sessionId);
+            return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Session not found when adding participants {SessionId}", sessionId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding participants to session {SessionId}", sessionId);
+            return StatusCode(500, "An unexpected error occurred while adding participants");
+        }
+    }
+
+    /// <summary>
+    /// Remove multiple participants from a session (Admin only)
+    /// </summary>
+    [HttpPost("sessions/{sessionId}/remove-participants")]
+    [ProducesResponseType(typeof(RemoveParticipantsResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<RemoveParticipantsResponseDto>> RemoveParticipantsFromSession(
+        Guid sessionId,
+        [FromBody] RemoveParticipantsRequest request)
+    {
+        try
+        {
+            // Check if user is authenticated
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User must be authenticated to remove participants");
+            }
+
+            // TODO: Add admin role check here when role-based authorization is implemented
+            // For now, we'll allow any authenticated user to remove participants
+            // This should be changed to require admin role in production
+
+            var response = await _attendanceService.RemoveParticipantsFromSessionAsync(sessionId, request);
+            return Ok(response);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Validation failed when removing participants from session {SessionId}", sessionId);
+            return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Session not found when removing participants {SessionId}", sessionId);
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing participants from session {SessionId}", sessionId);
+            return StatusCode(500, "An unexpected error occurred while removing participants");
+        }
+    }
 }
