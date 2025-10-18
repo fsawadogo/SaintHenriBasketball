@@ -263,4 +263,59 @@ public class SessionsController : BaseApiController
             return StatusCode(500, "An error occurred while retrieving all sessions");
         }
     }
+
+    /// <summary>
+    /// Add a participant to a session (Admin only)
+    /// </summary>
+    [HttpPost("{sessionId}/participants/{userId}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionRegistrationResponseDto>> AddParticipantToSession(Guid sessionId, Guid userId)
+    {
+        try
+        {
+            var result = await _sessionService.AddParticipantToSessionAsync(sessionId, userId);
+            return Ok(result);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding participant {UserId} to session {SessionId}", userId, sessionId);
+            return StatusCode(500, "An error occurred while adding the participant to the session");
+        }
+    }
+
+    /// <summary>
+    /// Remove a participant from a session (Admin only)
+    /// </summary>
+    [HttpDelete("{sessionId}/participants/{userId}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveParticipantFromSession(Guid sessionId, Guid userId)
+    {
+        try
+        {
+            await _sessionService.RemoveParticipantFromSessionAsync(sessionId, userId);
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing participant {UserId} from session {SessionId}", userId, sessionId);
+            return StatusCode(500, "An error occurred while removing the participant from the session");
+        }
+    }
 }

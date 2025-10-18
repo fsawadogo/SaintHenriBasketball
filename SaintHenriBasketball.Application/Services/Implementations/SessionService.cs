@@ -267,4 +267,74 @@ public class SessionService : ISessionService
         var sessions = await _sessionRepository.GetAllSessionsAsync();
         return _mapper.Map<IReadOnlyList<SessionDto>>(sessions);
     }
+
+    public async Task<SessionRegistrationResponseDto> AddParticipantToSessionAsync(Guid sessionId, Guid userId)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            throw new NotFoundException(nameof(Session), sessionId);
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new NotFoundException(nameof(ApplicationUser), userId);
+        }
+
+        // Admin can add participants even if session is full or closed
+        if (await _registrationRepository.ExistsAsync(userId, sessionId))
+        {
+            throw new ValidationException("User is already registered for this session");
+        }
+
+        var registration = new SessionRegistration(userId, sessionId, user.PaymentPlan);
+        await _registrationRepository.AddAsync(registration);
+
+        session.RegisteredPlayersCount++;
+        
+        // Update session status if it was full and now has space
+        if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
+        {
+            session.Status = SessionStatus.Open;
+        }
+        // If session is now at capacity, mark it as full
+        else if (session.RegisteredPlayersCount >= session.MaxCapacity)
+        {
+            session.Status = SessionStatus.Full;
+        }
+
+        await _sessionRepository.UpdateAsync(session);
+
+        _logger.LogInformation("Admin added user {UserId} to session {SessionId}", userId, sessionId);
+
+        return _mapper.Map<SessionRegistrationResponseDto>(registration);
+    }
+
+    public async Task RemoveParticipantFromSessionAsync(Guid sessionId, Guid userId)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null)
+        {
+            throw new NotFoundException(nameof(Session), sessionId);
+        }
+
+        if (!await _registrationRepository.ExistsAsync(userId, sessionId))
+        {
+            throw new NotFoundException("Registration not found");
+        }
+
+        await _registrationRepository.DeleteAsync(userId, sessionId);
+
+        session.RegisteredPlayersCount--;
+        
+        // Update session status
+        if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
+        {
+            session.Status = SessionStatus.Open;
+        }
+
+        await _sessionRepository.UpdateAsync(session);
+        _logger.LogInformation("Admin removed user {UserId} from session {SessionId}", userId, sessionId);
+    }
 }

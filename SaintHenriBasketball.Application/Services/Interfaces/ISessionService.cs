@@ -16,4 +16,8 @@ public interface ISessionService
     Task UnregisterFromSessionAsync(Guid sessionId, Guid userId);
     Task<IReadOnlyList<SessionDto>> GetUserSessionsAsync(Guid userId);
     Task<bool> IsUserRegisteredForSessionAsync(Guid sessionId, Guid userId);
+    
+    // Admin methods for participant management
+    Task<SessionRegistrationResponseDto> AddParticipantToSessionAsync(Guid sessionId, Guid userId);
+    Task RemoveParticipantFromSessionAsync(Guid sessionId, Guid userId);
 }
