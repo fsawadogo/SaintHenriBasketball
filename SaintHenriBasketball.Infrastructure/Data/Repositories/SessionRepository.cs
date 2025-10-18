@@ -141,6 +141,13 @@ public class SessionRepository : ISessionRepository
         // Session is today - check if we're within 1 hour of end time
         if (session.SessionDate.Date == now.Date)
         {
+            // Check if EndTime is null or empty
+            if (string.IsNullOrEmpty(session.EndTime))
+            {
+                // If no end time specified, show the session
+                return true;
+            }
+            
             // Parse the end time (format is "HH:mm" like "12:00")
             if (TimeSpan.TryParse(session.EndTime + ":00", out var endTime))
             {
@@ -151,6 +158,9 @@ public class SessionRepository : ISessionRepository
                 var oneHourAfterEnd = sessionEndDateTime.AddHours(1);
                 return now <= oneHourAfterEnd;
             }
+            
+            // If we can't parse the end time, show the session (fallback)
+            return true;
         }
 
         return false;
