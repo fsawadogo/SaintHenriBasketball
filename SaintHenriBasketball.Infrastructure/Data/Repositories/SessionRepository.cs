@@ -37,21 +37,21 @@ public class SessionRepository : ISessionRepository
 
     public async Task<IReadOnlyList<Session>> GetUpcomingSessionsAsync()
     {
-        var now = DateTime.Now; // Use local time
+        var today = DateTime.Today; // Use local date only
         return await _context.Sessions
             .Include(s => s.Registrations)
-            .Where(s => IsSessionStillRelevant(s, now))
+            .Where(s => s.SessionDate.Date >= today)
             .OrderBy(s => s.SessionDate)
             .ToListAsync();
     }
 
     public async Task<IReadOnlyList<Session>> GetAvailableSessionsAsync()
     {
-        var now = DateTime.Now; // Use local time
+        var today = DateTime.Today; // Use local date only
         return await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s =>
-                IsSessionStillRelevant(s, now) &&
+                s.SessionDate.Date >= today &&
                 s.Status == SessionStatus.Open &&
                 s.RegisteredPlayersCount < s.MaxCapacity)
             .OrderBy(s => s.SessionDate)
@@ -91,22 +91,22 @@ public class SessionRepository : ISessionRepository
 
     public async Task<Session?> GetClosestSessionAsync()
     {
-        var now = DateTime.Now; // Use local time
+        var today = DateTime.Today; // Use local date only
         return await _context.Sessions
             .Include(s => s.Registrations)
-            .Where(s => IsSessionStillRelevant(s, now))
+            .Where(s => s.SessionDate.Date >= today)
             .OrderBy(s => s.SessionDate)
             .FirstOrDefaultAsync();
     }
 
     public async Task<Session?> GetNextSessionAsync()
     {
-        var now = DateTime.Now; // Use local time
+        var today = DateTime.Today; // Use local date only
         return await _context.Sessions
             .Include(s => s.Registrations)
             .ThenInclude(r => r.User)
             .Where(s =>
-                IsSessionStillRelevant(s, now) &&
+                s.SessionDate.Date >= today &&
                 s.Status == SessionStatus.Open &&
                 s.RegisteredPlayersCount < s.MaxCapacity)
             .OrderBy(s => s.SessionDate)
@@ -120,49 +120,4 @@ public class SessionRepository : ISessionRepository
             .ToListAsync();
     }
 
-    /// <summary>
-    /// Determines if a session should still be displayed based on local time.
-    /// Sessions are removed 1 hour after their end time on the day of the session.
-    /// </summary>
-    private static bool IsSessionStillRelevant(Session session, DateTime now)
-    {
-        // If session is in the future, always show it
-        if (session.SessionDate.Date > now.Date)
-        {
-            return true;
-        }
-
-        // If session is in the past (not today), don't show it
-        if (session.SessionDate.Date < now.Date)
-        {
-            return false;
-        }
-
-        // Session is today - check if we're within 1 hour of end time
-        if (session.SessionDate.Date == now.Date)
-        {
-            // Check if EndTime is null or empty
-            if (string.IsNullOrEmpty(session.EndTime))
-            {
-                // If no end time specified, show the session
-                return true;
-            }
-            
-            // Parse the end time (format is "HH:mm" like "12:00")
-            if (TimeSpan.TryParse(session.EndTime + ":00", out var endTime))
-            {
-                // Create the session end datetime for today
-                var sessionEndDateTime = session.SessionDate.Date.Add(endTime);
-                
-                // Check if current time is within 1 hour of session end time
-                var oneHourAfterEnd = sessionEndDateTime.AddHours(1);
-                return now <= oneHourAfterEnd;
-            }
-            
-            // If we can't parse the end time, show the session (fallback)
-            return true;
-        }
-
-        return false;
-    }
 }
