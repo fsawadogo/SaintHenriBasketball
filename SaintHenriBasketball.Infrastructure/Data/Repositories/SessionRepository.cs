@@ -141,8 +141,8 @@ public class SessionRepository : ISessionRepository
         // Session is today - check if we're within 1 hour of end time
         if (session.SessionDate.Date == now.Date)
         {
-            // Parse the end time (assuming format like "12:00 PM" or "12:00")
-            if (TimeSpan.TryParse(session.EndTime, out var endTime))
+            // Parse the end time (format is "HH:mm" like "12:00")
+            if (TimeSpan.TryParse(session.EndTime + ":00", out var endTime))
             {
                 // Create the session end datetime for today
                 var sessionEndDateTime = session.SessionDate.Date.Add(endTime);
