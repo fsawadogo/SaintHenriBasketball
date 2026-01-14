@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
@@ -180,8 +180,14 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            await _userService.UpdateUserPaymentPlanAsync(Guid.Parse(userIdClaim.Value), updatePaymentPlanDto.PaymentPlan);
-            _logger.LogInformation("User updated their payment plan successfully: {UserId}", userIdClaim.Value);
+            var userId = Guid.Parse(userIdClaim.Value);
+            await _userService.UpdateUserPaymentPlanAsync(userId, updatePaymentPlanDto.PaymentPlan);
+            _logger.LogInformation("User updated their payment plan successfully: {UserId}", userId);
+
+            // Invalidate cache
+            await cacheService.RemoveAsync($"Users:Current:{userId}");
+            await cacheService.RemoveAsync($"Users:Detail:{userId}");
+            await cacheService.RemoveAsync("Users:All");
 
             return NoContent();
         }
@@ -234,6 +240,11 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             await _userService.UpdateUserAsync(userId, updateUserDto);
             _logger.LogInformation("User updated successfully: {UserId}", userId);
 
+            // Invalidate cache
+            await cacheService.RemoveAsync($"Users:Current:{userId}");
+            await cacheService.RemoveAsync($"Users:Detail:{userId}");
+            await cacheService.RemoveAsync("Users:All");
+
             return NoContent();
         }
         catch (NotFoundException ex)
@@ -267,6 +278,11 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
         {
             await _userService.DeleteUserAsync(userId);
             _logger.LogInformation("User deleted successfully: {UserId}", userId);
+
+            // Invalidate cache
+            await cacheService.RemoveAsync($"Users:Current:{userId}");
+            await cacheService.RemoveAsync($"Users:Detail:{userId}");
+            await cacheService.RemoveAsync("Users:All");
 
             return NoContent();
         }
@@ -367,6 +383,11 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             await _userService.UpdateUserPaymentPlanAsync(user.Id, updatePaymentPlanDto.PaymentPlan);
             _logger.LogInformation("User payment plan updated successfully: {Email}", email);
 
+            // Invalidate cache
+            await cacheService.RemoveAsync($"Users:Current:{user.Id}");
+            await cacheService.RemoveAsync($"Users:Detail:{user.Id}");
+            await cacheService.RemoveAsync("Users:All");
+
             return NoContent();
         }
         catch (ValidationException ex)
@@ -405,6 +426,11 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
 
             await _userService.UpdateUserAsync(userId, updateUserDto);
             _logger.LogInformation("User made admin successfully: {UserId}", userId);
+
+            // Invalidate cache
+            await cacheService.RemoveAsync($"Users:Current:{userId}");
+            await cacheService.RemoveAsync($"Users:Detail:{userId}");
+            await cacheService.RemoveAsync("Users:All");
 
             // Send email notification
             var emailResult = await _userService.SendTargetedEmailsAsync(
@@ -470,6 +496,7 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
 
             // Invalidate cache
             await cacheService.RemoveAsync("Users:All");
+            // Note: User-specific caches don't need invalidation for new users
 
             // Immediately send password reset email to the user
             await _userService.ForgotPasswordAsync(createUserDto.Email);

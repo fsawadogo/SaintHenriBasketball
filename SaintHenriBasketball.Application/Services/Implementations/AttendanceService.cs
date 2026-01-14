@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Attendance;
 using SaintHenriBasketball.Application.Exceptions;
@@ -160,6 +160,14 @@ public class AttendanceService : IAttendanceService
             string userCacheKey = $"Attendance:User:{userId}";
             await _cacheService.RemoveAsync(sessionCacheKey);
             await _cacheService.RemoveAsync(userCacheKey);
+            
+            // If session status or capacity changed, invalidate session list caches
+            if (wasAttending != isAttending)
+            {
+                await _cacheService.RemoveAsync("UpcomingSessions");
+                await _cacheService.RemoveAsync("AvailableSessions");
+                await _cacheService.RemoveAsync($"Session_{sessionId}");
+            }
 
             // Send update confirmation email
             await _emailService.SendAttendanceUpdateEmailAsync(attendance, wasAttending, updateReason);
@@ -395,6 +403,14 @@ public class AttendanceService : IAttendanceService
             // Invalidate cache
             string sessionCacheKey = $"Attendance:Session:{sessionId}";
             await _cacheService.RemoveAsync(sessionCacheKey);
+            
+            // Session status or capacity may have changed, invalidate session list caches
+            if (response.SuccessfullyAdded > 0)
+            {
+                await _cacheService.RemoveAsync("UpcomingSessions");
+                await _cacheService.RemoveAsync("AvailableSessions");
+                await _cacheService.RemoveAsync($"Session_{sessionId}");
+            }
 
             response.Message = $"Successfully added {response.SuccessfullyAdded} participants. " +
                               $"{response.AlreadyRegistered} were already registered. " +
@@ -478,6 +494,14 @@ public class AttendanceService : IAttendanceService
             // Invalidate cache
             string sessionCacheKey = $"Attendance:Session:{sessionId}";
             await _cacheService.RemoveAsync(sessionCacheKey);
+            
+            // Session status or capacity may have changed, invalidate session list caches
+            if (response.SuccessfullyRemoved > 0)
+            {
+                await _cacheService.RemoveAsync("UpcomingSessions");
+                await _cacheService.RemoveAsync("AvailableSessions");
+                await _cacheService.RemoveAsync($"Session_{sessionId}");
+            }
 
             response.Message = $"Successfully removed {response.SuccessfullyRemoved} participants. " +
                               $"{response.NotRegistered} were not registered. " +

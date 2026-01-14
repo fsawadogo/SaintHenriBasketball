@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -67,6 +67,10 @@ public class SessionService : ISessionService
 
         await _sessionRepository.AddAsync(session);
         _logger.LogInformation("Session created successfully. ID: {SessionId}", session.Id);
+
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
 
         return _mapper.Map<SessionDto>(session);
     }
@@ -161,6 +165,11 @@ public class SessionService : ISessionService
         session.Status = SessionStatus.Cancelled;
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("Session cancelled successfully. ID: {SessionId}", id);
+
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync($"{SessionKeyPrefix}{id}");
     }
 
     public async Task<IReadOnlyList<SessionDto>> GetAvailableSessionsAsync()
@@ -221,6 +230,11 @@ public class SessionService : ISessionService
 
         _logger.LogInformation("User {UserId} registered for session {SessionId}", userId, sessionId);
 
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
+
         return _mapper.Map<SessionRegistrationResponseDto>(registration);
     }
 
@@ -247,6 +261,11 @@ public class SessionService : ISessionService
 
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("User {UserId} unregistered from session {SessionId}", userId, sessionId);
+
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
     }
 
     public async Task<IReadOnlyList<SessionDto>> GetUserSessionsAsync(Guid userId)
@@ -308,6 +327,11 @@ public class SessionService : ISessionService
 
         _logger.LogInformation("Admin added user {UserId} to session {SessionId}", userId, sessionId);
 
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
+
         return _mapper.Map<SessionRegistrationResponseDto>(registration);
     }
 
@@ -336,5 +360,10 @@ public class SessionService : ISessionService
 
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("Admin removed user {UserId} from session {SessionId}", userId, sessionId);
+
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
     }
 }

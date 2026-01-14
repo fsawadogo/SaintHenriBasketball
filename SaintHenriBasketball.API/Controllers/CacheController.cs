@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using SaintHenriBasketball.Application.Services.Implementations;
@@ -36,6 +36,25 @@ public class CacheController : Controller
         return Ok(new
         {
             Message = "Cache is active",
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Clear all season-related cache entries (Admin only)
+    /// </summary>
+    [HttpDelete("seasons")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ClearSeasonsCache([FromServices] ICacheService cacheService)
+    {
+        await cacheService.RemoveAsync("CurrentSeason");
+        await cacheService.RemoveAsync("AllSeasons");
+        await cacheService.RemoveByPrefixAsync("Season_");
+        
+        return Ok(new
+        {
+            Message = "Season cache cleared successfully",
             Timestamp = DateTime.UtcNow
         });
     }

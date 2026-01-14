@@ -119,7 +119,15 @@ public class PaymentsController : ControllerBase
    {
        try
        {
-           await _paymentService.UpdatePaymentAsync(id, updatePaymentDto);
+           var payment = await _paymentService.UpdatePaymentAsync(id, updatePaymentDto);
+           
+           // Invalidate all relevant caches
+           await _cacheService.RemoveAsync($"Payments:Detail:{id}");
+           await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
+           await _cacheService.RemoveAsync("Payments:All");
+           await _cacheService.RemoveAsync("Payments:Pending");
+           await _cacheService.RemoveAsync("Payments:Summary");
+           
            return NoContent();
        }
        catch (NotFoundException ex)
@@ -144,7 +152,9 @@ public class PaymentsController : ControllerBase
             await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
             await _cacheService.RemoveAsync("Payments:All");
             await _cacheService.RemoveAsync("Payments:Pending");
-            await _cacheService.RemoveAsync("Payments:Summary"); var user = await _userService.GetUserAsync(payment.UserId);
+            await _cacheService.RemoveAsync("Payments:Summary");
+            
+            var user = await _userService.GetUserAsync(payment.UserId);
 
            switch (payment.Status)
            {

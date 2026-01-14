@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.Exceptions;
@@ -56,6 +56,11 @@ public class SeasonService : ISeasonService
         );
 
         await _seasonRepository.AddAsync(season);
+        
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(AllSeasonsCacheKey);
+        await _cacheService.RemoveAsync(CurrentSeasonCacheKey);
+        
         return (await GetSeasonDtoAsync(season.Id))!;
     }
 
@@ -189,6 +194,11 @@ public class SeasonService : ISeasonService
 
         season.Status = status;
         await _seasonRepository.UpdateAsync(season);
+        
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(CurrentSeasonCacheKey);
+        await _cacheService.RemoveAsync(AllSeasonsCacheKey);
+        await _cacheService.RemoveAsync($"{SeasonKeyPrefix}{id}");
     }
 
     public async Task DeleteSeasonAsync(Guid id)
@@ -205,6 +215,11 @@ public class SeasonService : ISeasonService
         }
 
         await _seasonRepository.DeleteAsync(season);
+        
+        // Invalidate affected caches
+        await _cacheService.RemoveAsync(AllSeasonsCacheKey);
+        await _cacheService.RemoveAsync(CurrentSeasonCacheKey);
+        await _cacheService.RemoveAsync($"{SeasonKeyPrefix}{id}");
     }
 
     public async Task<SeasonDto> RegisterUserForSeasonAsync(Guid seasonId, Guid userId)
