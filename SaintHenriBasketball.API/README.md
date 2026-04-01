@@ -53,7 +53,7 @@ We use the .NET User Secrets feature to manage sensitive information during deve
 
 2. Add required secrets:
    ```bash
-   dotnet user-secrets set "SendGrid:ApiKey" "your-sendgrid-api-key"
+   dotnet user-secrets set "Resend:ApiKey" "your-resend-api-key"
    dotnet user-secrets set "JwtSettings:Key" "your-jwt-signing-key"
    ```
 
@@ -63,11 +63,11 @@ Alternatively, you can use environment variables:
 
 ```bash
 # Windows
-set SendGrid__ApiKey=your-sendgrid-api-key
+set Resend__ApiKey=your-resend-api-key
 set JwtSettings__Key=your-jwt-signing-key
 
 # macOS/Linux
-export SendGrid__ApiKey=your-sendgrid-api-key
+export Resend__ApiKey=your-resend-api-key
 export JwtSettings__Key=your-jwt-signing-key
 ```
 
@@ -98,7 +98,7 @@ dotnet ef database update
 
 ## Email Service
 
-Email functionality is provided through SendGrid. The service handles:
+Email functionality is provided through Resend. The service handles:
 
 - User registration and password reset emails
 - Payment confirmations
@@ -108,7 +108,7 @@ Email functionality is provided through SendGrid. The service handles:
 ### Testing Email Functionality
 
 For development, we recommend using:
-1. A SendGrid test key with limited sends
+1. A Resend test API key
 2. Test recipient addresses (e.g., your own email)
 
 ## Authentication

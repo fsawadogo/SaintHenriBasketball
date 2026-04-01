@@ -3,14 +3,13 @@ using SaintHenriBasketball.Application.DTOs.Session;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
-using SendGrid.Helpers.Mail;
 
 namespace SaintHenriBasketball.Application.Services.Interfaces;
 public interface IEmailService
 {
     // Basic Email Methods
     Task SendEmailAsync(string? to, string subject, string htmlContent);
-    Task SendWithRetryAsync(SendGridMessage msg, int retryCount = 0);
+    Task SendEmailWithAttachmentAsync(string? to, string subject, string htmlContent, string attachmentFilename, byte[] attachmentContent);
 
     // Authentication Emails
     Task SendConfirmationEmailAsync(string? to, string confirmationLink);

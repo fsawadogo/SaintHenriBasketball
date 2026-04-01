@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
+using System.Security.Claims;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -20,20 +23,22 @@ public class PaymentsController : ControllerBase
    private readonly IUserService _userService;
    private readonly ILogger<PaymentsController> _logger;
    private readonly ICacheService _cacheService;
+   private readonly IWebHostEnvironment _webHostEnvironment;
 
-    /// <inheritdoc />
     public PaymentsController(
        IPaymentService paymentService,
        IEmailService emailService,
-       IUserService userService, 
+       IUserService userService,
        ILogger<PaymentsController> logger,
-       ICacheService cacheService)
+       ICacheService cacheService,
+       IWebHostEnvironment webHostEnvironment)
     {
         _paymentService = paymentService;
         _emailService = emailService;
         _userService = userService;
         _logger = logger;
         _cacheService = cacheService;
+        _webHostEnvironment = webHostEnvironment;
     }
 
     [HttpPost]
@@ -110,6 +115,58 @@ public class PaymentsController : ControllerBase
 
         return Ok(payments);
     }
+
+   [HttpGet("history")]
+   [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
+   public async Task<ActionResult<IEnumerable<PaymentDto>>> GetPaymentHistory()
+   {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var payments = await _paymentService.GetUserPaymentsAsync(Guid.Parse(userId));
+        return Ok(payments);
+   }
+
+   [HttpGet("{id}/invoice")]
+   [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status403Forbidden)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<IActionResult> DownloadInvoice(Guid id)
+   {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        try
+        {
+            var payment = await _paymentService.GetPaymentAsync(id);
+
+            // Verify ownership (unless admin)
+            if (payment.UserId != Guid.Parse(userId) && !User.IsInRole("Admin"))
+                return Forbid();
+
+            var user = await _userService.GetUserAsync(payment.UserId);
+            var billGenerator = new BillPdfGenerator(_webHostEnvironment);
+
+            var billDetails = new BillDetails
+            {
+                Name = $"{user.FirstName} {user.LastName}",
+                Email = user.Email,
+                Description = payment.Plan == PaymentPlan.Season ? "Forfait de saison" : "Forfait à la séance",
+                Amount = payment.Amount,
+                Reference = payment.Reference,
+                Date = payment.PaymentDate
+            };
+
+            var pdfContent = billGenerator.GenerateBill(billDetails);
+            return File(pdfContent, "application/pdf", $"invoice_{payment.Reference ?? id.ToString()}.pdf");
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+   }
 
    [HttpPut("{id}")]
    [Authorize(Roles = "Admin")]

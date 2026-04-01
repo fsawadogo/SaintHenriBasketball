@@ -91,6 +91,28 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             return StatusCode(500, "An unexpected error occurred during login");
         }
     }
+
+    [HttpPost("google-login")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserResponseDto>> GoogleLogin([FromBody] GoogleLoginDto dto)
+    {
+        try
+        {
+            var result = await _userService.GoogleLoginAsync(dto.AccessToken);
+            return Ok(result);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Google login failed");
+            return StatusCode(500, "An unexpected error occurred during Google login");
+        }
+    }
     #endregion
 
     #region Current User Operations

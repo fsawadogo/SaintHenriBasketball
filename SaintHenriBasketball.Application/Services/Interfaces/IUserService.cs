@@ -8,6 +8,7 @@ public interface IUserService
 {
     Task<UserResponseDto> RegisterAsync(RegisterUserDto registerDto);
     Task<UserResponseDto> LoginAsync(LoginDto loginDto);
+    Task<UserResponseDto> GoogleLoginAsync(string idToken);
     Task<UserDto> GetUserAsync(Guid userId);
     Task<UserDto> GetUserByEmailAsync(string? email);
     Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserDto updateDto);

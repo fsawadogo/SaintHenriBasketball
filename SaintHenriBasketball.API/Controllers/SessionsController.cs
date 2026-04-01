@@ -183,6 +183,21 @@ public class SessionsController : BaseApiController
     }
 
     /// <summary>
+    /// Get current user's registered sessions
+    /// </summary>
+    [HttpGet("my-sessions")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SessionDto>>> GetMySessions()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var sessions = await _sessionService.GetUserSessionsAsync(Guid.Parse(userId));
+        return Ok(sessions);
+    }
+
+    /// <summary>
     /// Cancel a session (Admin only)
     /// </summary>
     [HttpPost("{id}/cancel")]

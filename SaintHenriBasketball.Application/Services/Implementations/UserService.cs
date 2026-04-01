@@ -12,6 +12,7 @@ using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
+using Google.Apis.Auth;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
@@ -107,6 +108,68 @@ public class UserService : IUserService
         if (!user.EmailConfirmed)
         {
             throw new ValidationException("Please confirm your email before logging in");
+        }
+
+        return new UserResponseDto
+        {
+            Token = GenerateJwtToken(user),
+            Username = user.Username,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            IsAdmin = user.IsAdmin,
+            PaymentPlan = user.PaymentPlan
+        };
+    }
+
+    public async Task<UserResponseDto> GoogleLoginAsync(string accessToken)
+    {
+        // Verify the access token by calling Google's userinfo endpoint
+        string? email, givenName, familyName;
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            email = root.GetProperty("email").GetString();
+            givenName = root.TryGetProperty("given_name", out var gn) ? gn.GetString() : "";
+            familyName = root.TryGetProperty("family_name", out var fn) ? fn.GetString() : "";
+        }
+        catch (HttpRequestException)
+        {
+            throw new ValidationException("Invalid Google token");
+        }
+
+        if (string.IsNullOrEmpty(email))
+            throw new ValidationException("Google account has no email");
+
+        var user = await _userRepository.GetByEmailAsync(email);
+
+        if (user == null)
+        {
+            var username = email.Split('@')[0];
+            if (await _userRepository.UsernameExistsAsync(username))
+            {
+                username = $"{username}{Random.Shared.Next(1000, 9999)}";
+            }
+
+            user = new ApplicationUser(
+                username: username,
+                email: email,
+                passwordHash: "",
+                firstName: givenName ?? "",
+                lastName: familyName ?? "",
+                paymentPlan: PaymentPlan.DropIn
+            );
+            user.EmailConfirmed = true;
+            user.EmailConfirmationToken = "";
+
+            await _userRepository.AddAsync(user);
         }
 
         return new UserResponseDto

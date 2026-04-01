@@ -1,3 +1,4 @@
+using Resend;
 using SaintHenriBasketball.Application.Extensions;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using SaintHenriBasketball.Infrastructure.Extensions;
@@ -127,6 +128,15 @@ builder.Services.AddControllers(options =>
         new CacheProfile { Duration = 60 });
 });
 
+
+// Add Resend email service
+builder.Services.AddOptions();
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.Configure<ResendClientOptions>(o =>
+{
+    o.ApiToken = builder.Configuration["Resend:ApiKey"]!;
+});
+builder.Services.AddTransient<IResend, ResendClient>();
 
 // Add application services
 builder.Services.AddApplicationServices();

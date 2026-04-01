@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using SendGrid;
-using SendGrid.Helpers.Mail;
+using Resend;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Email;
@@ -20,8 +19,8 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 
 public class EmailService : IEmailService
 {
-    private readonly SendGridClient _client;
-    private readonly EmailAddress _fromAddress;
+    private readonly IResend _resend;
+    private readonly string _fromAddress;
     private readonly ILogger<EmailService> _logger;
     private readonly IUserRepository _userRepository;
     private readonly IPaymentRepository _paymentRepository;
@@ -37,7 +36,8 @@ public class EmailService : IEmailService
         IPaymentRepository paymentRepository,
         IBackgroundJobClient backgroundJobs,
         IWebHostEnvironment webHostEnvironment,
-        ISessionRepository sessionRepository)
+        ISessionRepository sessionRepository,
+        IResend resend)
     {
         _logger = logger;
         _userRepository = userRepository;
@@ -45,16 +45,14 @@ public class EmailService : IEmailService
         _webHostEnvironment = webHostEnvironment;
         _sessionRepository = sessionRepository;
         _paymentRepository = paymentRepository;
+        _resend = resend;
 
-        var apiKey = configuration["SendGrid:ApiKey"]
-                     ?? throw new ArgumentNullException(nameof(configuration), "SendGrid API key is not configured");
-        var fromEmail = configuration["SendGrid:FromEmail"]
-            ?? throw new ArgumentNullException(nameof(configuration), "SendGrid From Email is not configured");
-        var fromName = configuration["SendGrid:FromName"]
-            ?? throw new ArgumentNullException(nameof(configuration), "SendGrid From Name is not configured");
+        var fromEmail = configuration["Resend:FromEmail"]
+            ?? throw new ArgumentNullException(nameof(configuration), "Resend From Email is not configured");
+        var fromName = configuration["Resend:FromName"]
+            ?? throw new ArgumentNullException(nameof(configuration), "Resend From Name is not configured");
 
-        _client = new SendGridClient(apiKey);
-        _fromAddress = new EmailAddress(fromEmail, fromName);
+        _fromAddress = $"{fromName} <{fromEmail}>";
     }
 
     #region Base Email Methods
@@ -63,33 +61,73 @@ public class EmailService : IEmailService
         if (string.IsNullOrEmpty(to))
             throw new ArgumentNullException(nameof(to), "Recipient email address cannot be null or empty");
 
-        var toAddress = new EmailAddress(to);
-        var msg = MailHelper.CreateSingleEmail(_fromAddress, toAddress, subject, null, htmlContent);
-        await SendWithRetryAsync(msg);
+        await SendWithRetryAsync(to, subject, htmlContent, retryCount: 0);
     }
 
-    public async Task SendWithRetryAsync(SendGridMessage msg, int retryCount = 0)
+    public async Task SendEmailWithAttachmentAsync(string? to, string subject, string htmlContent, string attachmentFilename, byte[] attachmentContent)
+    {
+        if (string.IsNullOrEmpty(to))
+            throw new ArgumentNullException(nameof(to), "Recipient email address cannot be null or empty");
+
+        var message = new EmailMessage
+        {
+            From = _fromAddress,
+            Subject = subject,
+            HtmlBody = htmlContent,
+            Attachments = new List<EmailAttachment>
+            {
+                new EmailAttachment { Filename = attachmentFilename, Content = attachmentContent }
+            }
+        };
+        message.To.Add(to);
+
+        await SendMessageWithRetryAsync(message, retryCount: 0);
+    }
+
+    private async Task SendWithRetryAsync(string to, string subject, string htmlContent, int retryCount)
     {
         try
         {
-            var response = await _client.SendEmailAsync(msg);
-
-            if (!response.IsSuccessStatusCode && retryCount < MaxRetries)
+            var message = new EmailMessage
             {
-                var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
-                _backgroundJobs.Schedule(() => SendWithRetryAsync(msg, retryCount + 1), delay);
-                return;
-            }
+                From = _fromAddress,
+                Subject = subject,
+                HtmlBody = htmlContent
+            };
+            message.To.Add(to);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var responseBody = await response.Body.ReadAsStringAsync();
-                throw new Exception($"Failed to send email after {MaxRetries} retries. Status: {response.StatusCode}, Body: {responseBody}");
-            }
+            await _resend.EmailSendAsync(message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending email. Retry count: {RetryCount}", retryCount);
+            if (retryCount < MaxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
+                _backgroundJobs.Schedule(() => SendWithRetryAsync(to, subject, htmlContent, retryCount + 1), delay);
+                return;
+            }
+
+            _logger.LogError(ex, "Error sending email after {MaxRetries} retries", MaxRetries);
+            throw;
+        }
+    }
+
+    private async Task SendMessageWithRetryAsync(EmailMessage message, int retryCount)
+    {
+        try
+        {
+            await _resend.EmailSendAsync(message);
+        }
+        catch (Exception ex)
+        {
+            if (retryCount < MaxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
+                _backgroundJobs.Schedule(() => SendMessageWithRetryAsync(message, retryCount + 1), delay);
+                return;
+            }
+
+            _logger.LogError(ex, "Error sending email with attachment after {MaxRetries} retries", MaxRetries);
             throw;
         }
     }
@@ -196,18 +234,13 @@ public class EmailService : IEmailService
         try
         {
             var userName = user.FirstName;
+            var actualReference = reference ?? GenerateReference("PAY");
             var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
                 userName,
                 amount,
-                reference ?? GenerateReference("PAY"),
+                actualReference,
                 DateTime.UtcNow
             );
-
-            var msg = new SendGridMessage();
-            msg.SetFrom(_fromAddress);
-            msg.AddTo(new EmailAddress(user.Email));
-            msg.SetSubject("Confirmation de paiement - Saint Henri Basketball");
-            msg.AddContent(MimeType.Html, content);
 
             try
             {
@@ -227,14 +260,20 @@ public class EmailService : IEmailService
                 };
 
                 var pdfContent = billGenerator.GenerateBill(billDetails);
-                msg.AddAttachment($"facture_{reference}.pdf", Convert.ToBase64String(pdfContent));
+                await SendEmailWithAttachmentAsync(
+                    user.Email,
+                    "Confirmation de paiement - Saint Henri Basketball",
+                    content,
+                    $"facture_{actualReference}.pdf",
+                    pdfContent
+                );
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to generate PDF bill. Sending email without attachment.");
+                await SendEmailAsync(user.Email, "Confirmation de paiement - Saint Henri Basketball", content);
             }
 
-            await SendWithRetryAsync(msg);
             await NotifyAdminOfPayment(user.Email, userName, amount, reference);
         }
         catch (Exception ex)
@@ -325,18 +364,13 @@ public class EmailService : IEmailService
         try
         {
             var userName = user.FirstName;
+            var actualReference = reference ?? GenerateReference("PAY");
             var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
                 userName,
                 amount,
-                reference ?? GenerateReference("PAY"),
+                actualReference,
                 DateTime.UtcNow
             );
-
-            var msg = new SendGridMessage();
-            msg.SetFrom(_fromAddress);
-            msg.AddTo(new EmailAddress(user.Email));
-            msg.SetSubject("Confirmation de paiement - Saint Henri Basketball");
-            msg.AddContent(MimeType.Html, content);
 
             try
             {
@@ -356,19 +390,25 @@ public class EmailService : IEmailService
                 };
 
                 var pdfContent = billGenerator.GenerateBill(billDetails);
-                msg.AddAttachment($"facture_{reference}.pdf", Convert.ToBase64String(pdfContent));
+                await SendEmailWithAttachmentAsync(
+                    user.Email,
+                    "Confirmation de paiement - Saint Henri Basketball",
+                    content,
+                    $"facture_{actualReference}.pdf",
+                    pdfContent
+                );
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to generate PDF bill. Sending email without attachment.");
+                await SendEmailAsync(user.Email, "Confirmation de paiement - Saint Henri Basketball", content);
             }
 
-            await SendWithRetryAsync(msg);
             await NotifyAdminOfPayment(user.Email, userName, amount, reference);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", user);
+            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", user.Email);
             throw;
         }
     }
