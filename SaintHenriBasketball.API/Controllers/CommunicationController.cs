@@ -6,8 +6,10 @@ using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Exceptions;
+using Quartz;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Infrastructure.Data.Context;
+using SaintHenriBasketball.Infrastructure.Jobs;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -22,19 +24,22 @@ public class CommunicationController : ControllerBase
     private readonly ISeasonService _seasonService;
     private readonly ILogger<CommunicationController> _logger;
     private readonly ApplicationDbContext _dbContext;
+    private readonly ISchedulerFactory _schedulerFactory;
 
     public CommunicationController(
         IEmailService emailService,
         IUserService userService,
         ISeasonService seasonService,
         ILogger<CommunicationController> logger,
-        ApplicationDbContext dbContext)
+        ApplicationDbContext dbContext,
+        ISchedulerFactory schedulerFactory)
     {
         _emailService = emailService;
         _userService = userService;
         _seasonService = seasonService;
         _logger = logger;
         _dbContext = dbContext;
+        _schedulerFactory = schedulerFactory;
     }
 
     #region Email History
@@ -184,16 +189,15 @@ public class CommunicationController : ControllerBase
             return BadRequest("Scheduled time must be in the future");
 
         var delay = request.ScheduledAt - DateTime.UtcNow;
-        var schedulerFactory = HttpContext.RequestServices.GetRequiredService<Quartz.ISchedulerFactory>();
-        var scheduler = await schedulerFactory.GetScheduler();
+        var scheduler = await _schedulerFactory.GetScheduler();
 
-        var job = Quartz.JobBuilder.Create<SaintHenriBasketball.Infrastructure.Jobs.ScheduledEmailJob>()
+        var job = JobBuilder.Create<ScheduledEmailJob>()
             .UsingJobData("to", string.Join(",", request.Emails))
             .UsingJobData("subject", request.Subject)
             .UsingJobData("body", request.Message)
             .Build();
 
-        var trigger = Quartz.TriggerBuilder.Create()
+        var trigger = TriggerBuilder.Create()
             .StartAt(DateTimeOffset.UtcNow.Add(delay))
             .Build();
 

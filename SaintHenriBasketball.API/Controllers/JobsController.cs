@@ -129,6 +129,9 @@ public class JobsController : ControllerBase
     [HttpPut("{name}")]
     public async Task<IActionResult> UpdateJobSchedule(string name, [FromBody] UpdateJobDto dto)
     {
+        if (!CronExpression.IsValidExpression(dto.CronExpression))
+            return BadRequest($"Invalid cron expression: {dto.CronExpression}");
+
         var scheduler = await _schedulerFactory.GetScheduler();
         var jobKey = new JobKey(name);
         if (!await scheduler.CheckExists(jobKey)) return NotFound();
