@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Resend;
 using SaintHenriBasketball.Application.Extensions;
 using SaintHenriBasketball.Infrastructure.Data.Context;
@@ -18,6 +19,21 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Rate limiting for auth endpoints
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.RejectionStatusCode = 429;
+});
 
 builder.Services.AddSingleton(builder.Environment);
 
@@ -201,6 +217,7 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 
 // Use CORS before Users
 app.UseCors("AllowAll");

@@ -7,6 +7,7 @@ using System.Security.Claims;
 using SaintHenriBasketball.Application.Exceptions;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 using SaintHenriBasketball.Domain.Enums;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -25,6 +26,7 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserResponseDto>> Register([FromBody] RegisterUserDto registerDto)
@@ -62,6 +64,7 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
@@ -94,6 +97,7 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
 
     [HttpPost("google-login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserResponseDto>> GoogleLogin([FromBody] GoogleLoginDto dto)
