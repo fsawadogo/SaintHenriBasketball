@@ -183,6 +183,7 @@ public class PaymentService : IPaymentService
 
         payment.Amount = updatePaymentDto.Amount;
         payment.Plan = updatePaymentDto.Plan;
+        payment.Status = updatePaymentDto.Status;
         await _paymentRepository.UpdateAsync(payment);
                 
         return _mapper.Map<PaymentDto>(payment);
