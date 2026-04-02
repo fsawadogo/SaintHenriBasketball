@@ -245,6 +245,141 @@ public class AdminController : ControllerBase
     }
 
     #endregion
+
+    #region User Stats & Activity
+
+    [HttpGet("users/{userId}/stats")]
+    public async Task<IActionResult> GetUserStats(Guid userId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        var attendance = await _db.SessionAttendances
+            .Where(a => a.UserId == userId)
+            .ToListAsync();
+        var payments = await _db.Payments
+            .Where(p => p.UserId == userId)
+            .ToListAsync();
+        var registrations = await _db.SessionRegistrations
+            .Where(r => r.UserId == userId)
+            .CountAsync();
+
+        var totalAttended = attendance.Count(a => a.IsAttending);
+        var totalSessions = attendance.Count;
+        var attendanceRate = totalSessions > 0 ? Math.Round((double)totalAttended / totalSessions * 100, 1) : 0;
+
+        // Streak
+        var streak = 0;
+        var sorted = attendance.Where(a => a.CreatedOn <= DateTime.UtcNow)
+            .OrderByDescending(a => a.CreatedOn).ToList();
+        foreach (var a in sorted)
+        {
+            if (a.IsAttending) streak++;
+            else break;
+        }
+
+        // Engagement tier
+        var sixtyDaysAgo = DateTime.UtcNow.AddDays(-60);
+        var recentAttended = attendance.Count(a => a.CreatedOn >= sixtyDaysAgo && a.IsAttending);
+        var recentTotal = await _db.Sessions.CountAsync(s => s.SessionDate >= sixtyDaysAgo && s.SessionDate <= DateTime.UtcNow);
+        var recentRate = recentTotal > 0 ? (double)recentAttended / recentTotal * 100 : 0;
+        var tier = recentRate >= 80 ? "High" : recentRate >= 50 ? "Medium" : recentRate >= 20 ? "Low" : "Inactive";
+
+        var totalPaid = payments.Where(p => p.Status == Domain.Enums.PaymentStatus.Completed).Sum(p => p.Amount);
+        var pendingPayments = payments.Count(p => p.Status == Domain.Enums.PaymentStatus.Pending);
+        var lastActive = attendance.OrderByDescending(a => a.CreatedOn).FirstOrDefault()?.CreatedOn;
+
+        return Ok(new
+        {
+            userId,
+            name = $"{user.FirstName} {user.LastName}",
+            email = user.Email,
+            totalSessionsAttended = totalAttended,
+            totalSessionsRegistered = registrations,
+            attendanceRate,
+            currentStreak = streak,
+            engagementTier = tier,
+            totalPaid,
+            pendingPayments,
+            lastActive,
+            memberSince = user.CreatedOn,
+            paymentPlan = user.PaymentPlan.ToString(),
+            isAdmin = user.IsAdmin,
+            adminNotes = user.AdminNotes,
+        });
+    }
+
+    [HttpGet("users/{userId}/activity")]
+    public async Task<IActionResult> GetUserActivity(Guid userId, [FromQuery] int limit = 50)
+    {
+        var activities = new List<object>();
+
+        // Attendance records
+        var attendance = await _db.SessionAttendances
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.CreatedOn)
+            .Take(limit)
+            .Select(a => new { type = "attendance", date = a.CreatedOn, details = a.IsAttending ? "Attended session" : "Missed session", sessionId = a.SessionId })
+            .ToListAsync();
+        activities.AddRange(attendance);
+
+        // Payments
+        var payments = await _db.Payments
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.PaymentDate)
+            .Take(limit)
+            .Select(p => new { type = "payment", date = p.PaymentDate, details = $"Payment ${p.Amount} - {p.Status}", sessionId = (Guid?)null })
+            .ToListAsync();
+        activities.AddRange(payments);
+
+        // Registrations
+        var registrations = await _db.SessionRegistrations
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.RegistrationDate)
+            .Take(limit)
+            .Select(r => new { type = "registration", date = r.RegistrationDate, details = "Registered for session", sessionId = (Guid?)r.SessionId })
+            .ToListAsync();
+        activities.AddRange(registrations);
+
+        var sorted = activities
+            .OrderByDescending(a => ((dynamic)a).date)
+            .Take(limit);
+
+        return Ok(sorted);
+    }
+
+    #endregion
+
+    #region User Tags
+
+    [HttpGet("users/{userId}/tags")]
+    public async Task<IActionResult> GetUserTags(Guid userId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+        // Tags stored as comma-separated in AdminNotes for now (simple approach)
+        // In production, use a separate UserTag entity
+        var tags = user.AdminNotes?.Split("TAGS:", StringSplitOptions.None);
+        var tagList = tags?.Length > 1 ? tags[1].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).ToList() : new List<string>();
+        return Ok(tagList);
+    }
+
+    [HttpPost("users/{userId}/tags")]
+    public async Task<IActionResult> UpdateUserTags(Guid userId, [FromBody] List<string> tags)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        // Store tags in AdminNotes after "TAGS:" marker
+        var notesWithoutTags = user.AdminNotes?.Split("TAGS:")[0].TrimEnd() ?? "";
+        var tagStr = string.Join(", ", tags);
+        user.AdminNotes = string.IsNullOrEmpty(tagStr) ? notesWithoutTags : $"{notesWithoutTags}\nTAGS:{tagStr}";
+        await _db.SaveChangesAsync();
+
+        return Ok(tags);
+    }
+
+    #endregion
 }
 
 public class UpdateNotesDto
