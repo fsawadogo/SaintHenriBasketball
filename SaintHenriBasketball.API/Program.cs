@@ -153,6 +153,11 @@ builder.Services.Configure<ResendClientOptions>(o =>
 });
 builder.Services.AddTransient<IResend, ResendClient>();
 
+// Configure Stripe
+builder.Services.Configure<SaintHenriBasketball.Application.Settings.StripeSettings>(
+    builder.Configuration.GetSection(SaintHenriBasketball.Application.Settings.StripeSettings.SectionName));
+Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
+
 // Add application services
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -212,6 +217,16 @@ app.UseSwaggerUI(options =>
             $"/swagger/{description.GroupName}/swagger.json",
             $"Saint Henri Basketball API {description.GroupName}");
     }
+});
+
+// Enable request body buffering for Stripe webhook signature verification
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/v1/stripe"))
+    {
+        context.Request.EnableBuffering();
+    }
+    await next();
 });
 
 app.UseHttpsRedirection();

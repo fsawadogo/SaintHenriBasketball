@@ -21,6 +21,7 @@ public class PaymentsController : ControllerBase
    private readonly IPaymentService _paymentService;
    private readonly IEmailService _emailService;
    private readonly IUserService _userService;
+   private readonly IStripeService _stripeService;
    private readonly ILogger<PaymentsController> _logger;
    private readonly ICacheService _cacheService;
    private readonly IWebHostEnvironment _webHostEnvironment;
@@ -29,6 +30,7 @@ public class PaymentsController : ControllerBase
        IPaymentService paymentService,
        IEmailService emailService,
        IUserService userService,
+       IStripeService stripeService,
        ILogger<PaymentsController> logger,
        ICacheService cacheService,
        IWebHostEnvironment webHostEnvironment)
@@ -36,6 +38,7 @@ public class PaymentsController : ControllerBase
         _paymentService = paymentService;
         _emailService = emailService;
         _userService = userService;
+        _stripeService = stripeService;
         _logger = logger;
         _cacheService = cacheService;
         _webHostEnvironment = webHostEnvironment;
@@ -395,6 +398,50 @@ public class PaymentsController : ControllerBase
        {
            _logger.LogError(ex, "Error creating drop-in payment");
            return StatusCode(500, "An unexpected error occurred while creating the payment");
+       }
+   }
+
+   /// <summary>
+   /// Create a Stripe Checkout Session for a drop-in payment
+   /// </summary>
+   [HttpPost("drop-in/checkout")]
+   [ProducesResponseType(StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<IActionResult> CreateCheckoutSession([FromBody] CreateDropInPaymentDto request)
+   {
+       try
+       {
+           var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+           if (string.IsNullOrEmpty(userId))
+               return Unauthorized();
+
+           // Create pending payment record first
+           var payment = await _paymentService.CreateDropInPaymentAsync(Guid.Parse(userId), request);
+
+           // Create Stripe Checkout Session
+           var checkoutUrl = await _stripeService.CreateCheckoutSessionAsync(
+               Guid.Parse(userId), request.SessionId, payment.Id);
+
+           // Invalidate caches
+           await _cacheService.RemoveAsync("Payments:All");
+           await _cacheService.RemoveAsync("Payments:Pending");
+           await _cacheService.RemoveAsync($"Payments:User:{userId}");
+
+           return Ok(new { checkoutUrl });
+       }
+       catch (ValidationException ex)
+       {
+           return BadRequest(ex.Message);
+       }
+       catch (NotFoundException ex)
+       {
+           return NotFound(ex.Message);
+       }
+       catch (Exception ex)
+       {
+           _logger.LogError(ex, "Error creating Stripe checkout session");
+           return StatusCode(500, "An unexpected error occurred while creating the checkout session");
        }
    }
 

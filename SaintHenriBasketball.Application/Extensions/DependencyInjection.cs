@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<ISeasonService, SeasonService>();
         services.AddScoped<IEmailAutomationService, EmailAutomationService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
+        services.AddScoped<IStripeService, StripeService>();
 
         services.AddAutoMapper(typeof(UserService).Assembly);
         services.AddLogging();
