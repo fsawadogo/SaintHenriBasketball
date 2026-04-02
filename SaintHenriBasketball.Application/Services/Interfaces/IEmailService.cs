@@ -49,6 +49,11 @@ public interface IEmailService
     Task SendScheduleChangeEmailAsync(Session session, List<ApplicationUser> affectedUsers, string details, DateTime? newDate = null, TimeSpan? newTime = null);
     Task SendFacilityUpdateEmailAsync(string? userEmail, string facilityName, string updateDetails, DateTime effectiveDate, string? alternativeFacility = null);
 
+    // Drop-In Payment Emails
+    Task SendDropInPaymentLinkEmailAsync(string? userEmail, string userName, Guid sessionId,
+        decimal amount, DateTime sessionDate, string startTime, string endTime,
+        EmailLanguage language = EmailLanguage.Bilingual);
+
     // Bulk Email Methods
     Task<EmailSendResult> SendTargetedEmailsAsync(EmailType emailType,
         List<string> emails,

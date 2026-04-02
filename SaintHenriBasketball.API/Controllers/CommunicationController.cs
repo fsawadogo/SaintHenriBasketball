@@ -495,4 +495,44 @@ public class CommunicationController : ControllerBase
 
         return Ok(response);
     }
+
+    /// <summary>
+    /// Send drop-in payment link email (user-facing, not admin-only)
+    /// </summary>
+    [HttpPost("drop-in-payment-link")]
+    [Authorize] // Override class-level Admin requirement — any authenticated user can trigger this
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SendDropInPaymentLink([FromBody] DropInPaymentLinkEmailDto request)
+    {
+        try
+        {
+            if (request.Emails == null || request.Emails.Count == 0)
+                return BadRequest("At least one email is required");
+
+            var session = await _dbContext.Sessions.FindAsync(request.SessionId);
+            if (session == null)
+                return NotFound("Session not found");
+
+            foreach (var email in request.Emails)
+            {
+                await _emailService.SendDropInPaymentLinkEmailAsync(
+                    email,
+                    email, // userName fallback — the email service will use this
+                    request.SessionId,
+                    request.Amount > 0 ? request.Amount : (session.DropInPrice > 0 ? session.DropInPrice : 10m),
+                    session.SessionDate,
+                    session.StartTime ?? "10:00",
+                    session.EndTime ?? "12:00",
+                    request.Language);
+            }
+
+            return Ok(new { success = true, message = "Drop-in payment link sent", sentCount = request.Emails.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending drop-in payment link email");
+            return StatusCode(500, "Failed to send drop-in payment link email");
+        }
+    }
 }

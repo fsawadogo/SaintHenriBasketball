@@ -13,6 +13,7 @@ public class PaymentService : IPaymentService
 {
    private readonly IPaymentRepository _paymentRepository;
    private readonly IUserRepository _userRepository;
+   private readonly ISessionRepository _sessionRepository;
    private readonly IMapper _mapper;
    private readonly ILogger<PaymentService> _logger;
    private readonly IEmailService _emailService;
@@ -20,12 +21,14 @@ public class PaymentService : IPaymentService
    public PaymentService(
        IPaymentRepository paymentRepository,
        IUserRepository userRepository,
+       ISessionRepository sessionRepository,
        IMapper mapper,
        ILogger<PaymentService> logger,
        IEmailService emailService)
    {
        _paymentRepository = paymentRepository;
        _userRepository = userRepository;
+       _sessionRepository = sessionRepository;
        _mapper = mapper;
        _logger = logger;
        _emailService = emailService;
@@ -183,5 +186,94 @@ public class PaymentService : IPaymentService
         await _paymentRepository.UpdateAsync(payment);
                 
         return _mapper.Map<PaymentDto>(payment);
+   }
+
+   public async Task<PaymentDto> CreateDropInPaymentAsync(Guid userId, CreateDropInPaymentDto request)
+   {
+       var user = await _userRepository.GetByIdAsync(userId);
+       if (user == null)
+           throw new NotFoundException($"User with ID {userId} not found");
+
+       var session = await _sessionRepository.GetByIdAsync(request.SessionId);
+       if (session == null)
+           throw new NotFoundException($"Session with ID {request.SessionId} not found");
+
+       var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
+
+       var payment = new Payment(userId, amount, PaymentPlan.DropIn);
+       var reference = $"DROPIN-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
+       payment.Reference = reference;
+
+       // Interac payments stay Pending until admin confirms; card payments are processed immediately
+       if (request.PaymentMethod == 0 && !string.IsNullOrEmpty(request.InteracReference))
+       {
+           payment.Reference = $"{reference}-{request.InteracReference}";
+       }
+
+       await _paymentRepository.AddAsync(payment);
+
+       _logger.LogInformation(
+           "Drop-in payment created for user {UserId}, session {SessionId}, method {Method}",
+           userId, request.SessionId, request.PaymentMethod);
+
+       try
+       {
+           await _emailService.SendPaymentCreatedConfirmationAsync(
+               user.Id, payment.Amount, payment.Reference);
+       }
+       catch (Exception emailEx)
+       {
+           _logger.LogWarning(emailEx,
+               "Failed to send drop-in payment confirmation email for user {UserId}", userId);
+       }
+
+       return _mapper.Map<PaymentDto>(payment);
+   }
+
+   public async Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference)
+   {
+       var payment = await _paymentRepository.GetByIdAsync(paymentId);
+       if (payment == null)
+           throw new NotFoundException($"Payment with ID {paymentId} not found");
+
+       if (payment.Status != PaymentStatus.Pending)
+           throw new ValidationException("Only pending payments can be confirmed");
+
+       payment.Reference = string.IsNullOrEmpty(payment.Reference)
+           ? reference
+           : $"{payment.Reference}-{reference}";
+       payment.Status = PaymentStatus.Pending; // stays pending until admin verifies
+       await _paymentRepository.UpdateAsync(payment);
+
+       _logger.LogInformation(
+           "Interac reference {Reference} attached to payment {PaymentId}", reference, paymentId);
+
+       return _mapper.Map<PaymentDto>(payment);
+   }
+
+   public async Task<DropInPaymentLinkDto> GetDropInPaymentLinkAsync(Guid userId, Guid sessionId)
+   {
+       var session = await _sessionRepository.GetByIdAsync(sessionId);
+       if (session == null)
+           throw new NotFoundException($"Session with ID {sessionId} not found");
+
+       var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
+
+       // Check if there's already a pending payment for this user+session
+       var userPayments = await _paymentRepository.GetPaymentsByUserAsync(userId);
+       var existingPayment = userPayments
+           .FirstOrDefault(p => p.Plan == PaymentPlan.DropIn
+               && p.Status == PaymentStatus.Pending
+               && p.Reference != null && p.Reference.Contains("DROPIN"));
+
+       return new DropInPaymentLinkDto
+       {
+           PaymentId = existingPayment?.Id ?? Guid.Empty,
+           SessionId = sessionId,
+           Amount = amount,
+           PaymentUrl = $"https://sainthenribasketball.com/drop-in-payment?sessionId={sessionId}",
+           InteracEmail = "pay@sainthenribasketball.com",
+           ExpiresAt = session.SessionDate
+       };
    }
 }

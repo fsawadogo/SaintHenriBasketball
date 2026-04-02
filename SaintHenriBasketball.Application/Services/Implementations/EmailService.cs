@@ -433,6 +433,62 @@ public class EmailService : IEmailService
         }
     }
 
+    public async Task SendDropInPaymentLinkEmailAsync(string? userEmail, string userName,
+        Guid sessionId, decimal amount, DateTime sessionDate, string startTime, string endTime,
+        EmailLanguage language = EmailLanguage.Bilingual)
+    {
+        if (string.IsNullOrEmpty(userEmail)) return;
+
+        try
+        {
+            var paymentUrl = $"https://sainthenribasketball.com/drop-in-payment?sessionId={sessionId}";
+            var interacEmail = "pay@sainthenribasketball.com";
+            var dateStr = sessionDate.ToString("MMMM d, yyyy");
+
+            var htmlContent = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                    <h2 style='color: #f97316;'>Drop-In Payment / Paiement à la carte</h2>
+
+                    <p>Hello {userName},</p>
+                    <p>Thank you for confirming your attendance for the session on <strong>{dateStr}</strong> from <strong>{startTime}</strong> to <strong>{endTime}</strong>.</p>
+                    <p>Please complete your payment of <strong>${amount:F2}</strong>.</p>
+
+                    <h3 style='color: #f97316;'>Interac e-Transfer (Recommended)</h3>
+                    <ol>
+                        <li>Open your banking app</li>
+                        <li>Send <strong>${amount:F2}</strong> to <strong>{interacEmail}</strong></li>
+                        <li>In the message, include: <strong>{userName} - Drop-in {dateStr}</strong></li>
+                    </ol>
+
+                    <p>Or pay by card: <a href='{paymentUrl}' style='color: #f97316;'>{paymentUrl}</a></p>
+
+                    <hr style='border-color: #333; margin: 20px 0;'/>
+
+                    <p>Bonjour {userName},</p>
+                    <p>Merci d'avoir confirmé votre présence pour la session du <strong>{dateStr}</strong> de <strong>{startTime}</strong> à <strong>{endTime}</strong>.</p>
+                    <p>Veuillez compléter votre paiement de <strong>{amount:F2}$</strong>.</p>
+
+                    <h3 style='color: #f97316;'>Virement Interac (Recommandé)</h3>
+                    <ol>
+                        <li>Ouvrez votre application bancaire</li>
+                        <li>Envoyez <strong>{amount:F2}$</strong> à <strong>{interacEmail}</strong></li>
+                        <li>Dans le message, inscrivez : <strong>{userName} - Drop-in {dateStr}</strong></li>
+                    </ol>
+
+                    <p>Ou payez par carte : <a href='{paymentUrl}' style='color: #f97316;'>{paymentUrl}</a></p>
+                </div>";
+
+            await SendEmailAsync(
+                userEmail,
+                "Drop-In Payment / Paiement à la carte - Saint Henri Basketball",
+                htmlContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send drop-in payment link email to {Email}", userEmail);
+        }
+    }
+
     public async Task<EmailSendResult> SendPaymentRemindersAsync(
         List<string?> emails,
         EmailLanguage language,

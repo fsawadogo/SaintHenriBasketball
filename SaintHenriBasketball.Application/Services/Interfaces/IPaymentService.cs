@@ -16,4 +16,7 @@ public interface IPaymentService
     Task<PaymentDto> ProcessPaymentAsync(CreatePaymentDto createPaymentDto);
     Task<PaymentReconciliationDto> ReconcilePaymentsAsync(DateTime startDate, DateTime endDate);
     Task<PaymentDto> UpdatePaymentAsync(Guid id, UpdatePaymentDto updatePaymentDto);
+    Task<PaymentDto> CreateDropInPaymentAsync(Guid userId, CreateDropInPaymentDto request);
+    Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference);
+    Task<DropInPaymentLinkDto> GetDropInPaymentLinkAsync(Guid userId, Guid sessionId);
 }

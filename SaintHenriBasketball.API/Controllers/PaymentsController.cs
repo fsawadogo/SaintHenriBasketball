@@ -358,6 +358,104 @@ public class PaymentsController : ControllerBase
        return Ok(result);
    }
 
+   /// <summary>
+   /// Create a drop-in payment for a session (user-facing)
+   /// </summary>
+   [HttpPost("drop-in")]
+   [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status201Created)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<ActionResult<PaymentDto>> CreateDropInPayment([FromBody] CreateDropInPaymentDto request)
+   {
+       try
+       {
+           var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+           if (string.IsNullOrEmpty(userId))
+               return Unauthorized();
+
+           var payment = await _paymentService.CreateDropInPaymentAsync(Guid.Parse(userId), request);
+
+           // Invalidate caches
+           await _cacheService.RemoveAsync("Payments:All");
+           await _cacheService.RemoveAsync("Payments:Pending");
+           await _cacheService.RemoveAsync("Payments:Summary");
+           await _cacheService.RemoveAsync($"Payments:User:{userId}");
+
+           return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
+       }
+       catch (ValidationException ex)
+       {
+           return BadRequest(ex.Message);
+       }
+       catch (NotFoundException ex)
+       {
+           return NotFound(ex.Message);
+       }
+       catch (Exception ex)
+       {
+           _logger.LogError(ex, "Error creating drop-in payment");
+           return StatusCode(500, "An unexpected error occurred while creating the payment");
+       }
+   }
+
+   /// <summary>
+   /// Get payment link info for a drop-in session
+   /// </summary>
+   [HttpGet("drop-in/link/{sessionId}")]
+   [ProducesResponseType(typeof(DropInPaymentLinkDto), StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<ActionResult<DropInPaymentLinkDto>> GetDropInPaymentLink(Guid sessionId)
+   {
+       try
+       {
+           var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+           if (string.IsNullOrEmpty(userId))
+               return Unauthorized();
+
+           var link = await _paymentService.GetDropInPaymentLinkAsync(Guid.Parse(userId), sessionId);
+           return Ok(link);
+       }
+       catch (NotFoundException ex)
+       {
+           return NotFound(ex.Message);
+       }
+   }
+
+   /// <summary>
+   /// Confirm an Interac e-Transfer payment with a reference number
+   /// </summary>
+   [HttpPost("{id}/confirm-interac")]
+   [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<ActionResult<PaymentDto>> ConfirmInteracPayment(Guid id, [FromBody] ConfirmInteracPaymentDto request)
+   {
+       try
+       {
+           var payment = await _paymentService.ConfirmInteracPaymentAsync(id, request.Reference);
+
+           // Invalidate caches
+           await _cacheService.RemoveAsync($"Payments:Detail:{id}");
+           await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
+           await _cacheService.RemoveAsync("Payments:Pending");
+
+           return Ok(payment);
+       }
+       catch (ValidationException ex)
+       {
+           return BadRequest(ex.Message);
+       }
+       catch (NotFoundException ex)
+       {
+           return NotFound(ex.Message);
+       }
+       catch (Exception ex)
+       {
+           _logger.LogError(ex, "Error confirming Interac payment {PaymentId}", id);
+           return StatusCode(500, "An unexpected error occurred while confirming the payment");
+       }
+   }
+
    [HttpPost("batch-invoice")]
    [Authorize(Roles = "Admin")]
    public async Task<IActionResult> SendBatchInvoices([FromBody] BatchInvoiceRequestDto request)
