@@ -333,4 +333,43 @@ public class SessionsController : BaseApiController
             return StatusCode(500, "An error occurred while removing the participant from the session");
         }
     }
+
+    /// <summary>Bulk cancel sessions</summary>
+    [HttpPost("bulk-cancel")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> BulkCancelSessions([FromBody] List<Guid> sessionIds)
+    {
+        var cancelled = 0;
+        foreach (var id in sessionIds)
+        {
+            try
+            {
+                await _sessionService.CancelSessionAsync(id);
+                cancelled++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to cancel session {SessionId}", id);
+            }
+        }
+        return Ok(new { cancelled, total = sessionIds.Count });
+    }
+
+    /// <summary>Generate QR code for session check-in</summary>
+    [HttpGet("{id}/qr-code")]
+    public IActionResult GetSessionQrCode(Guid id)
+    {
+        var url = $"https://sainthenribasketball.com/attendance/confirm?sessionId={id}";
+
+        // Generate a simple SVG QR code placeholder
+        // In production, use QRCoder NuGet for real QR generation
+        var svg = $@"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'>
+            <rect width='200' height='200' fill='white'/>
+            <text x='100' y='90' text-anchor='middle' font-family='Arial' font-size='12' fill='#333'>Scan to check in</text>
+            <text x='100' y='110' text-anchor='middle' font-family='Arial' font-size='10' fill='#666'>Session {id.ToString()[..8]}</text>
+            <text x='100' y='130' text-anchor='middle' font-family='Arial' font-size='8' fill='#999'>{url}</text>
+        </svg>";
+
+        return Content(svg, "image/svg+xml");
+    }
 }

@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Infrastructure.Data.Context;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -18,19 +21,178 @@ public class CommunicationController : ControllerBase
     private readonly IUserService _userService;
     private readonly ISeasonService _seasonService;
     private readonly ILogger<CommunicationController> _logger;
+    private readonly ApplicationDbContext _dbContext;
 
-    /// <inheritdoc />
     public CommunicationController(
         IEmailService emailService,
         IUserService userService,
         ISeasonService seasonService,
-        ILogger<CommunicationController> logger)
+        ILogger<CommunicationController> logger,
+        ApplicationDbContext dbContext)
     {
         _emailService = emailService;
         _userService = userService;
         _seasonService = seasonService;
         _logger = logger;
+        _dbContext = dbContext;
     }
+
+    #region Email History
+
+    [HttpGet("history")]
+    public async Task<IActionResult> GetEmailHistory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? recipient = null,
+        [FromQuery] int? emailType = null,
+        [FromQuery] int? status = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        var query = _dbContext.EmailLogs.AsQueryable();
+
+        if (!string.IsNullOrEmpty(recipient))
+            query = query.Where(e => e.Recipient.Contains(recipient) || (e.RecipientName != null && e.RecipientName.Contains(recipient)));
+        if (emailType.HasValue)
+            query = query.Where(e => (int)e.EmailType == emailType.Value);
+        if (status.HasValue)
+            query = query.Where(e => (int)e.Status == status.Value);
+        if (from.HasValue)
+            query = query.Where(e => e.SentAt >= from.Value);
+        if (to.HasValue)
+            query = query.Where(e => e.SentAt <= to.Value);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(e => e.SentAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new {
+                e.Id,
+                e.Recipient,
+                e.RecipientName,
+                e.Subject,
+                EmailType = e.EmailType.ToString(),
+                Status = e.Status.ToString(),
+                e.SentAt,
+                e.ErrorMessage
+            })
+            .ToListAsync();
+
+        return Ok(new { items, total, page, pageSize });
+    }
+
+    [HttpGet("history/{id}")]
+    public async Task<IActionResult> GetEmailLogById(Guid id)
+    {
+        var log = await _dbContext.EmailLogs.FindAsync(id);
+        if (log == null) return NotFound();
+        return Ok(log);
+    }
+
+    [HttpGet("history/failed")]
+    public async Task<IActionResult> GetFailedEmails()
+    {
+        var failed = await _dbContext.EmailLogs
+            .Where(e => e.Status == EmailLogStatus.Failed)
+            .OrderByDescending(e => e.SentAt)
+            .Take(50)
+            .ToListAsync();
+        return Ok(failed);
+    }
+
+    #endregion
+
+    #region Recipient Groups
+
+    [HttpGet("groups")]
+    public async Task<IActionResult> GetRecipientGroups()
+    {
+        var now = DateTime.UtcNow;
+        var thirtyDaysAgo = now.AddDays(-30);
+        var startOfMonth = new DateTime(now.Year, now.Month, 1);
+
+        var allUsers = await _dbContext.Users.ToListAsync();
+        var recentAttendance = await _dbContext.SessionAttendances
+            .Where(a => a.CreatedOn >= thirtyDaysAgo && a.IsAttending)
+            .Select(a => a.UserId)
+            .Distinct()
+            .ToListAsync();
+        var pendingPaymentUserIds = await _dbContext.Payments
+            .Where(p => p.Status == Domain.Enums.PaymentStatus.Pending)
+            .Select(p => p.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        var groups = new[]
+        {
+            new {
+                id = "all",
+                name = "All Users",
+                nameFr = "Tous les utilisateurs",
+                count = allUsers.Count,
+                emails = allUsers.Select(u => u.Email).ToList()
+            },
+            new {
+                id = "season",
+                name = "Season Pass Holders",
+                nameFr = "Détenteurs de forfait saison",
+                count = allUsers.Count(u => u.PaymentPlan == Domain.Enums.PaymentPlan.Season),
+                emails = allUsers.Where(u => u.PaymentPlan == Domain.Enums.PaymentPlan.Season).Select(u => u.Email).ToList()
+            },
+            new {
+                id = "dropin",
+                name = "Drop-in Players",
+                nameFr = "Joueurs à la séance",
+                count = allUsers.Count(u => u.PaymentPlan == Domain.Enums.PaymentPlan.DropIn),
+                emails = allUsers.Where(u => u.PaymentPlan == Domain.Enums.PaymentPlan.DropIn).Select(u => u.Email).ToList()
+            },
+            new {
+                id = "inactive",
+                name = "Inactive (30+ days)",
+                nameFr = "Inactifs (30+ jours)",
+                count = allUsers.Count(u => !recentAttendance.Contains(u.Id)),
+                emails = allUsers.Where(u => !recentAttendance.Contains(u.Id)).Select(u => u.Email).ToList()
+            },
+            new {
+                id = "new",
+                name = "New Members (this month)",
+                nameFr = "Nouveaux membres (ce mois)",
+                count = allUsers.Count(u => u.CreatedOn >= startOfMonth),
+                emails = allUsers.Where(u => u.CreatedOn >= startOfMonth).Select(u => u.Email).ToList()
+            },
+            new {
+                id = "pending",
+                name = "Pending Payments",
+                nameFr = "Paiements en attente",
+                count = pendingPaymentUserIds.Count,
+                emails = allUsers.Where(u => pendingPaymentUserIds.Contains(u.Id)).Select(u => u.Email).ToList()
+            },
+        };
+
+        return Ok(groups);
+    }
+
+    #endregion
+
+    #region Scheduled Emails
+
+    [HttpPost("schedule")]
+    public IActionResult ScheduleEmail([FromBody] ScheduleEmailRequestDto request)
+    {
+        if (request.ScheduledAt <= DateTime.UtcNow)
+            return BadRequest("Scheduled time must be in the future");
+
+        var delay = request.ScheduledAt - DateTime.UtcNow;
+        var jobId = Hangfire.BackgroundJob.Schedule<IEmailService>(
+            svc => svc.SendEmailAsync(string.Join(",", request.Emails), request.Subject, request.Message),
+            delay
+        );
+
+        return Ok(new { jobId, scheduledAt = request.ScheduledAt });
+    }
+
+    #endregion
 
     /// <summary>
     /// Send payment reminders to specified users

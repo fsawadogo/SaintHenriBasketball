@@ -27,6 +27,7 @@ public class EmailService : IEmailService
     private readonly ISessionRepository _sessionRepository;
     private readonly IBackgroundJobClient _backgroundJobs;
     private readonly IWebHostEnvironment _webHostEnvironment;
+    private readonly IGenericRepository<EmailLog> _emailLogRepository;
     private const int MaxRetries = 3;
 
     public EmailService(
@@ -37,7 +38,8 @@ public class EmailService : IEmailService
         IBackgroundJobClient backgroundJobs,
         IWebHostEnvironment webHostEnvironment,
         ISessionRepository sessionRepository,
-        IResend resend)
+        IResend resend,
+        IGenericRepository<EmailLog> emailLogRepository)
     {
         _logger = logger;
         _userRepository = userRepository;
@@ -46,6 +48,7 @@ public class EmailService : IEmailService
         _sessionRepository = sessionRepository;
         _paymentRepository = paymentRepository;
         _resend = resend;
+        _emailLogRepository = emailLogRepository;
 
         var fromEmail = configuration["Resend:FromEmail"]
             ?? throw new ArgumentNullException(nameof(configuration), "Resend From Email is not configured");
@@ -97,6 +100,16 @@ public class EmailService : IEmailService
             message.To.Add(to);
 
             await _resend.EmailSendAsync(message);
+
+            // Log successful send
+            try
+            {
+                await _emailLogRepository.AddAsync(new EmailLog(to, subject, EmailType.GeneralAnnouncement));
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogWarning(logEx, "Failed to log email send to {Email}", to);
+            }
         }
         catch (Exception ex)
         {
@@ -105,6 +118,18 @@ public class EmailService : IEmailService
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
                 _backgroundJobs.Schedule(() => SendWithRetryAsync(to, subject, htmlContent, retryCount + 1), delay);
                 return;
+            }
+
+            // Log failed send
+            try
+            {
+                var log = new EmailLog(to, subject, EmailType.GeneralAnnouncement);
+                log.MarkFailed(ex.Message);
+                await _emailLogRepository.AddAsync(log);
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogWarning(logEx, "Failed to log email failure for {Email}", to);
             }
 
             _logger.LogError(ex, "Error sending email after {MaxRetries} retries", MaxRetries);
@@ -606,7 +631,7 @@ public class EmailService : IEmailService
                     session.StartTime,
                     session.Location,
                     cancellationReason,
-                    alternativeSession != null ? MapToSessionDto(alternativeSession) : null
+                    alternativeSession?.Id
                 );
 
                 await SendEmailAsync(

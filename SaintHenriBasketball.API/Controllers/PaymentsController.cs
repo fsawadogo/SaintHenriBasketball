@@ -348,4 +348,43 @@ public class PaymentsController : ControllerBase
 
        return Ok(result);
    }
+
+   [HttpGet("reconciliation")]
+   [Authorize(Roles = "Admin")]
+   [ProducesResponseType(StatusCodes.Status200OK)]
+   public async Task<IActionResult> GetReconciliation([FromQuery] DateTime from, [FromQuery] DateTime to)
+   {
+       var result = await _paymentService.ReconcilePaymentsAsync(from, to);
+       return Ok(result);
+   }
+
+   [HttpPost("batch-invoice")]
+   [Authorize(Roles = "Admin")]
+   public async Task<IActionResult> SendBatchInvoices([FromBody] BatchInvoiceRequestDto request)
+   {
+       var payments = (await _paymentService.GetAllPayments())
+           .Where(p => p.Status == PaymentStatus.Completed
+               && p.PaymentDate >= request.From
+               && p.PaymentDate <= request.To)
+           .ToList();
+
+       var sent = 0;
+       var failed = 0;
+
+       foreach (var payment in payments)
+       {
+           try
+           {
+               await _emailService.SendPaymentConfirmationAsync(
+                   payment.UserId, payment.Amount, payment.Reference);
+               sent++;
+           }
+           catch
+           {
+               failed++;
+           }
+       }
+
+       return Ok(new { sent, failed, total = payments.Count });
+   }
 }

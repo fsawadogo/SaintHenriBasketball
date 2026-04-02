@@ -18,7 +18,8 @@ public class ApplicationUser
     public string PasswordResetToken { get; set; }
     public DateTime? PasswordResetTokenExpiry { get; set; }
     public ICollection<SessionRegistration> SessionRegistrations { get; private set; }
-    public EmailLanguage PreferredLanguage { get; }
+    public EmailLanguage PreferredLanguage { get; set; }
+    public string? AdminNotes { get; set; }
 
     private ApplicationUser() { } // For EF Core
 

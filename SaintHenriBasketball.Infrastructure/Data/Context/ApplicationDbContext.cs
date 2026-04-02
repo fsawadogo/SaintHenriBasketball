@@ -18,6 +18,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<SessionAttendance> SessionAttendances { get; set; }
     public DbSet<Season> Seasons { get; set; }
     public DbSet<SeasonRegistration> SeasonRegistrations { get; set; }
+    public DbSet<EmailLog> EmailLogs { get; set; }
+    public DbSet<SavedEmailTemplate> SavedEmailTemplates { get; set; }
+    public DbSet<SessionTemplate> SessionTemplates { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -198,6 +202,46 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.RegisteredOn)
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<EmailLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Recipient).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.EmailType).IsRequired();
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.SentAt).IsRequired();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            entity.Property(e => e.RecipientName).HasMaxLength(200);
+            entity.HasIndex(e => e.SentAt);
+            entity.HasIndex(e => e.Recipient);
+            entity.HasIndex(e => e.Status);
+        });
+
+        modelBuilder.Entity<SavedEmailTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.SubjectEn).HasMaxLength(500);
+            entity.Property(e => e.SubjectFr).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<SessionTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DropInPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Location).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Action).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.EntityType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Details).HasMaxLength(2000);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.EntityType);
         });
     }
 }
