@@ -87,8 +87,18 @@ public class AttendanceService : IAttendanceService
             await _cacheService.RemoveAsync(sessionCacheKey);
             await _cacheService.RemoveAsync(userCacheKey);
 
-            // Send confirmation email
-            await _emailService.SendAttendanceConfirmationEmailAsync(attendance);
+            // Send confirmation email — fire-and-forget so email failures
+            // don't return 500 after the attendance record was already saved
+            try
+            {
+                await _emailService.SendAttendanceConfirmationEmailAsync(attendance);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogWarning(emailEx,
+                    "Failed to send attendance confirmation email for session {SessionId}, user {UserId}. Attendance was saved successfully.",
+                    sessionId, userId);
+            }
 
             return _mapper.Map<AttendanceResponseDto>(attendance);
         }
@@ -169,8 +179,18 @@ public class AttendanceService : IAttendanceService
                 await _cacheService.RemoveAsync($"Session_{sessionId}");
             }
 
-            // Send update confirmation email
-            await _emailService.SendAttendanceUpdateEmailAsync(attendance, wasAttending, updateReason);
+            // Send update confirmation email — fire-and-forget so email failures
+            // don't return 500 after the attendance update was already saved
+            try
+            {
+                await _emailService.SendAttendanceUpdateEmailAsync(attendance, wasAttending, updateReason);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogWarning(emailEx,
+                    "Failed to send attendance update email for session {SessionId}, user {UserId}. Attendance was updated successfully.",
+                    sessionId, userId);
+            }
 
             return _mapper.Map<AttendanceResponseDto>(attendance);
         }
