@@ -60,7 +60,10 @@ public class EmailService : IEmailService
         if (string.IsNullOrEmpty(to))
             throw new ArgumentNullException(nameof(to), "Recipient email address cannot be null or empty");
 
-        await SendWithRetryAsync(to, subject, htmlContent, retryCount: 0);
+        var message = new EmailMessage { From = _fromAddress, Subject = subject, HtmlBody = htmlContent };
+        message.To.Add(to);
+
+        await SendWithRetryAsync(message, to, subject);
     }
 
     public async Task SendEmailWithAttachmentAsync(string? to, string subject, string htmlContent, string attachmentFilename, byte[] attachmentContent)
@@ -80,78 +83,44 @@ public class EmailService : IEmailService
         };
         message.To.Add(to);
 
-        await SendMessageWithRetryAsync(message, retryCount: 0);
+        await SendWithRetryAsync(message, to, subject);
     }
 
-    private async Task SendWithRetryAsync(string to, string subject, string htmlContent, int retryCount)
+    /// <summary>Unified retry loop for all email sends. Logs success/failure to EmailLog.</summary>
+    private async Task SendWithRetryAsync(EmailMessage message, string to, string subject, EmailType emailType = EmailType.GeneralAnnouncement)
     {
-        try
+        for (var attempt = 0; attempt <= MaxRetries; attempt++)
         {
-            var message = new EmailMessage
-            {
-                From = _fromAddress,
-                Subject = subject,
-                HtmlBody = htmlContent
-            };
-            message.To.Add(to);
-
-            await _resend.EmailSendAsync(message);
-
-            // Log successful send
             try
             {
-                await _emailLogRepository.AddAsync(new EmailLog(to, subject, EmailType.GeneralAnnouncement));
-            }
-            catch (Exception logEx)
-            {
-                _logger.LogWarning(logEx, "Failed to log email send to {Email}", to);
-            }
-        }
-        catch (Exception ex)
-        {
-            if (retryCount < MaxRetries)
-            {
-                var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
-                await Task.Delay(delay);
-                await SendWithRetryAsync(to, subject, htmlContent, retryCount + 1);
-                return;
-            }
+                await _resend.EmailSendAsync(message);
 
-            // Log failed send
-            try
-            {
-                var log = new EmailLog(to, subject, EmailType.GeneralAnnouncement);
-                log.MarkFailed(ex.Message);
-                await _emailLogRepository.AddAsync(log);
-            }
-            catch (Exception logEx)
-            {
-                _logger.LogWarning(logEx, "Failed to log email failure for {Email}", to);
-            }
+                // Log successful send
+                try { await _emailLogRepository.AddAsync(new EmailLog(to, subject, emailType)); }
+                catch (Exception logEx) { _logger.LogWarning(logEx, "Failed to log email send to {Email}", to); }
 
-            _logger.LogError(ex, "Error sending email after {MaxRetries} retries", MaxRetries);
-            throw;
-        }
-    }
-
-    private async Task SendMessageWithRetryAsync(EmailMessage message, int retryCount)
-    {
-        try
-        {
-            await _resend.EmailSendAsync(message);
-        }
-        catch (Exception ex)
-        {
-            if (retryCount < MaxRetries)
-            {
-                var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
-                await Task.Delay(delay);
-                await SendMessageWithRetryAsync(message, retryCount + 1);
-                return;
+                return; // Success — exit
             }
+            catch (Exception ex)
+            {
+                if (attempt < MaxRetries)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+                    continue;
+                }
 
-            _logger.LogError(ex, "Error sending email with attachment after {MaxRetries} retries", MaxRetries);
-            throw;
+                // Final failure — log and throw
+                try
+                {
+                    var log = new EmailLog(to, subject, emailType);
+                    log.MarkFailed(ex.Message);
+                    await _emailLogRepository.AddAsync(log);
+                }
+                catch (Exception logEx) { _logger.LogWarning(logEx, "Failed to log email failure for {Email}", to); }
+
+                _logger.LogError(ex, "Error sending email to {Email} after {MaxRetries} retries", to, MaxRetries);
+                throw;
+            }
         }
     }
     #endregion

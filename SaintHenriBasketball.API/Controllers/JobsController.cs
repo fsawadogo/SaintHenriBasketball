@@ -18,6 +18,25 @@ public class JobsController : ControllerBase
         _schedulerFactory = schedulerFactory;
     }
 
+    private async Task<List<object>> MapTriggerInfos(IScheduler scheduler, IReadOnlyCollection<ITrigger> triggers)
+    {
+        var infos = new List<object>();
+        foreach (var trigger in triggers)
+        {
+            var state = await scheduler.GetTriggerState(trigger.Key);
+            infos.Add(new
+            {
+                name = trigger.Key.Name,
+                cronExpression = (trigger as ICronTrigger)?.CronExpressionString,
+                description = trigger.Description,
+                nextFireTime = trigger.GetNextFireTimeUtc()?.UtcDateTime,
+                previousFireTime = trigger.GetPreviousFireTimeUtc()?.UtcDateTime,
+                status = state.ToString()
+            });
+        }
+        return infos;
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAllJobs()
     {
@@ -29,21 +48,6 @@ public class JobsController : ControllerBase
         {
             var detail = await scheduler.GetJobDetail(key);
             var triggers = await scheduler.GetTriggersOfJob(key);
-            var triggerInfos = new List<object>();
-
-            foreach (var trigger in triggers)
-            {
-                var state = await scheduler.GetTriggerState(trigger.Key);
-                triggerInfos.Add(new
-                {
-                    name = trigger.Key.Name,
-                    cronExpression = (trigger as ICronTrigger)?.CronExpressionString,
-                    description = trigger.Description,
-                    nextFireTime = trigger.GetNextFireTimeUtc()?.UtcDateTime,
-                    previousFireTime = trigger.GetPreviousFireTimeUtc()?.UtcDateTime,
-                    status = state.ToString()
-                });
-            }
 
             jobs.Add(new
             {
@@ -52,7 +56,7 @@ public class JobsController : ControllerBase
                 description = detail?.Description,
                 jobType = detail?.JobType.Name,
                 isDurable = detail?.Durable,
-                triggers = triggerInfos
+                triggers = await MapTriggerInfos(scheduler, triggers)
             });
         }
 
@@ -68,20 +72,6 @@ public class JobsController : ControllerBase
         if (detail == null) return NotFound();
 
         var triggers = await scheduler.GetTriggersOfJob(jobKey);
-        var triggerInfos = new List<object>();
-        foreach (var trigger in triggers)
-        {
-            var state = await scheduler.GetTriggerState(trigger.Key);
-            triggerInfos.Add(new
-            {
-                name = trigger.Key.Name,
-                cronExpression = (trigger as ICronTrigger)?.CronExpressionString,
-                description = trigger.Description,
-                nextFireTime = trigger.GetNextFireTimeUtc()?.UtcDateTime,
-                previousFireTime = trigger.GetPreviousFireTimeUtc()?.UtcDateTime,
-                status = state.ToString()
-            });
-        }
 
         return Ok(new
         {
@@ -89,7 +79,7 @@ public class JobsController : ControllerBase
             group = jobKey.Group,
             description = detail.Description,
             jobType = detail.JobType.Name,
-            triggers = triggerInfos
+            triggers = await MapTriggerInfos(scheduler, triggers)
         });
     }
 

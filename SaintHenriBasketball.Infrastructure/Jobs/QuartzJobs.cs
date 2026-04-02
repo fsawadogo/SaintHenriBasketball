@@ -5,70 +5,51 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.Infrastructure.Jobs;
 
+/// <summary>Base class for recurring jobs that call IEmailAutomationService methods.</summary>
 [DisallowConcurrentExecution]
-public class AttendanceReminderJob : IJob
+public abstract class EmailAutomationJob : IJob
 {
     private readonly IServiceProvider _sp;
-    private readonly ILogger<AttendanceReminderJob> _logger;
+    private readonly ILogger _logger;
 
-    public AttendanceReminderJob(IServiceProvider sp, ILogger<AttendanceReminderJob> logger)
+    protected EmailAutomationJob(IServiceProvider sp, ILogger logger)
     {
         _sp = sp;
         _logger = logger;
     }
 
+    protected abstract string JobName { get; }
+    protected abstract Task RunAsync(IEmailAutomationService svc);
+
     public async Task Execute(IJobExecutionContext context)
     {
-        _logger.LogInformation("Running attendance reminder job");
+        _logger.LogInformation("Running {JobName}", JobName);
         using var scope = _sp.CreateScope();
         var svc = scope.ServiceProvider.GetRequiredService<IEmailAutomationService>();
-        await svc.ScheduleAttendanceRemindersForUpcomingSessions();
+        await RunAsync(svc);
     }
 }
 
-[DisallowConcurrentExecution]
-public class PaymentReminderJob : IJob
+public class AttendanceReminderJob(IServiceProvider sp, ILogger<AttendanceReminderJob> logger) : EmailAutomationJob(sp, logger)
 {
-    private readonly IServiceProvider _sp;
-    private readonly ILogger<PaymentReminderJob> _logger;
-
-    public PaymentReminderJob(IServiceProvider sp, ILogger<PaymentReminderJob> logger)
-    {
-        _sp = sp;
-        _logger = logger;
-    }
-
-    public async Task Execute(IJobExecutionContext context)
-    {
-        _logger.LogInformation("Running payment reminder job");
-        using var scope = _sp.CreateScope();
-        var svc = scope.ServiceProvider.GetRequiredService<IEmailAutomationService>();
-        await svc.SchedulePaymentReminders();
-    }
+    protected override string JobName => "AttendanceReminder";
+    protected override Task RunAsync(IEmailAutomationService svc) => svc.ScheduleAttendanceRemindersForUpcomingSessions();
 }
 
-[DisallowConcurrentExecution]
-public class CapacityCheckJob : IJob
+public class PaymentReminderJob(IServiceProvider sp, ILogger<PaymentReminderJob> logger) : EmailAutomationJob(sp, logger)
 {
-    private readonly IServiceProvider _sp;
-    private readonly ILogger<CapacityCheckJob> _logger;
-
-    public CapacityCheckJob(IServiceProvider sp, ILogger<CapacityCheckJob> logger)
-    {
-        _sp = sp;
-        _logger = logger;
-    }
-
-    public async Task Execute(IJobExecutionContext context)
-    {
-        _logger.LogInformation("Running capacity check job");
-        using var scope = _sp.CreateScope();
-        var svc = scope.ServiceProvider.GetRequiredService<IEmailAutomationService>();
-        await svc.CheckSessionsCapacityAndSendReminders();
-    }
+    protected override string JobName => "PaymentReminder";
+    protected override Task RunAsync(IEmailAutomationService svc) => svc.SchedulePaymentReminders();
 }
 
-/// <summary>One-off job for sending scheduled emails</summary>
+public class CapacityCheckJob(IServiceProvider sp, ILogger<CapacityCheckJob> logger) : EmailAutomationJob(sp, logger)
+{
+    protected override string JobName => "CapacityCheck";
+    protected override Task RunAsync(IEmailAutomationService svc) => svc.CheckSessionsCapacityAndSendReminders();
+}
+
+/// <summary>One-off job for sending scheduled emails.</summary>
+[DisallowConcurrentExecution]
 public class ScheduledEmailJob : IJob
 {
     private readonly IServiceProvider _sp;
@@ -78,8 +59,8 @@ public class ScheduledEmailJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         var data = context.MergedJobDataMap;
-        var to = data.GetString("to") ?? "";
-        var subject = data.GetString("subject") ?? "";
+        var to = data.GetString("to") ?? throw new InvalidOperationException("Missing 'to' in job data");
+        var subject = data.GetString("subject") ?? throw new InvalidOperationException("Missing 'subject' in job data");
         var body = data.GetString("body") ?? "";
 
         using var scope = _sp.CreateScope();
