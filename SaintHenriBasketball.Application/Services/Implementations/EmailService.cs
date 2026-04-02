@@ -10,7 +10,6 @@ using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using Microsoft.AspNetCore.Hosting;
-using Hangfire;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Templates;
 using SaintHenriBasketball.Application.DTOs.Session;
@@ -25,7 +24,6 @@ public class EmailService : IEmailService
     private readonly IUserRepository _userRepository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly ISessionRepository _sessionRepository;
-    private readonly IBackgroundJobClient _backgroundJobs;
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly IGenericRepository<EmailLog> _emailLogRepository;
     private const int MaxRetries = 3;
@@ -35,7 +33,6 @@ public class EmailService : IEmailService
         ILogger<EmailService> logger,
         IUserRepository userRepository,
         IPaymentRepository paymentRepository,
-        IBackgroundJobClient backgroundJobs,
         IWebHostEnvironment webHostEnvironment,
         ISessionRepository sessionRepository,
         IResend resend,
@@ -43,7 +40,6 @@ public class EmailService : IEmailService
     {
         _logger = logger;
         _userRepository = userRepository;
-        _backgroundJobs = backgroundJobs;
         _webHostEnvironment = webHostEnvironment;
         _sessionRepository = sessionRepository;
         _paymentRepository = paymentRepository;
@@ -116,7 +112,8 @@ public class EmailService : IEmailService
             if (retryCount < MaxRetries)
             {
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
-                _backgroundJobs.Schedule(() => SendWithRetryAsync(to, subject, htmlContent, retryCount + 1), delay);
+                await Task.Delay(delay);
+                await SendWithRetryAsync(to, subject, htmlContent, retryCount + 1);
                 return;
             }
 
@@ -148,7 +145,8 @@ public class EmailService : IEmailService
             if (retryCount < MaxRetries)
             {
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
-                _backgroundJobs.Schedule(() => SendMessageWithRetryAsync(message, retryCount + 1), delay);
+                await Task.Delay(delay);
+                await SendMessageWithRetryAsync(message, retryCount + 1);
                 return;
             }
 

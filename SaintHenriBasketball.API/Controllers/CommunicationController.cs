@@ -178,18 +178,28 @@ public class CommunicationController : ControllerBase
     #region Scheduled Emails
 
     [HttpPost("schedule")]
-    public IActionResult ScheduleEmail([FromBody] ScheduleEmailRequestDto request)
+    public async Task<IActionResult> ScheduleEmail([FromBody] ScheduleEmailRequestDto request)
     {
         if (request.ScheduledAt <= DateTime.UtcNow)
             return BadRequest("Scheduled time must be in the future");
 
         var delay = request.ScheduledAt - DateTime.UtcNow;
-        var jobId = Hangfire.BackgroundJob.Schedule<IEmailService>(
-            svc => svc.SendEmailAsync(string.Join(",", request.Emails), request.Subject, request.Message),
-            delay
-        );
+        var schedulerFactory = HttpContext.RequestServices.GetRequiredService<Quartz.ISchedulerFactory>();
+        var scheduler = await schedulerFactory.GetScheduler();
 
-        return Ok(new { jobId, scheduledAt = request.ScheduledAt });
+        var job = Quartz.JobBuilder.Create<SaintHenriBasketball.Infrastructure.Jobs.ScheduledEmailJob>()
+            .UsingJobData("to", string.Join(",", request.Emails))
+            .UsingJobData("subject", request.Subject)
+            .UsingJobData("body", request.Message)
+            .Build();
+
+        var trigger = Quartz.TriggerBuilder.Create()
+            .StartAt(DateTimeOffset.UtcNow.Add(delay))
+            .Build();
+
+        await scheduler.ScheduleJob(job, trigger);
+
+        return Ok(new { jobId = job.Key.Name, scheduledAt = request.ScheduledAt });
     }
 
     #endregion

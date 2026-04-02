@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using Hangfire;
 using SaintHenriBasketball.Infrastructure.Jobs;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.Mvc;
@@ -158,8 +157,8 @@ builder.Services.AddTransient<IResend, ResendClient>();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Add Hangfire services
-builder.Services.AddHangfireServices(builder.Configuration);
+// Add Quartz.NET job scheduling
+builder.Services.AddQuartzJobs();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -173,7 +172,6 @@ builder.Services.AddCors(options =>
         });
 });
 
-builder.Services.AddHangfireServer();
 var app = builder.Build();
 
 // Apply migrations automatically
@@ -226,10 +224,7 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Use Hangfire Dashboard
-app.UseHangfireDashboard();
-// Configure Hangfire recurring jobs
-app.UseHangfireJobs();
+// Quartz jobs are started automatically by the hosted service
 
 // In the HTTP pipeline
 app.UseResponseCaching();

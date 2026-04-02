@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Hangfire;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -84,7 +83,7 @@ public class EmailAutomationService : IEmailAutomationService
             foreach (var session in sessionsToRemind)
             {
                 // Schedule immediate reminders
-                BackgroundJob.Enqueue(() => SendAttendanceRemindersForSession(session.Id));
+                await SendAttendanceRemindersForSession(session.Id);
 
                 _logger.LogInformation("Scheduled attendance reminder for session {SessionId} on {SessionDate}",
                     session.Id, session.SessionDate);
@@ -99,7 +98,6 @@ public class EmailAutomationService : IEmailAutomationService
     /// <summary>
     /// Sends attendance reminders for a specific session
     /// </summary>
-    [AutomaticRetry(Attempts = 3)]
     public async Task SendAttendanceRemindersForSession(Guid sessionId)
     {
         try
@@ -162,7 +160,7 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending attendance reminders for session {SessionId}", sessionId);
-            throw; // Allow Hangfire to retry
+            throw;
         }
     }
 
@@ -191,15 +189,15 @@ public class EmailAutomationService : IEmailAutomationService
                 if (reminderDate <= now)
                 {
                     // Schedule immediately for payments older than 3 days
-                    BackgroundJob.Enqueue(() => SendPaymentReminderForUser(payment.UserId, payment.Id));
+                    await SendPaymentReminderForUser(payment.UserId, payment.Id);
                     _logger.LogInformation("Scheduled immediate payment reminder for user {UserId}, payment {PaymentId}",
                         payment.UserId, payment.Id);
                 }
                 else
                 {
                     // Schedule for future for newer payments
-                    BackgroundJob.Schedule(() => SendPaymentReminderForUser(payment.UserId, payment.Id),
-                        reminderDate - now);
+                    // Will be sent on next scheduled run when reminderDate has passed
+                    _logger.LogInformation("Payment reminder for user {UserId} will be sent after {ReminderDate}", payment.UserId, reminderDate);
                     _logger.LogInformation("Scheduled payment reminder for user {UserId}, payment {PaymentId} at {ReminderTime}",
                         payment.UserId, payment.Id, reminderDate);
                 }
@@ -214,7 +212,6 @@ public class EmailAutomationService : IEmailAutomationService
     /// <summary>
     /// Sends a payment reminder to a specific user
     /// </summary>
-    [AutomaticRetry(Attempts = 3)]
     public async Task SendPaymentReminderForUser(Guid userId, Guid paymentId)
     {
         try
@@ -251,14 +248,13 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending payment reminder to user {UserId} for payment {PaymentId}", userId, paymentId);
-            throw; // Allow Hangfire to retry
+            throw;
         }
     }
 
     /// <summary>
     /// Sends bulk payment reminders to all users with pending payments
     /// </summary>
-    [AutomaticRetry(Attempts = 3)]
     public async Task SendBulkPaymentReminders()
     {
         try
@@ -304,14 +300,13 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending bulk payment reminders");
-            throw; // Allow Hangfire to retry
+            throw;
         }
     }
 
     /// <summary>
     /// Sends session cancellation notifications to all registered users
     /// </summary>
-    [AutomaticRetry(Attempts = 3)]
     public async Task SendSessionCancellationNotifications(Guid sessionId, string? cancellationReason = null)
     {
         try
@@ -377,13 +372,12 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending cancellation notifications for session {SessionId}", sessionId);
-            throw; // Allow Hangfire to retry
+            throw;
         }
     }
     /// <summary>
     /// Checks for sessions with low attendance and sends warnings
     /// </summary>
-    [AutomaticRetry(Attempts = 2)]
     public async Task CheckLowAttendanceSessions()
     {
         try
@@ -429,7 +423,7 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking for low attendance sessions");
-            throw; // Allow Hangfire to retry
+            throw;
         }
     }
 
@@ -437,7 +431,6 @@ public class EmailAutomationService : IEmailAutomationService
     /// Sends reminder emails to users who haven't confirmed their attendance
     /// when the capacity reaches specified thresholds (75% and 85%)
     /// </summary>
-    [AutomaticRetry(Attempts = 3)]
     public async Task SendCapacityThresholdRemindersAsync(Guid sessionId)
     {
         try
@@ -535,7 +528,7 @@ public class EmailAutomationService : IEmailAutomationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending capacity threshold notifications for session {SessionId}", sessionId);
-            throw; // Allow Hangfire to retry
+            throw;
         }
     }
 
@@ -577,7 +570,7 @@ public class EmailAutomationService : IEmailAutomationService
                     }
 
                     // Schedule notification job
-                    BackgroundJob.Enqueue(() => SendCapacityThresholdRemindersAsync(session.Id));
+                    await SendCapacityThresholdRemindersAsync(session.Id);
 
                     // Mark this threshold as processed to avoid duplicate notifications
                     await _cacheService.SetAsync(cacheKey, true, TimeSpan.FromDays(7));
