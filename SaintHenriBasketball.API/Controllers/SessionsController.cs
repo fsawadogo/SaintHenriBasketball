@@ -53,6 +53,32 @@ public class SessionsController : BaseApiController
     }
 
     /// <summary>
+    /// Generate Saturday sessions for a season date range (Admin only)
+    /// </summary>
+    [HttpPost("generate")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<GenerateSessionsResponseDto>> GenerateSessions(
+        [FromBody] GenerateSessionsDto request)
+    {
+        try
+        {
+            var result = await _sessionService.GenerateSessionsForSeasonAsync(request);
+            return Ok(result);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating sessions");
+            return StatusCode(500, "An error occurred while generating sessions");
+        }
+    }
+
+    /// <summary>
     /// Get a specific session by ID
     /// </summary>
     [HttpGet("{id}")]

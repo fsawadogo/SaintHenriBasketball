@@ -366,4 +366,60 @@ public class SessionService : ISessionService
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
         await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
     }
+
+    public async Task<GenerateSessionsResponseDto> GenerateSessionsForSeasonAsync(GenerateSessionsDto request)
+    {
+        if (request.EndDate <= request.StartDate)
+            throw new ValidationException("End date must be after start date");
+
+        var response = new GenerateSessionsResponseDto();
+
+        // Get all existing sessions to check for duplicates
+        var existingSessions = await _sessionRepository.GetAllSessionsAsync();
+        var existingDates = new HashSet<DateTime>(
+            existingSessions.Select(s => s.SessionDate.Date));
+
+        // Find all Saturdays between start and end date
+        var current = request.StartDate.Date;
+        // Move to the first Saturday
+        while (current.DayOfWeek != DayOfWeek.Saturday)
+            current = current.AddDays(1);
+
+        while (current <= request.EndDate.Date)
+        {
+            if (existingDates.Contains(current))
+            {
+                response.Skipped++;
+                response.SkippedDates.Add(current);
+            }
+            else
+            {
+                var session = new Session(
+                    current,
+                    request.MaxCapacity,
+                    request.DropInPrice,
+                    request.StartTime,
+                    request.EndTime,
+                    request.Location);
+
+                await _sessionRepository.AddAsync(session);
+                response.Created++;
+                response.CreatedDates.Add(current);
+            }
+
+            current = current.AddDays(7); // Next Saturday
+        }
+
+        // Invalidate caches
+        await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
+        await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
+        await _cacheService.RemoveAsync("AllSessions");
+
+        response.Message = $"Created {response.Created} sessions. {response.Skipped} skipped (already exist).";
+        _logger.LogInformation(
+            "Generated {Created} sessions for season {StartDate} to {EndDate}, skipped {Skipped}",
+            response.Created, request.StartDate, request.EndDate, response.Skipped);
+
+        return response;
+    }
 }

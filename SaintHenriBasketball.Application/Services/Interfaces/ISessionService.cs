@@ -20,4 +20,7 @@ public interface ISessionService
     // Admin methods for participant management
     Task<SessionRegistrationResponseDto> AddParticipantToSessionAsync(Guid sessionId, Guid userId);
     Task RemoveParticipantFromSessionAsync(Guid sessionId, Guid userId);
+
+    // Bulk session generation
+    Task<GenerateSessionsResponseDto> GenerateSessionsForSeasonAsync(GenerateSessionsDto request);
 }
