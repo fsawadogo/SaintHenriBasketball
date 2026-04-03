@@ -22,6 +22,7 @@ public class PaymentsController : ControllerBase
    private readonly IEmailService _emailService;
    private readonly IUserService _userService;
    private readonly IStripeService _stripeService;
+   private readonly IAuditLogService _auditLogService;
    private readonly ILogger<PaymentsController> _logger;
    private readonly ICacheService _cacheService;
    private readonly IWebHostEnvironment _webHostEnvironment;
@@ -31,6 +32,7 @@ public class PaymentsController : ControllerBase
        IEmailService emailService,
        IUserService userService,
        IStripeService stripeService,
+       IAuditLogService auditLogService,
        ILogger<PaymentsController> logger,
        ICacheService cacheService,
        IWebHostEnvironment webHostEnvironment)
@@ -39,6 +41,7 @@ public class PaymentsController : ControllerBase
         _emailService = emailService;
         _userService = userService;
         _stripeService = stripeService;
+        _auditLogService = auditLogService;
         _logger = logger;
         _cacheService = cacheService;
         _webHostEnvironment = webHostEnvironment;
@@ -59,6 +62,9 @@ public class PaymentsController : ControllerBase
             await _cacheService.RemoveAsync("Payments:Pending");
             await _cacheService.RemoveAsync("Payments:Summary");
             await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
+
+            await _auditLogService.LogAsync("Created", "Payment", payment.Id,
+                $"Amount: ${payment.Amount}, Plan: {payment.Plan}");
 
             return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
         }

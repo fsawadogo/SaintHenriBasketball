@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ICacheService, MemoryCacheService>();
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IWaitlistService, WaitlistService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
 
         services.AddAutoMapper(typeof(UserService).Assembly);
         services.AddLogging();
