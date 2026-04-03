@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailAutomationService, EmailAutomationService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
         services.AddScoped<IStripeService, StripeService>();
+        services.AddScoped<IWaitlistService, WaitlistService>();
 
         services.AddAutoMapper(typeof(UserService).Assembly);
         services.AddLogging();

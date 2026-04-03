@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SavedEmailTemplate> SavedEmailTemplates { get; set; }
     public DbSet<SessionTemplate> SessionTemplates { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Waitlist> Waitlists { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -242,6 +243,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Details).HasMaxLength(2000);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => e.EntityType);
+        });
+
+        modelBuilder.Entity<Waitlist>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Position).IsRequired();
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+
+            entity.HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(w => w.Session)
+                .WithMany()
+                .HasForeignKey(w => w.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
+            entity.HasIndex(e => e.Status);
         });
     }
 }

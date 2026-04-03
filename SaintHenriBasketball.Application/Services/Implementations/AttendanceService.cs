@@ -14,6 +14,7 @@ public class AttendanceService : IAttendanceService
     private readonly ISessionAttendanceRepository _attendanceRepository;
     private readonly ISessionRepository _sessionRepository;
     private readonly IEmailService _emailService;
+    private readonly IWaitlistService _waitlistService;
     private readonly IMapper _mapper;
     private readonly ILogger<AttendanceService> _logger;
     private readonly ICacheService _cacheService;
@@ -22,6 +23,7 @@ public class AttendanceService : IAttendanceService
         ISessionAttendanceRepository attendanceRepository,
         ISessionRepository sessionRepository,
         IEmailService emailService,
+        IWaitlistService waitlistService,
         IMapper mapper,
         ILogger<AttendanceService> logger,
         ICacheService cacheService)
@@ -29,6 +31,7 @@ public class AttendanceService : IAttendanceService
         _attendanceRepository = attendanceRepository;
         _sessionRepository = sessionRepository;
         _emailService = emailService;
+        _waitlistService = waitlistService;
         _mapper = mapper;
         _logger = logger;
         _cacheService = cacheService;
@@ -159,6 +162,10 @@ public class AttendanceService : IAttendanceService
                     {
                         session.Status = SessionStatus.Open;
                     }
+
+                    // Promote next person from waitlist when a slot opens
+                    try { await _waitlistService.PromoteNextAsync(sessionId); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to promote from waitlist for session {SessionId}", sessionId); }
                 }
                 await _sessionRepository.UpdateAsync(session);
             }

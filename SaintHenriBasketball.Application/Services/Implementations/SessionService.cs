@@ -15,6 +15,7 @@ public class SessionService : ISessionService
     private readonly ISessionRepository _sessionRepository;
     private readonly ISessionRegistrationRepository _registrationRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IWaitlistService _waitlistService;
     private readonly IMapper _mapper;
     private readonly ILogger<SessionService> _logger;
     private readonly ICacheService _cacheService;
@@ -28,6 +29,7 @@ public class SessionService : ISessionService
         ISessionRepository sessionRepository,
         ISessionRegistrationRepository registrationRepository,
         IUserRepository userRepository,
+        IWaitlistService waitlistService,
         IMapper mapper,
         ILogger<SessionService> logger,
         ICacheService cacheService)
@@ -35,6 +37,7 @@ public class SessionService : ISessionService
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
         _userRepository = userRepository;
+        _waitlistService = waitlistService;
         _mapper = mapper;
         _logger = logger;
         _cacheService = cacheService;
@@ -262,6 +265,10 @@ public class SessionService : ISessionService
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("User {UserId} unregistered from session {SessionId}", userId, sessionId);
 
+        // Promote next person from waitlist if a slot opened
+        try { await _waitlistService.PromoteNextAsync(sessionId); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to promote from waitlist for session {SessionId}", sessionId); }
+
         // Invalidate affected caches
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
@@ -360,6 +367,10 @@ public class SessionService : ISessionService
 
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("Admin removed user {UserId} from session {SessionId}", userId, sessionId);
+
+        // Promote next person from waitlist
+        try { await _waitlistService.PromoteNextAsync(sessionId); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to promote from waitlist for session {SessionId}", sessionId); }
 
         // Invalidate affected caches
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);

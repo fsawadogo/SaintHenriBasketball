@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ISeasonRepository, SeasonRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<ISessionAttendanceRepository, SessionAttendanceRepository>();
+        services.AddScoped<IWaitlistRepository, WaitlistRepository>();
 
         // Add AutoMapper
         services.AddAutoMapper(typeof(MappingProfile).Assembly);
