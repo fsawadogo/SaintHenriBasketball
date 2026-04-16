@@ -10,6 +10,7 @@ using Quartz;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using SaintHenriBasketball.Infrastructure.Jobs;
+using Templates = SaintHenriBasketball.Application.Templates;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -310,6 +311,129 @@ public class CommunicationController : ControllerBase
         {
             _logger.LogError(ex, "Error sending announcements");
             return StatusCode(500, "An error occurred while sending announcements");
+        }
+    }
+
+    /// <summary>
+    /// Send facility update emails to specified users
+    /// </summary>
+    [HttpPost("facility-update")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SendFacilityUpdate([FromBody] EmailRequestDto request)
+    {
+        try
+        {
+            var validEmails = request.Emails
+                .Where(e => !string.IsNullOrEmpty(e))
+                .Select(e => e!)
+                .ToList();
+
+            if (!validEmails.Any())
+                return BadRequest("At least one valid email address is required");
+
+            var result = await _emailService.SendTargetedEmailsAsync(
+                Domain.Enums.EmailType.FacilityUpdate,
+                validEmails,
+                request.Language,
+                request.CustomMessage,
+                request.CustomMessageFr);
+
+            return HandleEmailResult(result, "facility update");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending facility update emails");
+            return StatusCode(500, "An error occurred while sending facility update emails");
+        }
+    }
+
+    /// <summary>
+    /// Send schedule change emails to specified users
+    /// </summary>
+    [HttpPost("schedule-change")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SendScheduleChange([FromBody] EmailRequestDto request)
+    {
+        try
+        {
+            var validEmails = request.Emails
+                .Where(e => !string.IsNullOrEmpty(e))
+                .Select(e => e!)
+                .ToList();
+
+            if (!validEmails.Any())
+                return BadRequest("At least one valid email address is required");
+
+            var result = await _emailService.SendTargetedEmailsAsync(
+                Domain.Enums.EmailType.ScheduleChange,
+                validEmails,
+                request.Language,
+                request.CustomMessage,
+                request.CustomMessageFr);
+
+            return HandleEmailResult(result, "schedule change");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending schedule change emails");
+            return StatusCode(500, "An error occurred while sending schedule change emails");
+        }
+    }
+
+    /// <summary>
+    /// Preview an email template without sending
+    /// </summary>
+    [HttpPost("preview")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult PreviewEmailTemplate([FromBody] EmailPreviewRequestDto request)
+    {
+        try
+        {
+            var userName = "Preview User";
+            string content = request.EmailType switch
+            {
+                Domain.Enums.EmailType.PaymentReminder => Templates.EmailTemplates.Payments.GetPaymentReminderEmail(
+                    userName, 10m, Domain.Enums.PaymentPlan.DropIn, request.CustomMessage),
+
+                Domain.Enums.EmailType.AttendanceReminder => Templates.EmailTemplates.Attendance.GetAttendanceReminderEmail(
+                    Guid.Empty, Guid.Empty, DateTime.UtcNow.AddDays(1), userName, "10:00", "12:00", "Saint Henri", request.CustomMessage),
+
+                Domain.Enums.EmailType.SeasonRegistrationReminder => Templates.EmailTemplates.General.GetAnnouncementEmail(
+                    userName, request.CustomMessage ?? "N'oubliez pas de vous inscrire pour la prochaine saison!"),
+
+                Domain.Enums.EmailType.GeneralAnnouncement => Templates.EmailTemplates.General.GetAnnouncementEmail(
+                    userName, request.CustomMessage ?? "Annonce importante de Saint Henri Basketball"),
+
+                Domain.Enums.EmailType.ScheduleChange => Templates.EmailTemplates.General.GetScheduleChangeEmail(
+                    userName, request.CustomMessage ?? "Un changement d'horaire a été effectué."),
+
+                Domain.Enums.EmailType.FacilityUpdate => Templates.EmailTemplates.General.GetFacilityUpdateEmail(
+                    userName, "Saint Henri Basketball", request.CustomMessage ?? "Mise à jour des installations.", DateTime.UtcNow),
+
+                _ => Templates.EmailTemplates.General.GetAnnouncementEmail(
+                    userName, request.CustomMessage ?? "Preview not available for this email type")
+            };
+
+            string subject = request.EmailType switch
+            {
+                Domain.Enums.EmailType.PaymentReminder => "Rappel de paiement - Saint Henri Basketball",
+                Domain.Enums.EmailType.AttendanceReminder => "Rappel de présence - Saint Henri Basketball",
+                Domain.Enums.EmailType.SeasonRegistrationReminder => "Rappel d'inscription - Saint Henri Basketball",
+                Domain.Enums.EmailType.GeneralAnnouncement => "Annonce importante - Saint Henri Basketball",
+                Domain.Enums.EmailType.ScheduleChange => "Changement d'horaire - Saint Henri Basketball",
+                Domain.Enums.EmailType.FacilityUpdate => "Mise à jour des installations - Saint Henri Basketball",
+                _ => "Saint Henri Basketball"
+            };
+
+            return Ok(new { subject, htmlContent = content });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating email preview");
+            return StatusCode(500, "An error occurred while generating email preview");
         }
     }
 
