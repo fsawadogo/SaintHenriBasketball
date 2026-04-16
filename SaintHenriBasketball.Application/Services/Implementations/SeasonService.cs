@@ -248,6 +248,11 @@ public class SeasonService : ISeasonService
         }
 
         var registration = new SeasonRegistration(seasonId, userId);
+
+        // Populate navigation properties for email sending
+        registration.User = user;
+        registration.Season = season;
+
         await _seasonRepository.AddRegistrationAsync(registration);
 
         try

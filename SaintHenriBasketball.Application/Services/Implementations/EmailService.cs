@@ -969,6 +969,16 @@ public class EmailService : IEmailService
                         $"{user.FirstName}",
                         customMessage ?? "Annonce importante de Saint Henri Basketball"),
 
+                    EmailType.ScheduleChange => EmailTemplates.General.GetScheduleChangeEmail(
+                        $"{user.FirstName}",
+                        customMessage ?? "Un changement d'horaire a été effectué."),
+
+                    EmailType.FacilityUpdate => EmailTemplates.General.GetFacilityUpdateEmail(
+                        $"{user.FirstName}",
+                        "Saint Henri Basketball",
+                        customMessage ?? "Une mise à jour des installations a été effectuée.",
+                        DateTime.UtcNow),
+
                     _ => throw new ArgumentException($"Unsupported email type: {emailType}")
                 };
 
@@ -978,6 +988,8 @@ public class EmailService : IEmailService
                     EmailType.AttendanceReminder => "Rappel de présence - Saint Henri Basketball",
                     EmailType.SeasonRegistrationReminder => "Rappel d'inscription - Saint Henri Basketball",
                     EmailType.GeneralAnnouncement => "Annonce importante - Saint Henri Basketball",
+                    EmailType.ScheduleChange => "Changement d'horaire - Saint Henri Basketball",
+                    EmailType.FacilityUpdate => "Mise à jour des installations - Saint Henri Basketball",
                     _ => "Saint Henri Basketball"
                 };
 

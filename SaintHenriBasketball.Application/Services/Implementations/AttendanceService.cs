@@ -13,6 +13,7 @@ public class AttendanceService : IAttendanceService
 {
     private readonly ISessionAttendanceRepository _attendanceRepository;
     private readonly ISessionRepository _sessionRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IWaitlistService _waitlistService;
     private readonly IMapper _mapper;
@@ -22,6 +23,7 @@ public class AttendanceService : IAttendanceService
     public AttendanceService(
         ISessionAttendanceRepository attendanceRepository,
         ISessionRepository sessionRepository,
+        IUserRepository userRepository,
         IEmailService emailService,
         IWaitlistService waitlistService,
         IMapper mapper,
@@ -30,6 +32,7 @@ public class AttendanceService : IAttendanceService
     {
         _attendanceRepository = attendanceRepository;
         _sessionRepository = sessionRepository;
+        _userRepository = userRepository;
         _emailService = emailService;
         _waitlistService = waitlistService;
         _mapper = mapper;
@@ -59,6 +62,12 @@ public class AttendanceService : IAttendanceService
                 throw new ValidationException("Attendance already marked for this session");
             }
 
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new NotFoundException($"User {userId} not found");
+            }
+
             var attendance = new SessionAttendance
             {
                 SessionId = sessionId,
@@ -69,6 +78,10 @@ public class AttendanceService : IAttendanceService
                 CreatedOn = DateTime.UtcNow,
                 LastUpdated = DateTime.UtcNow
             };
+
+            // Populate navigation properties for email sending
+            attendance.Session = session;
+            attendance.User = user;
 
             // Update session spots if attending
             if (isAttending)
@@ -132,6 +145,13 @@ public class AttendanceService : IAttendanceService
             if (session == null)
             {
                 throw new NotFoundException($"Session {sessionId} not found");
+            }
+
+            // Ensure navigation properties are populated for email sending
+            attendance.Session ??= session;
+            if (attendance.User == null)
+            {
+                attendance.User = await _userRepository.GetByIdAsync(userId);
             }
 
             // Track previous status for session count update
