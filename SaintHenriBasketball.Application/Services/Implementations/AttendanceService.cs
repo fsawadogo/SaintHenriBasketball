@@ -147,12 +147,8 @@ public class AttendanceService : IAttendanceService
                 throw new NotFoundException($"Session {sessionId} not found");
             }
 
-            // Ensure navigation properties are populated for email sending
+            // Ensure session navigation property is populated for email sending
             attendance.Session ??= session;
-            if (attendance.User == null)
-            {
-                attendance.User = await _userRepository.GetByIdAsync(userId);
-            }
 
             // Track previous status for session count update
             var wasAttending = attendance.IsAttending;

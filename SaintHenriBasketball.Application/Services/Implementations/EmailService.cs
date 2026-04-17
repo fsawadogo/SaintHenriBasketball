@@ -917,8 +917,13 @@ public class EmailService : IEmailService
         string? customMessage = null)
     {
         var result = new EmailSendResult();
-        var nextSession = await _sessionRepository.GetNextSessionAsync()
+        Session? nextSession = null;
+        if (emailType == EmailType.AttendanceReminder)
+        {
+            nextSession = await _sessionRepository.GetNextSessionAsync()
                           ?? throw new InvalidOperationException("Aucune session à venir n'a été trouvée");
+        }
+
         foreach (var email in emails)
         {
             try

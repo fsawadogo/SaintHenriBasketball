@@ -314,47 +314,19 @@ public class CommunicationController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Send facility update emails to specified users
-    /// </summary>
     [HttpPost("facility-update")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SendFacilityUpdate([FromBody] EmailRequestDto request)
-    {
-        try
-        {
-            var validEmails = request.Emails
-                .Where(e => !string.IsNullOrEmpty(e))
-                .Select(e => e!)
-                .ToList();
+    public Task<IActionResult> SendFacilityUpdate([FromBody] EmailRequestDto request)
+        => SendByType(request, Domain.Enums.EmailType.FacilityUpdate, "facility update");
 
-            if (!validEmails.Any())
-                return BadRequest("At least one valid email address is required");
-
-            var result = await _emailService.SendTargetedEmailsAsync(
-                Domain.Enums.EmailType.FacilityUpdate,
-                validEmails,
-                request.Language,
-                request.CustomMessage,
-                request.CustomMessageFr);
-
-            return HandleEmailResult(result, "facility update");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending facility update emails");
-            return StatusCode(500, "An error occurred while sending facility update emails");
-        }
-    }
-
-    /// <summary>
-    /// Send schedule change emails to specified users
-    /// </summary>
     [HttpPost("schedule-change")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SendScheduleChange([FromBody] EmailRequestDto request)
+    public Task<IActionResult> SendScheduleChange([FromBody] EmailRequestDto request)
+        => SendByType(request, Domain.Enums.EmailType.ScheduleChange, "schedule change");
+
+    private async Task<IActionResult> SendByType(EmailRequestDto request, Domain.Enums.EmailType emailType, string label)
     {
         try
         {
@@ -367,24 +339,20 @@ public class CommunicationController : ControllerBase
                 return BadRequest("At least one valid email address is required");
 
             var result = await _emailService.SendTargetedEmailsAsync(
-                Domain.Enums.EmailType.ScheduleChange,
-                validEmails,
-                request.Language,
-                request.CustomMessage,
-                request.CustomMessageFr);
+                emailType, validEmails, request.Language, request.CustomMessage, request.CustomMessageFr);
 
-            return HandleEmailResult(result, "schedule change");
+            return HandleEmailResult(result, label);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending schedule change emails");
-            return StatusCode(500, "An error occurred while sending schedule change emails");
+            _logger.LogError(ex, "Error sending {EmailType} emails", label);
+            return StatusCode(500, $"An error occurred while sending {label} emails");
         }
     }
 
-    /// <summary>
-    /// Preview an email template without sending
-    /// </summary>
+    [HttpPost("preview")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [HttpPost("preview")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
