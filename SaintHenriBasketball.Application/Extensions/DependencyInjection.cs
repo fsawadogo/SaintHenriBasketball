@@ -10,7 +10,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddAutoMapper(Assembly.GetExecutingAssembly());
+        services.AddAutoMapper(cfg => { }, Assembly.GetExecutingAssembly());
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISessionService, SessionService>();
@@ -25,7 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IWaitlistService, WaitlistService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
 
-        services.AddAutoMapper(typeof(UserService).Assembly);
+        services.AddAutoMapper(cfg => { }, typeof(UserService).Assembly);
         services.AddLogging();
 
         return services;

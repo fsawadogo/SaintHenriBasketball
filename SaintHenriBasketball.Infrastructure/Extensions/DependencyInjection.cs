@@ -31,7 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         // Add AutoMapper
-        services.AddAutoMapper(typeof(MappingProfile).Assembly);
+        services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);
 
         return services;
     }
