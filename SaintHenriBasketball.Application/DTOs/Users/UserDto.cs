@@ -13,4 +13,5 @@ public class UserDto
     public PaymentPlan PaymentPlan { get; set; }
     public DateTime CreatedOn { get; set; }
     public EmailLanguage PreferredLanguage { get; set; }
+    public bool TwoFactorEnabled { get; set; }
 }

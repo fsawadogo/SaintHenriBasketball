@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using System.Reflection;
+using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -194,6 +196,21 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Seed feature flags (adds new keys with Enabled=false; preserves existing toggle state)
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var featureFlagService = scope.ServiceProvider.GetRequiredService<IFeatureFlagService>();
+        await featureFlagService.SeedDefaultsAsync(FeatureFlagDefinitions.All);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to seed feature flag defaults at startup.");
+    }
+}
+
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())
 //{
@@ -238,6 +255,9 @@ app.UseCors("AllowAll");
 // Add authentication & authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Enforce 2FA challenge when JWT carries the pending claim
+app.UseMiddleware<SaintHenriBasketball.API.Filters.TwoFactorPendingMiddleware>();
 
 // Quartz jobs are started automatically by the hosted service
 

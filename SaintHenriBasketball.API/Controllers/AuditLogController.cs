@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.AuditLog;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -9,6 +11,7 @@ namespace SaintHenriBasketball.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
+[RequireFeature(FeatureFlagKeys.AuditLogViewer)]
 public class AuditLogController : ControllerBase
 {
     private readonly IAuditLogService _auditLogService;

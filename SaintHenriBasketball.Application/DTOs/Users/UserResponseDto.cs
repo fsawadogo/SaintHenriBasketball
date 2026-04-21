@@ -11,4 +11,5 @@ public class UserResponseDto
     public required string LastName { get; set; }
     public bool IsAdmin { get; set; }
     public PaymentPlan PaymentPlan { get; set; }
+    public bool Requires2Fa { get; set; }
 }

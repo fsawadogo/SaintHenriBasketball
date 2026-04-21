@@ -47,6 +47,18 @@ public class SessionRegistrationRepository : ISessionRegistrationRepository
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<SessionRegistration>> GetByUserIdInRangeAsync(Guid userId, DateTime rangeStart, DateTime rangeEnd)
+    {
+        return await _context.SessionRegistrations
+            .Include(r => r.Session)
+            .Where(r => r.UserId == userId
+                        && r.Session.SessionDate >= rangeStart.Date
+                        && r.Session.SessionDate <= rangeEnd.Date)
+            .OrderBy(r => r.Session.SessionDate)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     public async Task<IReadOnlyList<SessionRegistration>> GetBySessionIdAsync(Guid sessionId)
     {
         return await _context.SessionRegistrations

@@ -20,6 +20,9 @@ public class ApplicationUser
     public ICollection<SessionRegistration> SessionRegistrations { get; private set; }
     public EmailLanguage PreferredLanguage { get; set; }
     public string? AdminNotes { get; set; }
+    public string? CalendarFeedToken { get; set; }
+    public bool TwoFactorEnabled { get; set; }
+    public string? TwoFactorSecret { get; set; }
 
     private ApplicationUser() { } // For EF Core
 

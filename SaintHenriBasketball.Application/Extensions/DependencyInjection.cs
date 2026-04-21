@@ -24,6 +24,9 @@ public static class DependencyInjection
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IWaitlistService, WaitlistService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<IFeatureFlagService, FeatureFlagService>();
+        services.AddScoped<ICalendarSyncService, CalendarSyncService>();
+        services.AddScoped<ITwoFactorService, TwoFactorService>();
 
         services.AddLogging();
 

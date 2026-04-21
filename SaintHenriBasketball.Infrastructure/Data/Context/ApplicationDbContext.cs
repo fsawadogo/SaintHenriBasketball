@@ -23,6 +23,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SessionTemplate> SessionTemplates { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Waitlist> Waitlists { get; set; }
+    public DbSet<FeatureFlag> FeatureFlags { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -72,9 +73,22 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PasswordResetTokenExpiry)
                 .IsRequired(false);
 
+            entity.Property(e => e.CalendarFeedToken)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.TwoFactorEnabled)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.TwoFactorSecret)
+                .HasMaxLength(200)
+                .IsRequired(false);
+
             // Unique indexes
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.CalendarFeedToken).IsUnique().HasFilter("[CalendarFeedToken] IS NOT NULL");
         });
 
         modelBuilder.Entity<Session>(entity =>
@@ -264,6 +278,18 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.Status);
+        });
+
+        modelBuilder.Entity<FeatureFlag>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.DescriptionFr).HasMaxLength(500);
+            entity.Property(e => e.Enabled).IsRequired();
+            entity.Property(e => e.IsPublic).IsRequired();
+            entity.Property(e => e.CreatedOn).IsRequired();
+            entity.HasIndex(e => e.Key).IsUnique();
         });
     }
 }

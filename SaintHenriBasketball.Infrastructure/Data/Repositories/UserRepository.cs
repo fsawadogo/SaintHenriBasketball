@@ -80,6 +80,12 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<ApplicationUser?> GetByCalendarFeedTokenAsync(string token)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.CalendarFeedToken == token);
+    }
+
     public async Task<List<ApplicationUser>> GetUsersByIdsAsync(List<Guid> userIds)
     {
         try

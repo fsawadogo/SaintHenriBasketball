@@ -13,6 +13,7 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 using Google.Apis.Auth;
+using SaintHenriBasketball.Application.FeatureFlags;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
@@ -24,19 +25,22 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<UserService> _logger;
+    private readonly IFeatureFlagService _featureFlagService;
 
     public UserService(
         IConfiguration configuration,
         IMapper mapper,
         IUserRepository userRepository,
         IEmailService emailService,
-        ILogger<UserService> logger)
+        ILogger<UserService> logger,
+        IFeatureFlagService featureFlagService)
     {
         _configuration = configuration;
         _mapper = mapper;
         _userRepository = userRepository;
         _emailService = emailService;
         _logger = logger;
+        _featureFlagService = featureFlagService;
     }
 
     public async Task<UserResponseDto> RegisterAsync(RegisterUserDto registerDto)
@@ -110,15 +114,20 @@ public class UserService : IUserService
             throw new ValidationException("Please confirm your email before logging in");
         }
 
+        var requires2Fa = user.IsAdmin
+                          && user.TwoFactorEnabled
+                          && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Admin2fa);
+
         return new UserResponseDto
         {
-            Token = GenerateJwtToken(user),
+            Token = GenerateJwtToken(user, twoFactorPending: requires2Fa),
             Username = user.Username,
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsAdmin = user.IsAdmin,
-            PaymentPlan = user.PaymentPlan
+            PaymentPlan = user.PaymentPlan,
+            Requires2Fa = requires2Fa,
         };
     }
 
@@ -437,16 +446,16 @@ public class UserService : IUserService
             throw;
         }
     }
-    private string GenerateJwtToken(ApplicationUser user)
+    private string GenerateJwtToken(ApplicationUser user, bool twoFactorPending = false)
     {
         if (user is not { Email: not null, Username: not null })
         {
             throw new ValidationException("User email and username are required");
         }
 
-        var jwtKey = _configuration["JwtSettings:Key"] 
+        var jwtKey = _configuration["JwtSettings:Key"]
                      ?? throw new InvalidOperationException("JWT key is not configured");
-        
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -458,7 +467,14 @@ public class UserService : IUserService
             new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
         };
 
-        var durationInDays = Convert.ToDouble(_configuration["JwtSettings:DurationInDays"] ?? throw new InvalidOperationException("JWT duration is not configured"));
+        // Short-lived pending-2FA tokens carry this claim; middleware blocks all requests
+        // except the 2FA verify/setup endpoints until the user exchanges it.
+        if (twoFactorPending)
+            claims.Add(new Claim("2fa_pending", "true"));
+
+        var durationInDays = twoFactorPending
+            ? (1.0 / 96.0) // 15 minutes
+            : Convert.ToDouble(_configuration["JwtSettings:DurationInDays"] ?? throw new InvalidOperationException("JWT duration is not configured"));
 
         if (durationInDays <= 0)
         {
@@ -474,5 +490,12 @@ public class UserService : IUserService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public async Task<string> IssueTokenAsync(Guid userId, bool twoFactorPending = false)
+    {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new NotFoundException($"User {userId} not found");
+        return GenerateJwtToken(user, twoFactorPending);
     }
 }
