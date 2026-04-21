@@ -68,3 +68,24 @@ public class ScheduledEmailJob : IJob
         await emailService.SendEmailAsync(to, subject, body);
     }
 }
+
+[DisallowConcurrentExecution]
+public class SmsReminderJob : IJob
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<SmsReminderJob> _logger;
+
+    public SmsReminderJob(IServiceProvider sp, ILogger<SmsReminderJob> logger)
+    {
+        _sp = sp;
+        _logger = logger;
+    }
+
+    public async Task Execute(IJobExecutionContext context)
+    {
+        _logger.LogInformation("Running SmsReminder");
+        using var scope = _sp.CreateScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ISmsReminderService>();
+        await svc.SendDueRemindersAsync();
+    }
+}

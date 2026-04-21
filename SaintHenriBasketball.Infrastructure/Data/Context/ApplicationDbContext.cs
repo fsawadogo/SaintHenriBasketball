@@ -29,6 +29,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ReferralCode> ReferralCodes { get; set; }
     public DbSet<ReferralRedemption> ReferralRedemptions { get; set; }
     public DbSet<PromoCode> PromoCodes { get; set; }
+    public DbSet<WaiverTemplate> WaiverTemplates { get; set; }
+    public DbSet<WaiverAcceptance> WaiverAcceptances { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +91,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TwoFactorSecret)
                 .HasMaxLength(200)
                 .IsRequired(false);
+
+            entity.Property(e => e.EmergencyContactName).HasMaxLength(200);
+            entity.Property(e => e.EmergencyContactPhone).HasMaxLength(40);
+            entity.Property(e => e.MedicalAlerts).HasMaxLength(2000);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(40);
+            entity.Property(e => e.SmsOptIn).IsRequired().HasDefaultValue(false);
 
             // Unique indexes
             entity.HasIndex(e => e.Email).IsUnique();
@@ -347,6 +355,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedOn).IsRequired();
             entity.HasIndex(e => e.Code).IsUnique();
             entity.HasIndex(e => e.IsActive);
+        });
+
+        modelBuilder.Entity<WaiverTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Version).IsRequired();
+            entity.Property(e => e.BodyEn).IsRequired();
+            entity.Property(e => e.BodyFr).IsRequired();
+            entity.Property(e => e.EffectiveDate).IsRequired();
+            entity.Property(e => e.IsActive).IsRequired();
+            entity.Property(e => e.CreatedOn).IsRequired();
+            entity.HasIndex(e => e.Version).IsUnique();
+        });
+
+        modelBuilder.Entity<WaiverAcceptance>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.WaiverVersion).IsRequired();
+            entity.Property(e => e.AcceptedAt).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(100);
+            entity.HasIndex(e => new { e.UserId, e.WaiverVersion }).IsUnique();
         });
     }
 }

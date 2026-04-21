@@ -37,6 +37,9 @@ public static class DependencyInjection
         services.AddScoped<ITaxReceiptService, TaxReceiptService>();
         services.AddScoped<IReferralService, ReferralService>();
         services.AddScoped<IPromoCodeService, PromoCodeService>();
+        services.AddScoped<IWaiverService, WaiverService>();
+        services.AddScoped<ISmsService, SmsService>();
+        services.AddScoped<ISmsReminderService, SmsReminderService>();
 
         services.AddLogging();
 

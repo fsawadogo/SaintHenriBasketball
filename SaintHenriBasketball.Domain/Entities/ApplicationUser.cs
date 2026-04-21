@@ -23,6 +23,11 @@ public class ApplicationUser
     public string? CalendarFeedToken { get; set; }
     public bool TwoFactorEnabled { get; set; }
     public string? TwoFactorSecret { get; set; }
+    public string? EmergencyContactName { get; set; }
+    public string? EmergencyContactPhone { get; set; }
+    public string? MedicalAlerts { get; set; }
+    public string? PhoneNumber { get; set; }
+    public bool SmsOptIn { get; set; }
 
     private ApplicationUser() { } // For EF Core
 
