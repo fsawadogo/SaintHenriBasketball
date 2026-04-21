@@ -3,8 +3,9 @@ using System.Security.Claims;
 
 namespace SaintHenriBasketball.API.Controllers;
 
+// Derived controllers declare their own class-level [Route]; intentionally no
+// default here so method-level [HttpGet("api/...")] templates aren't prefixed.
 [ApiController]
-[Route("api/[controller]")]
 public abstract class BaseApiController : ControllerBase
 {
     protected Guid? GetUserId()
