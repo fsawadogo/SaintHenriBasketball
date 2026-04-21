@@ -78,7 +78,7 @@ public class FeatureFlagService : IFeatureFlagService
         return ToDto(flag);
     }
 
-    public async Task SeedDefaultsAsync(IEnumerable<FeatureFlagDefinition> definitions)
+    public async Task<IReadOnlyList<FeatureFlagDto>> SeedDefaultsAsync(IEnumerable<FeatureFlagDefinition> definitions)
     {
         var existing = (await _repository.GetAllAsync()).ToDictionary(f => f.Key, f => f);
 
@@ -104,7 +104,11 @@ public class FeatureFlagService : IFeatureFlagService
             }
         }
 
-        await _cache.RemoveAsync(AllFlagsCacheKey);
+        // Repopulate the cache with fresh data so the next read doesn't pay a
+        // cache-miss round-trip immediately after an admin-triggered seed.
+        var refreshed = (await _repository.GetAllAsync()).ToDictionary(f => f.Key);
+        await _cache.SetAsync(AllFlagsCacheKey, refreshed, CacheTtl);
+        return refreshed.Values.Select(ToDto).ToList();
     }
 
     private async Task<IReadOnlyDictionary<string, FeatureFlag>> GetAllFlagsCachedAsync()

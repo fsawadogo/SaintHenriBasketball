@@ -9,5 +9,5 @@ public interface IFeatureFlagService
     Task<IReadOnlyList<FeatureFlagDto>> GetAllAsync();
     Task<IReadOnlyDictionary<string, bool>> GetPublicFlagsAsync();
     Task<FeatureFlagDto> SetEnabledAsync(string key, bool enabled, Guid? adminId, string adminName);
-    Task SeedDefaultsAsync(IEnumerable<FeatureFlagDefinition> definitions);
+    Task<IReadOnlyList<FeatureFlagDto>> SeedDefaultsAsync(IEnumerable<FeatureFlagDefinition> definitions);
 }
