@@ -218,63 +218,6 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendPaymentConfirmationAsync(Guid userId, decimal amount, string? reference)
-    {
-        var user = await _userRepository.GetByIdAsync(userId)
-                ?? throw new ArgumentException($"User not found for id: {userId}");
-
-        try
-        {
-            var userName = user.FirstName;
-            var actualReference = reference ?? GenerateReference("PAY");
-            var content = EmailTemplates.Payments.GetPaymentConfirmationEmail(
-                userName,
-                amount,
-                actualReference,
-                DateTime.UtcNow
-            );
-
-            try
-            {
-                var billGenerator = new BillPdfGenerator(_webHostEnvironment);
-                var description = user.PaymentPlan == PaymentPlan.Season
-                    ? "Forfait de saison"
-                    : "Forfait à la séance";
-
-                var billDetails = new BillDetails
-                {
-                    Name = userName,
-                    Email = user.Email,
-                    Description = description,
-                    Amount = amount,
-                    Reference = reference,
-                    Date = DateTime.UtcNow
-                };
-
-                var pdfContent = billGenerator.GenerateBill(billDetails);
-                await SendEmailWithAttachmentAsync(
-                    user.Email,
-                    "Confirmation de paiement - Saint Henri Basketball",
-                    content,
-                    $"facture_{actualReference}.pdf",
-                    pdfContent
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to generate PDF bill. Sending email without attachment.");
-                await SendEmailAsync(user.Email, "Confirmation de paiement - Saint Henri Basketball", content);
-            }
-
-            await NotifyAdminOfPayment(user.Email, userName, amount, reference);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", user.Email);
-            throw;
-        }
-    }
-
     private async Task NotifyAdminOfPayment(string? userEmail, string userName, decimal amount, string? reference)
     {
         try
@@ -303,10 +246,13 @@ public class EmailService : IEmailService
     {
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new ArgumentException($"User not found for ID: {userId}");
+        await SendPaymentReminderEmailAsync(user, paymentPlan, customMessage);
+    }
+
+    public async Task SendPaymentReminderEmailAsync(ApplicationUser user, PaymentPlan paymentPlan, string? customMessage = null)
+    {
         try
         {
-            var payment = await _paymentRepository.GetPaymentsByUserAsync(userId)
-                ?? throw new ArgumentException($"Payment not found for email: {user.Email}");
             var amount = GetPaymentAmount(paymentPlan);
             var content = EmailTemplates.Payments.GetPaymentReminderEmail(user.FirstName, amount, user.PaymentPlan, customMessage);
 
@@ -353,6 +299,11 @@ public class EmailService : IEmailService
     {
         var user = await _userRepository.GetByIdAsync(userId)
                 ?? throw new ArgumentException($"User not found for id: {userId}");
+        await SendPaymentConfirmationAsync(user, amount, reference, language);
+    }
+
+    public async Task SendPaymentConfirmationAsync(ApplicationUser user, decimal amount, string? reference, EmailLanguage language)
+    {
         try
         {
             var userName = user.FirstName;
@@ -361,7 +312,8 @@ public class EmailService : IEmailService
                 userName,
                 amount,
                 actualReference,
-                DateTime.UtcNow
+                DateTime.UtcNow,
+                language
             );
 
             try
@@ -401,6 +353,26 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send payment confirmation email to {Email}", user.Email);
+            throw;
+        }
+    }
+
+    public async Task SendPaymentFailedAsync(ApplicationUser user, decimal amount, string? reference = null, string? reason = null, EmailLanguage language = EmailLanguage.French)
+    {
+        try
+        {
+            var content = EmailTemplates.Payments.GetPaymentFailedEmail(
+                user.FirstName, amount, reference, reason, language);
+
+            await SendEmailAsync(
+                user.Email,
+                "Échec du paiement - Saint Henri Basketball",
+                content
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send payment failed email to {Email}", user.Email);
             throw;
         }
     }

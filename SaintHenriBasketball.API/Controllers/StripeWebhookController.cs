@@ -15,20 +15,17 @@ namespace SaintHenriBasketball.API.Controllers;
 public class StripeWebhookController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
-    private readonly IEmailService _emailService;
     private readonly ICacheService _cacheService;
     private readonly StripeSettings _stripeSettings;
     private readonly ILogger<StripeWebhookController> _logger;
 
     public StripeWebhookController(
         IPaymentService paymentService,
-        IEmailService emailService,
         ICacheService cacheService,
         IOptions<StripeSettings> stripeSettings,
         ILogger<StripeWebhookController> logger)
     {
         _paymentService = paymentService;
-        _emailService = emailService;
         _cacheService = cacheService;
         _stripeSettings = stripeSettings.Value;
         _logger = logger;
@@ -93,7 +90,6 @@ public class StripeWebhookController : ControllerBase
                 return;
             }
 
-            // Update payment status to Completed
             await _paymentService.UpdatePaymentStatusAsync(paymentId, PaymentStatus.Completed);
 
             // Invalidate caches
@@ -101,18 +97,6 @@ public class StripeWebhookController : ControllerBase
             await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
             await _cacheService.RemoveAsync("Payments:Pending");
             await _cacheService.RemoveAsync("Payments:Summary");
-
-            // Send confirmation email
-            try
-            {
-                await _emailService.SendPaymentConfirmationAsync(
-                    payment.UserId, payment.Amount, payment.Reference);
-            }
-            catch (Exception emailEx)
-            {
-                _logger.LogWarning(emailEx,
-                    "Failed to send payment confirmation email for payment {PaymentId}", paymentId);
-            }
 
             _logger.LogInformation(
                 "Payment {PaymentId} marked as Completed via Stripe webhook (session {StripeSessionId})",

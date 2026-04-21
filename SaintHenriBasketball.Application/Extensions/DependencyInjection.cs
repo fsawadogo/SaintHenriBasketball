@@ -25,7 +25,6 @@ public static class DependencyInjection
         services.AddScoped<IWaitlistService, WaitlistService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
 
-        services.AddAutoMapper(cfg => { }, typeof(UserService).Assembly);
         services.AddLogging();
 
         return services;

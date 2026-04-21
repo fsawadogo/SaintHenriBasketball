@@ -103,6 +103,25 @@ public static class EmailTemplates
             return BuildEmailLayout("Payment Reminder", "Rappel de paiement", content, lang);
         }
 
+        public static string GetPaymentFailedEmail(string userName, decimal amount, string? reference = null, string? reason = null, EmailLanguage lang = EmailLanguage.French)
+        {
+            var content = Greeting(userName, lang) +
+                P(L("Unfortunately, your recent payment could not be processed.",
+                     "Malheureusement, votre paiement récent n'a pas pu être traité.", lang)) +
+                BuildInfoBox(new Dictionary<string, string?> {
+                    { L("Amount", "Montant", lang), $"${amount:F2}" },
+                    { L("Reference", "Référence", lang), reference ?? "—" }
+                });
+
+            if (!string.IsNullOrEmpty(reason))
+                content += BuildAlertBox(reason, "warning");
+
+            content += P(L("Please try again or contact us at <strong>pay@sainthenribasketball.com</strong> for assistance.",
+                           "Veuillez réessayer ou nous contacter à <strong>pay@sainthenribasketball.com</strong> pour obtenir de l'aide.", lang));
+
+            return BuildEmailLayout("Payment Failed", "Échec du paiement", content, lang);
+        }
+
         public static string GetPaymentPlanUpdateEmail(string userName, PaymentPlan newPlan, decimal newAmount, DateTime effectiveDate, string? additionalInfo = null, EmailLanguage lang = EmailLanguage.French)
         {
             var planName = newPlan == PaymentPlan.Season

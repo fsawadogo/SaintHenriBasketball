@@ -219,33 +219,8 @@ public class PaymentsController : ControllerBase
             await _cacheService.RemoveAsync("Payments:All");
             await _cacheService.RemoveAsync("Payments:Pending");
             await _cacheService.RemoveAsync("Payments:Summary");
-            
-            var user = await _userService.GetUserAsync(payment.UserId);
 
-           switch (payment.Status)
-           {
-               case PaymentStatus.Completed:
-                   await _emailService.SendPaymentConfirmationAsync(
-                       payment.UserId,
-                       payment.Amount,
-                       payment.Reference);
-                   break;
-
-               case PaymentStatus.Pending:
-                   await _emailService.SendPaymentReminderEmailAsync(payment.UserId,user.PaymentPlan);
-                   break;
-
-               case PaymentStatus.Failed:
-                   var customMessage = $"Your payment of ${payment.Amount} has failed. Please try again or contact support.";
-                   await _emailService.SendGeneralAnnouncementEmailAsync(
-                       payment.UserEmail,
-                       user.FirstName + " " + user.LastName,
-                       customMessage
-                   );
-                   break;
-           }
-
-           return NoContent();
+            return NoContent();
        }
        catch (NotFoundException ex)
        {

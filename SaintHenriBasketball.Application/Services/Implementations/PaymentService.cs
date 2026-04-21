@@ -85,10 +85,21 @@ public class PaymentService : IPaymentService
        if (payment == null)
            throw new NotFoundException($"Payment with ID {id} not found");
 
+       var previousStatus = payment.Status;
        payment.Status = status;
        await _paymentRepository.UpdateAsync(payment);
        _logger.LogInformation("Payment {PaymentId} status updated to {Status}", id, status);
-       
+
+       if (previousStatus != status)
+       {
+           var user = await _userRepository.GetByIdAsync(payment.UserId);
+           if (user != null)
+               await NotifyPaymentStatusChangeAsync(user, payment);
+           else
+               _logger.LogWarning(
+                   "Cannot send payment status notification: user {UserId} not found", payment.UserId);
+       }
+
        return _mapper.Map<PaymentDto>(payment);
    }
 
@@ -126,28 +137,18 @@ public class PaymentService : IPaymentService
            throw new NotFoundException($"User with ID {createPaymentDto.UserId} not found");
 
        var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan);
-       
+
        try
        {
            payment.Status = PaymentStatus.Completed;
            await _paymentRepository.AddAsync(payment);
-
-           await _emailService.SendPaymentConfirmationAsync(
-               user.Id,
-               payment.Amount,
-               payment.Reference);
+           await NotifyPaymentStatusChangeAsync(user, payment);
        }
        catch (Exception ex)
        {
            payment.Status = PaymentStatus.Failed;
            await _paymentRepository.AddAsync(payment);
-           
-           await _emailService.SendGeneralAnnouncementEmailAsync(
-               user.Email,
-               user.FirstName + " " + user.LastName,
-               $"Payment failed: {ex.Message}"
-           );
-           
+           await NotifyPaymentStatusChangeAsync(user, payment, ex.Message);
            throw;
        }
 
@@ -181,12 +182,51 @@ public class PaymentService : IPaymentService
        if (payment == null)
            throw new NotFoundException($"Payment with ID {id} not found");
 
+        var previousStatus = payment.Status;
         payment.Amount = updatePaymentDto.Amount;
         payment.Plan = updatePaymentDto.Plan;
         payment.Status = updatePaymentDto.Status;
         await _paymentRepository.UpdateAsync(payment);
-                
+
+        if (previousStatus != payment.Status)
+        {
+            var user = await _userRepository.GetByIdAsync(payment.UserId);
+            if (user != null)
+                await NotifyPaymentStatusChangeAsync(user, payment);
+            else
+                _logger.LogWarning(
+                    "Cannot send payment status notification: user {UserId} not found", payment.UserId);
+        }
+
         return _mapper.Map<PaymentDto>(payment);
+   }
+
+   private async Task NotifyPaymentStatusChangeAsync(ApplicationUser user, Payment payment, string? failureReason = null)
+   {
+       try
+       {
+           switch (payment.Status)
+           {
+               case PaymentStatus.Completed:
+                   await _emailService.SendPaymentConfirmationAsync(
+                       user, payment.Amount, payment.Reference);
+                   break;
+
+               case PaymentStatus.Pending:
+                   await _emailService.SendPaymentReminderEmailAsync(user, user.PaymentPlan);
+                   break;
+
+               case PaymentStatus.Failed:
+                   await _emailService.SendPaymentFailedAsync(
+                       user, payment.Amount, payment.Reference, failureReason);
+                   break;
+           }
+       }
+       catch (Exception ex)
+       {
+           _logger.LogError(ex,
+               "Failed to send payment status change notification for payment {PaymentId}", payment.Id);
+       }
    }
 
    public async Task<PaymentDto> CreateDropInPaymentAsync(Guid userId, CreateDropInPaymentDto request)
