@@ -96,22 +96,12 @@ public class CalendarSyncService : ICalendarSyncService
 
     private (DateTime startUtc, DateTime endUtc) ToUtcRange(Session session)
     {
-        var startLocal = CombineDateAndTime(session.SessionDate, session.StartTime);
-        var endLocal = CombineDateAndTime(session.SessionDate, session.EndTime);
+        var startLocal = SessionTimeHelper.CombineLocal(session.SessionDate, session.StartTime);
+        var endLocal = SessionTimeHelper.CombineLocal(session.SessionDate, session.EndTime);
         if (endLocal <= startLocal) endLocal = endLocal.AddHours(2); // defensive fallback
         var startUtc = TimeZoneInfo.ConvertTimeToUtc(startLocal, _montrealTz);
         var endUtc = TimeZoneInfo.ConvertTimeToUtc(endLocal, _montrealTz);
         return (startUtc, endUtc);
-    }
-
-    private static DateTime CombineDateAndTime(DateTime date, string? time)
-    {
-        if (TimeSpan.TryParseExact(time ?? string.Empty, new[] { "h\\:mm", "hh\\:mm" }, CultureInfo.InvariantCulture, out var ts)
-            || TimeSpan.TryParse(time, CultureInfo.InvariantCulture, out ts))
-        {
-            return DateTime.SpecifyKind(date.Date.Add(ts), DateTimeKind.Unspecified);
-        }
-        return DateTime.SpecifyKind(date.Date.AddHours(10), DateTimeKind.Unspecified); // 10 AM default
     }
 
     private string BuildEvent(SessionRegistration registration, ApplicationUser user)

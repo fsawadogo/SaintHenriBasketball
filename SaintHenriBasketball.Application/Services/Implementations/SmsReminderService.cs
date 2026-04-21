@@ -1,17 +1,15 @@
-using System.Globalization;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
-using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
 public class SmsReminderService : ISmsReminderService
 {
-    // Sessions starting within this window (from the job's run time) are eligible.
-    // Quartz fires hourly, so a 1-hour window centered at the 2h-ahead mark covers each session once.
+    // Window is `[now+lead-half, now+lead+half)`. Upper bound exclusive so an hourly
+    // cron never double-messages a session whose start falls on the boundary.
     private static readonly TimeSpan ReminderLeadTime = TimeSpan.FromHours(2);
     private static readonly TimeSpan ReminderWindowSize = TimeSpan.FromHours(1);
 
@@ -52,7 +50,6 @@ public class SmsReminderService : ISmsReminderService
 
         var upcoming = await _sessionRepository.GetUpcomingSessionsAsync();
         var candidates = upcoming
-            .Where(s => s.Status == SessionStatus.Open)
             .Where(s => IsWithinWindow(s.SessionDate, s.StartTime, lower, upper))
             .ToList();
 
@@ -62,14 +59,27 @@ public class SmsReminderService : ISmsReminderService
         foreach (var session in candidates)
         {
             var registrations = await _registrationRepository.GetBySessionIdAsync(session.Id);
+            if (registrations.Count == 0) continue;
+
+            var missingUserIds = registrations
+                .Where(r => r.User is null)
+                .Select(r => r.UserId)
+                .Distinct()
+                .ToList();
+            var fetched = missingUserIds.Count > 0
+                ? (await _userRepository.GetUsersByIdsAsync(missingUserIds)).ToDictionary(u => u.Id)
+                : new();
+
+            var displayTime = SessionTimeHelper.FormatDisplay(session.StartTime);
+
             foreach (var reg in registrations)
             {
-                var user = reg.User ?? await _userRepository.GetByIdAsync(reg.UserId);
+                var user = reg.User ?? (fetched.TryGetValue(reg.UserId, out var u) ? u : null);
                 if (user is null || !user.SmsOptIn || string.IsNullOrEmpty(user.PhoneNumber)) continue;
 
                 var message = EmailTemplateHelper.L(
-                    $"SHB reminder: your session is today at {session.StartTime}. See you at {session.Location}.",
-                    $"Rappel SHB: votre séance est aujourd'hui à {session.StartTime}. À tantôt au {session.Location}.",
+                    $"SHB reminder: your session is today at {displayTime}. See you at {session.Location}.",
+                    $"Rappel SHB: votre séance est aujourd'hui à {displayTime}. À tantôt au {session.Location}.",
                     user.PreferredLanguage);
 
                 if (await _smsService.SendAsync(user.PhoneNumber, message))
@@ -81,10 +91,10 @@ public class SmsReminderService : ISmsReminderService
         return sent;
     }
 
-    private static bool IsWithinWindow(DateTime sessionDate, string? startTime, DateTime lower, DateTime upper)
+    private static bool IsWithinWindow(DateTime sessionDate, string? startTime, DateTime lowerUtc, DateTime upperUtc)
     {
-        if (!TimeSpan.TryParse(startTime, CultureInfo.InvariantCulture, out var ts)) return false;
-        var sessionStart = DateTime.SpecifyKind(sessionDate.Date.Add(ts), DateTimeKind.Utc);
-        return sessionStart >= lower && sessionStart <= upper;
+        var local = SessionTimeHelper.CombineLocal(sessionDate, startTime);
+        var utc = SessionTimeHelper.ToUtc(local);
+        return utc >= lowerUtc && utc < upperUtc;
     }
 }
