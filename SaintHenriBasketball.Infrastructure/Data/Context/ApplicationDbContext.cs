@@ -26,6 +26,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<FeatureFlag> FeatureFlags { get; set; }
     public DbSet<SessionFeedback> SessionFeedbacks { get; set; }
     public DbSet<SessionRecap> SessionRecaps { get; set; }
+    public DbSet<ReferralCode> ReferralCodes { get; set; }
+    public DbSet<ReferralRedemption> ReferralRedemptions { get; set; }
+    public DbSet<PromoCode> PromoCodes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -302,6 +305,48 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedOn).IsRequired();
             entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.SessionId);
+        });
+
+        modelBuilder.Entity<SessionRecap>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PhotoUrl).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Caption).HasMaxLength(500);
+            entity.Property(e => e.CreatedOn).IsRequired();
+            entity.HasIndex(e => e.SessionId);
+            entity.HasIndex(e => e.CreatedOn);
+        });
+
+        modelBuilder.Entity<ReferralCode>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.CreatedOn).IsRequired();
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.OwnerUserId).IsUnique();
+        });
+
+        modelBuilder.Entity<ReferralRedemption>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RewardStatus).IsRequired();
+            entity.Property(e => e.RedeemedOn).IsRequired();
+            entity.HasIndex(e => e.RefereeUserId).IsUnique();
+            entity.HasIndex(e => e.ReferrerUserId);
+        });
+
+        modelBuilder.Entity<PromoCode>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.DiscountValue).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.DiscountType).IsRequired();
+            entity.Property(e => e.AppliesTo).IsRequired();
+            entity.Property(e => e.ValidFrom).IsRequired();
+            entity.Property(e => e.ValidUntil).IsRequired();
+            entity.Property(e => e.CreatedOn).IsRequired();
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.IsActive);
         });
     }
 }

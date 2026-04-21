@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 
@@ -11,9 +12,11 @@ using SaintHenriBasketball.Infrastructure.Data.Context;
 namespace SaintHenriBasketball.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421181131_AddReferrals")]
+    partial class AddReferrals
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -274,54 +277,6 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Payments");
-                });
-
-            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.PromoCode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("AppliesTo")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("DiscountType")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("DiscountValue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("MaxUses")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TimesUsed")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ValidFrom")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ValidUntil")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("IsActive");
-
-                    b.ToTable("PromoCodes");
                 });
 
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.ReferralCode", b =>
