@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.FeatureFlags;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using System.Security.Claims;
 
@@ -60,6 +61,19 @@ public class FeatureFlagsController : BaseApiController
     public async Task<ActionResult<IReadOnlyDictionary<string, bool>>> GetPublic()
     {
         var flags = await _featureFlagService.GetPublicFlagsAsync();
+        return Ok(flags);
+    }
+
+    // Re-runs the startup seeder. Safe to call repeatedly — existing flag rows
+    // keep their Enabled state; missing rows get created with Enabled=false.
+    [HttpPost("api/v{version:apiVersion}/admin/feature-flags/seed-defaults")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IReadOnlyList<FeatureFlagDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<FeatureFlagDto>>> SeedDefaults()
+    {
+        await _featureFlagService.SeedDefaultsAsync(FeatureFlagDefinitions.All);
+        var flags = await _featureFlagService.GetAllAsync();
+        _logger.LogInformation("Feature flags re-seeded; {Count} flags now registered", flags.Count);
         return Ok(flags);
     }
 }
