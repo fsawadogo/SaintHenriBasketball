@@ -31,6 +31,9 @@ public static class DependencyInjection
         services.AddScoped<ISessionFeedbackService, SessionFeedbackService>();
         services.AddScoped<IQrCheckInService, QrCheckInService>();
         services.AddScoped<ISessionRecapService, SessionRecapService>();
+        services.AddScoped<ISessionTemplateService, SessionTemplateService>();
+        services.AddScoped<IReconciliationService, ReconciliationService>();
+        services.AddScoped<IBroadcastService, BroadcastService>();
 
         services.AddLogging();
 

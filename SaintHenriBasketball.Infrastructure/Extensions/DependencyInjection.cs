@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<ISessionFeedbackRepository, SessionFeedbackRepository>();
         services.AddScoped<ISessionRecapRepository, SessionRecapRepository>();
+        services.AddScoped<ISessionTemplateRepository, SessionTemplateRepository>();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);
