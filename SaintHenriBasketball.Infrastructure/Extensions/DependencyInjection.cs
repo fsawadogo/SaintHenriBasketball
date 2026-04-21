@@ -29,6 +29,8 @@ public static class DependencyInjection
         services.AddScoped<IWaitlistRepository, WaitlistRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
+        services.AddScoped<ISessionFeedbackRepository, SessionFeedbackRepository>();
+        services.AddScoped<ISessionRecapRepository, SessionRecapRepository>();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);

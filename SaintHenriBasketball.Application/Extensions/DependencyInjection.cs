@@ -27,6 +27,10 @@ public static class DependencyInjection
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<ICalendarSyncService, CalendarSyncService>();
         services.AddScoped<ITwoFactorService, TwoFactorService>();
+        services.AddScoped<IPersonalStatsService, PersonalStatsService>();
+        services.AddScoped<ISessionFeedbackService, SessionFeedbackService>();
+        services.AddScoped<IQrCheckInService, QrCheckInService>();
+        services.AddScoped<ISessionRecapService, SessionRecapService>();
 
         services.AddLogging();
 

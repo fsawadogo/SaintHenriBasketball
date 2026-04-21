@@ -24,6 +24,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Waitlist> Waitlists { get; set; }
     public DbSet<FeatureFlag> FeatureFlags { get; set; }
+    public DbSet<SessionFeedback> SessionFeedbacks { get; set; }
+    public DbSet<SessionRecap> SessionRecaps { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -290,6 +292,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsPublic).IsRequired();
             entity.Property(e => e.CreatedOn).IsRequired();
             entity.HasIndex(e => e.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<SessionFeedback>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Rating).IsRequired();
+            entity.Property(e => e.Comment).HasMaxLength(1000);
+            entity.Property(e => e.CreatedOn).IsRequired();
+            entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
+            entity.HasIndex(e => e.SessionId);
         });
     }
 }
