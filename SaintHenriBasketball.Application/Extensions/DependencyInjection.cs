@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Services.Implementations;
@@ -38,7 +39,17 @@ public static class DependencyInjection
         services.AddScoped<IReferralService, ReferralService>();
         services.AddScoped<IPromoCodeService, PromoCodeService>();
         services.AddScoped<IWaiverService, WaiverService>();
-        services.AddScoped<ISmsService, SmsService>();
+        // `Sms:Provider` in configuration picks the impl. Defaults to log-only so
+        // development doesn't require Twilio credentials.
+        services.AddScoped<SmsService>();
+        services.AddScoped<TwilioSmsService>();
+        services.AddScoped<ISmsService>(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            return string.Equals(config["Sms:Provider"], "Twilio", StringComparison.OrdinalIgnoreCase)
+                ? sp.GetRequiredService<TwilioSmsService>()
+                : sp.GetRequiredService<SmsService>();
+        });
         services.AddScoped<ISmsReminderService, SmsReminderService>();
 
         services.AddLogging();
