@@ -16,11 +16,16 @@ public class SmsPreferencesController : BaseApiController
 {
     private readonly IUserRepository _userRepository;
     private readonly ISmsService _smsService;
+    private readonly ILogger<SmsPreferencesController> _logger;
 
-    public SmsPreferencesController(IUserRepository userRepository, ISmsService smsService)
+    public SmsPreferencesController(
+        IUserRepository userRepository,
+        ISmsService smsService,
+        ILogger<SmsPreferencesController> logger)
     {
         _userRepository = userRepository;
         _smsService = smsService;
+        _logger = logger;
     }
 
     [HttpGet("api/v{version:apiVersion}/users/me/sms-preferences")]
@@ -36,6 +41,7 @@ public class SmsPreferencesController : BaseApiController
 
     [HttpPut("api/v{version:apiVersion}/users/me/sms-preferences")]
     [ProducesResponseType(typeof(SmsPreferenceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<SmsPreferenceDto>> UpdateOwn([FromBody] SmsPreferenceDto body)
     {
         var userId = GetUserId();
@@ -45,8 +51,23 @@ public class SmsPreferencesController : BaseApiController
 
         user.PhoneNumber = string.IsNullOrWhiteSpace(body.PhoneNumber) ? null : body.PhoneNumber.Trim();
         user.SmsOptIn = body.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber);
-        await _userRepository.UpdateAsync(user);
-        return Ok(new SmsPreferenceDto { SmsOptIn = user.SmsOptIn, PhoneNumber = user.PhoneNumber });
+
+        try
+        {
+            await _userRepository.UpdateAsync(user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to persist SMS preferences for user {UserId}", userId);
+            return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+        }
+
+        var refreshed = await _userRepository.GetByIdAsync(userId.Value);
+        return Ok(new SmsPreferenceDto
+        {
+            SmsOptIn = refreshed?.SmsOptIn ?? false,
+            PhoneNumber = refreshed?.PhoneNumber,
+        });
     }
 
     [HttpPost("api/v{version:apiVersion}/users/me/sms-preferences/test")]
