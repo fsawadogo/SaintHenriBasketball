@@ -85,8 +85,11 @@ public class BroadcastService : IBroadcastService
 
     private async Task<IReadOnlyList<ApplicationUser>> ResolveAudienceAsync(BroadcastAudience audience)
     {
+        // Honor per-user email opt-out for marketing/broadcast traffic. Transactional
+        // emails (receipts, password reset, payment confirmation) bypass this and
+        // continue to send — standard CASL/CAN-SPAM convention.
         var all = (await _userRepository.GetAllUsersAsync())
-            .Where(u => u.EmailConfirmed && !string.IsNullOrEmpty(u.Email))
+            .Where(u => u.EmailConfirmed && !string.IsNullOrEmpty(u.Email) && u.EmailNotificationsEnabled)
             .ToList();
 
         return audience switch

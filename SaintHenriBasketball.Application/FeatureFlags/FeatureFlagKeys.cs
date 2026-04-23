@@ -32,4 +32,7 @@ public static class FeatureFlagKeys
     public const string EmergencyProfile = "emergency-profile";
     public const string SmsReminders = "sms-reminders";
     public const string PublicSchedule = "public-schedule";
+
+    // Phase 6 — In-app notifications
+    public const string InAppNotifications = "in-app-notifications";
 }

@@ -17,6 +17,7 @@ public class PaymentService : IPaymentService
    private readonly IMapper _mapper;
    private readonly ILogger<PaymentService> _logger;
    private readonly IEmailService _emailService;
+   private readonly INotificationService _notificationService;
 
    public PaymentService(
        IPaymentRepository paymentRepository,
@@ -24,7 +25,8 @@ public class PaymentService : IPaymentService
        ISessionRepository sessionRepository,
        IMapper mapper,
        ILogger<PaymentService> logger,
-       IEmailService emailService)
+       IEmailService emailService,
+       INotificationService notificationService)
    {
        _paymentRepository = paymentRepository;
        _userRepository = userRepository;
@@ -32,6 +34,7 @@ public class PaymentService : IPaymentService
        _mapper = mapper;
        _logger = logger;
        _emailService = emailService;
+       _notificationService = notificationService;
    }
 
    public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto createPaymentDto)
@@ -210,6 +213,12 @@ public class PaymentService : IPaymentService
                case PaymentStatus.Completed:
                    await _emailService.SendPaymentConfirmationAsync(
                        user, payment.Amount, payment.Reference);
+                   await _notificationService.CreateAsync(
+                       user.Id,
+                       Domain.Entities.NotificationType.PaymentCompleted,
+                       title: "Payment confirmed",
+                       body: $"Your payment of ${payment.Amount:F2} was confirmed. Thanks!",
+                       url: "/payment-history");
                    break;
 
                case PaymentStatus.Pending:

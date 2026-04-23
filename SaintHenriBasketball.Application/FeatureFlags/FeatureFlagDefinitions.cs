@@ -78,5 +78,8 @@ public static class FeatureFlagDefinitions
         new FeatureFlagDefinition(FeatureFlagKeys.PublicSchedule,
             "Public anonymous schedule / upcoming-sessions page.",
             "Page publique anonyme du calendrier / séances à venir."),
+        new FeatureFlagDefinition(FeatureFlagKeys.InAppNotifications,
+            "Bell icon + in-app notification center.",
+            "Icône cloche et centre de notifications dans l'application."),
     };
 }

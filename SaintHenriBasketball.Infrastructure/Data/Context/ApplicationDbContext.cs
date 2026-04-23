@@ -31,6 +31,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PromoCode> PromoCodes { get; set; }
     public DbSet<WaiverTemplate> WaiverTemplates { get; set; }
     public DbSet<WaiverAcceptance> WaiverAcceptances { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -97,6 +98,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.MedicalAlerts).HasMaxLength(2000);
             entity.Property(e => e.PhoneNumber).HasMaxLength(40);
             entity.Property(e => e.SmsOptIn).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.EmailNotificationsEnabled).IsRequired().HasDefaultValue(true);
+            entity.Property(e => e.InAppNotificationsEnabled).IsRequired().HasDefaultValue(true);
 
             // Unique indexes
             entity.HasIndex(e => e.Email).IsUnique();
@@ -376,6 +379,18 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AcceptedAt).IsRequired();
             entity.Property(e => e.IpAddress).HasMaxLength(100);
             entity.HasIndex(e => new { e.UserId, e.WaiverVersion }).IsUnique();
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).IsRequired();
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Body).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Url).HasMaxLength(2000);
+            entity.Property(e => e.CreatedOn).IsRequired();
+            // Drives the bell's "unread count" + "recent" queries.
+            entity.HasIndex(e => new { e.UserId, e.ReadAt, e.CreatedOn });
         });
     }
 }
