@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.Calendar;
 using SaintHenriBasketball.Application.Exceptions;
@@ -14,10 +15,12 @@ namespace SaintHenriBasketball.API.Controllers;
 public class CalendarController : BaseApiController
 {
     private readonly ICalendarSyncService _calendarSyncService;
+    private readonly IConfiguration _configuration;
 
-    public CalendarController(ICalendarSyncService calendarSyncService)
+    public CalendarController(ICalendarSyncService calendarSyncService, IConfiguration configuration)
     {
         _calendarSyncService = calendarSyncService;
+        _configuration = configuration;
     }
 
     [HttpGet("api/v{version:apiVersion}/users/me/calendar-feed")]
@@ -77,9 +80,8 @@ public class CalendarController : BaseApiController
         };
     }
 
-    private string BaseUrl()
-    {
-        var request = HttpContext.Request;
-        return $"{request.Scheme}://{request.Host}";
-    }
+    // Prefers the public site URL so feeds are served via the frontend's /ics/* Netlify
+    // proxy rule (clean domain), falling back to whatever host this API is reachable on.
+    private string BaseUrl() =>
+        _configuration["AppUrl"] ?? $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
 }

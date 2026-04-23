@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Filters;
+using Microsoft.Extensions.Configuration;
 using SaintHenriBasketball.Application.DTOs.Referrals;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
@@ -15,10 +16,12 @@ namespace SaintHenriBasketball.API.Controllers;
 public class ReferralsController : BaseApiController
 {
     private readonly IReferralService _referralService;
+    private readonly IConfiguration _configuration;
 
-    public ReferralsController(IReferralService referralService)
+    public ReferralsController(IReferralService referralService, IConfiguration configuration)
     {
         _referralService = referralService;
+        _configuration = configuration;
     }
 
     [HttpGet("api/v{version:apiVersion}/users/me/referral-code")]
@@ -27,7 +30,9 @@ public class ReferralsController : BaseApiController
     {
         var userId = GetUserId();
         if (userId is null) return Unauthorized();
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        // Use the public-facing site URL so referral links point at the frontend (/register),
+        // not whatever host this API is deployed on (e.g. azurewebsites.net).
+        var baseUrl = _configuration["AppUrl"] ?? $"{Request.Scheme}://{Request.Host}";
         var code = await _referralService.GetOrCreateOwnCodeAsync(userId.Value, baseUrl);
         return Ok(code);
     }

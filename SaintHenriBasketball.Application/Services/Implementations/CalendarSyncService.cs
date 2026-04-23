@@ -88,8 +88,10 @@ public class CalendarSyncService : ICalendarSyncService
 
     private static CalendarFeedDto BuildDto(string token, string baseUrl)
     {
+        // /ics/{token}.ics is proxied by the frontend (Netlify) to the backend's
+        // real /api/v1/calendar/{token}.ics path so the public-facing URL stays short.
         var trimmedBase = baseUrl.TrimEnd('/');
-        var httpUrl = $"{trimmedBase}/api/v1/calendar/{token}.ics";
+        var httpUrl = $"{trimmedBase}/ics/{token}.ics";
         var webcalUrl = httpUrl.Replace("https://", "webcal://").Replace("http://", "webcal://");
         return new CalendarFeedDto { Token = token, FeedUrl = httpUrl, WebcalUrl = webcalUrl };
     }
