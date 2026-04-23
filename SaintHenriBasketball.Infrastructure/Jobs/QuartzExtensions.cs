@@ -55,6 +55,16 @@ public static class QuartzExtensions
                 .WithIdentity("SmsReminder-trigger")
                 .WithDescription("SMS session-day reminders, hourly")
                 .WithCronSchedule("0 0 * * * ?"));
+
+            // 24-hour-ahead email reminder: hourly. Service window is exclusive
+            // on the upper bound so each session matches exactly one tick.
+            var oneDayJobKey = new JobKey("OneDayReminder");
+            q.AddJob<OneDayReminderJob>(opts => opts.WithIdentity(oneDayJobKey).StoreDurably());
+            q.AddTrigger(opts => opts
+                .ForJob(oneDayJobKey)
+                .WithIdentity("OneDayReminder-trigger")
+                .WithDescription("Email reminder 24 hours before each session, hourly check")
+                .WithCronSchedule("0 0 * * * ?"));
         });
 
         services.AddQuartzHostedService(options =>

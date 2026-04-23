@@ -38,6 +38,44 @@ public class EmailAutomationService : IEmailAutomationService
         _logger = logger;
     }
 
+    public async Task SendOneDayAheadRemindersAsync()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var lower = now.AddHours(23.5);
+            var upper = now.AddHours(24.5);
+
+            var upcoming = await _sessionService.GetUpcomingSessionsAsync();
+            var due = upcoming
+                .Where(s => s.Status == SessionStatus.Open)
+                .Where(s =>
+                {
+                    // Sessions are stored with date-only; combine with StartTime for an accurate UTC instant.
+                    var startUtc = Helpers.SessionTimeHelper.ToUtc(
+                        Helpers.SessionTimeHelper.CombineLocal(s.SessionDate, s.StartTime));
+                    return startUtc >= lower && startUtc < upper;
+                })
+                .ToList();
+
+            if (due.Count == 0)
+            {
+                _logger.LogInformation("OneDayAheadReminders: no sessions in the [now+23.5h, now+24.5h) window");
+                return;
+            }
+
+            _logger.LogInformation("OneDayAheadReminders: sending for {Count} session(s)", due.Count);
+            foreach (var session in due)
+            {
+                await SendAttendanceRemindersForSession(session.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OneDayAheadReminders run failed");
+        }
+    }
+
     /// <summary>
     /// Schedules attendance reminders for upcoming sessions
     /// Only runs on Wednesday, Thursday, and Friday

@@ -48,6 +48,12 @@ public class CapacityCheckJob(IServiceProvider sp, ILogger<CapacityCheckJob> log
     protected override Task RunAsync(IEmailAutomationService svc) => svc.CheckSessionsCapacityAndSendReminders();
 }
 
+public class OneDayReminderJob(IServiceProvider sp, ILogger<OneDayReminderJob> logger) : EmailAutomationJob(sp, logger)
+{
+    protected override string JobName => "OneDayReminder";
+    protected override Task RunAsync(IEmailAutomationService svc) => svc.SendOneDayAheadRemindersAsync();
+}
+
 /// <summary>One-off job for sending scheduled emails.</summary>
 [DisallowConcurrentExecution]
 public class ScheduledEmailJob : IJob
