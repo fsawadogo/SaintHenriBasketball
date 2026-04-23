@@ -45,6 +45,16 @@ public static class QuartzExtensions
             q.AddJob<ScheduledEmailJob>(opts => opts
                 .WithIdentity("ScheduledEmail")
                 .StoreDurably());
+
+            // SMS session-day reminders: hourly. The service short-circuits when
+            // the `sms-reminders` flag is off, so this is safe to leave on always.
+            var smsJobKey = new JobKey("SmsReminder");
+            q.AddJob<SmsReminderJob>(opts => opts.WithIdentity(smsJobKey).StoreDurably());
+            q.AddTrigger(opts => opts
+                .ForJob(smsJobKey)
+                .WithIdentity("SmsReminder-trigger")
+                .WithDescription("SMS session-day reminders, hourly")
+                .WithCronSchedule("0 0 * * * ?"));
         });
 
         services.AddQuartzHostedService(options =>
