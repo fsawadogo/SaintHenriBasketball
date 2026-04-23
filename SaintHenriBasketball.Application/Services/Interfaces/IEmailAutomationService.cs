@@ -42,4 +42,11 @@ public interface IEmailAutomationService
     /// Checks all upcoming sessions and triggers capacity threshold reminders if needed
     /// </summary>
     Task CheckSessionsCapacityAndSendReminders();
+
+    /// <summary>
+    /// Sends a 24-hour-ahead reminder to every registered user of any session
+    /// starting in [now+23.5h, now+24.5h). Run hourly by Quartz; the exclusive
+    /// upper bound prevents double-sends across consecutive ticks.
+    /// </summary>
+    Task SendOneDayAheadRemindersAsync();
 }
