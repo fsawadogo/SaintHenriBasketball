@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Waivers;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
@@ -10,11 +12,19 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 public class WaiverService : IWaiverService
 {
     private readonly IWaiverRepository _repository;
+    private readonly IUserRepository _userRepository;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<WaiverService> _logger;
 
-    public WaiverService(IWaiverRepository repository, ILogger<WaiverService> logger)
+    public WaiverService(
+        IWaiverRepository repository,
+        IUserRepository userRepository,
+        INotificationService notificationService,
+        ILogger<WaiverService> logger)
     {
         _repository = repository;
+        _userRepository = userRepository;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -76,6 +86,26 @@ public class WaiverService : IWaiverService
 
         await _repository.AddTemplateAsync(template);
         _logger.LogInformation("Waiver template v{Version} created (active={Active})", nextVersion, body.Activate);
+
+        // Notify on activation so users see the prompt before their next visit
+        // triggers the WaiverGuard modal blocking flow.
+        if (body.Activate)
+        {
+            var allUsers = await _userRepository.GetAllUsersAsync();
+            foreach (var user in allUsers.Where(u => u.EmailConfirmed))
+            {
+                await _notificationService.CreateAsync(
+                    user.Id,
+                    NotificationType.Generic,
+                    title: EmailTemplateHelper.L("Updated waiver", "Décharge mise à jour", user.PreferredLanguage),
+                    body: EmailTemplateHelper.L(
+                        "A new waiver version is in effect. Please review and accept on your next visit.",
+                        "Une nouvelle version de la décharge est en vigueur. Veuillez la consulter et l'accepter lors de votre prochaine visite.",
+                        user.PreferredLanguage),
+                    url: "/profile");
+            }
+        }
+
         return ToDto(template);
     }
 

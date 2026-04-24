@@ -18,6 +18,7 @@ public class BroadcastService : IBroadcastService
     private readonly ISessionRegistrationRepository _registrationRepository;
     private readonly ISessionAttendanceRepository _attendanceRepository;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<BroadcastService> _logger;
 
     public BroadcastService(
@@ -25,12 +26,14 @@ public class BroadcastService : IBroadcastService
         ISessionRegistrationRepository registrationRepository,
         ISessionAttendanceRepository attendanceRepository,
         IEmailService emailService,
+        INotificationService notificationService,
         ILogger<BroadcastService> logger)
     {
         _userRepository = userRepository;
         _registrationRepository = registrationRepository;
         _attendanceRepository = attendanceRepository;
         _emailService = emailService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -74,6 +77,15 @@ public class BroadcastService : IBroadcastService
                 _logger.LogWarning(ex, "Broadcast send failed for {Email}", user.Email);
                 result.Failed++;
             }
+
+            // Audience filter upstream excludes EmailNotificationsEnabled=false users —
+            // so opting out of email broadcasts also suppresses the in-app mirror.
+            await _notificationService.CreateAsync(
+                user.Id,
+                Domain.Entities.NotificationType.AdminBroadcast,
+                title: request.Subject,
+                body: body,
+                url: null);
         }
 
         _logger.LogInformation(

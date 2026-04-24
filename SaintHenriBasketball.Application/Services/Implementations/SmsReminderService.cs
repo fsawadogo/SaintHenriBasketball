@@ -18,6 +18,7 @@ public class SmsReminderService : ISmsReminderService
     private readonly IUserRepository _userRepository;
     private readonly ISmsService _smsService;
     private readonly IFeatureFlagService _featureFlagService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<SmsReminderService> _logger;
 
     public SmsReminderService(
@@ -26,6 +27,7 @@ public class SmsReminderService : ISmsReminderService
         IUserRepository userRepository,
         ISmsService smsService,
         IFeatureFlagService featureFlagService,
+        INotificationService notificationService,
         ILogger<SmsReminderService> logger)
     {
         _sessionRepository = sessionRepository;
@@ -33,6 +35,7 @@ public class SmsReminderService : ISmsReminderService
         _userRepository = userRepository;
         _smsService = smsService;
         _featureFlagService = featureFlagService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -75,14 +78,26 @@ public class SmsReminderService : ISmsReminderService
             foreach (var reg in registrations)
             {
                 var user = reg.User ?? (fetched.TryGetValue(reg.UserId, out var u) ? u : null);
-                if (user is null || !user.SmsOptIn || string.IsNullOrEmpty(user.PhoneNumber)) continue;
+                if (user is null) continue;
+
+                await _notificationService.CreateAsync(
+                    user.Id,
+                    Domain.Entities.NotificationType.SessionReminder,
+                    title: EmailTemplateHelper.L("Session in 2 hours", "Séance dans 2 heures", user.PreferredLanguage),
+                    body: EmailTemplateHelper.L(
+                        $"Your session at {displayTime} starts soon. See you at {session.Location}.",
+                        $"Votre séance à {displayTime} commence bientôt. À tantôt au {session.Location}.",
+                        user.PreferredLanguage),
+                    url: "/dashboard");
+
+                if (!CanReceiveSms(user)) continue;
 
                 var message = EmailTemplateHelper.L(
                     $"SHB reminder: your session is today at {displayTime}. See you at {session.Location}.",
                     $"Rappel SHB: votre séance est aujourd'hui à {displayTime}. À tantôt au {session.Location}.",
                     user.PreferredLanguage);
 
-                if (await _smsService.SendAsync(user.PhoneNumber, message))
+                if (await _smsService.SendAsync(user.PhoneNumber!, message))
                     sent++;
             }
         }
@@ -90,6 +105,9 @@ public class SmsReminderService : ISmsReminderService
         _logger.LogInformation("SmsReminder run: {Sessions} sessions in window, {Sent} messages sent", candidates.Count, sent);
         return sent;
     }
+
+    private static bool CanReceiveSms(Domain.Entities.ApplicationUser user) =>
+        user.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber);
 
     private static bool IsWithinWindow(DateTime sessionDate, string? startTime, DateTime lowerUtc, DateTime upperUtc)
     {

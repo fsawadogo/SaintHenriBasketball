@@ -16,6 +16,7 @@ public class EmailAutomationService : IEmailAutomationService
     private readonly IEmailService _emailService;
     private readonly ICacheService _cacheService;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<EmailAutomationService> _logger;
 
     public EmailAutomationService(
@@ -26,6 +27,7 @@ public class EmailAutomationService : IEmailAutomationService
         IEmailService emailService,
         ICacheService cacheService,
         IMapper mapper,
+        INotificationService notificationService,
         ILogger<EmailAutomationService> logger)
     {
         _sessionService = sessionService;
@@ -35,6 +37,7 @@ public class EmailAutomationService : IEmailAutomationService
         _emailService = emailService;
         _cacheService = cacheService;
         _mapper = mapper;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -182,6 +185,18 @@ public class EmailAutomationService : IEmailAutomationService
                     );
 
                     successCount++;
+
+                    var lang = user?.PreferredLanguage ?? Domain.Enums.EmailLanguage.English;
+                    var displayDate = session.SessionDate.ToString("dddd, MMMM d", Helpers.EmailTemplateHelper.GetCulture(lang));
+                    await _notificationService.CreateAsync(
+                        attendee.UserId,
+                        Domain.Entities.NotificationType.SessionReminder,
+                        title: Helpers.EmailTemplateHelper.L("Upcoming session", "Séance à venir", lang),
+                        body: Helpers.EmailTemplateHelper.L(
+                            $"Reminder: your session on {displayDate}.",
+                            $"Rappel : votre séance le {displayDate}.",
+                            lang),
+                        url: "/dashboard");
                 }
                 catch (Exception ex)
                 {
@@ -394,6 +409,23 @@ public class EmailAutomationService : IEmailAutomationService
                     );
 
                     successCount++;
+
+                    var user = await _userService.GetUserAsync(attendee.UserId);
+                    var lang = user?.PreferredLanguage ?? Domain.Enums.EmailLanguage.English;
+                    var displayDate = session.SessionDate.ToString("dddd, MMMM d", Helpers.EmailTemplateHelper.GetCulture(lang));
+                    var bodyEn = $"The session on {displayDate} has been cancelled.";
+                    var bodyFr = $"La séance du {displayDate} a été annulée.";
+                    if (!string.IsNullOrEmpty(cancellationReason))
+                    {
+                        bodyEn += $" Reason: {cancellationReason}";
+                        bodyFr += $" Raison : {cancellationReason}";
+                    }
+                    await _notificationService.CreateAsync(
+                        attendee.UserId,
+                        Domain.Entities.NotificationType.SessionCancelled,
+                        title: Helpers.EmailTemplateHelper.L("Session cancelled", "Séance annulée", lang),
+                        body: Helpers.EmailTemplateHelper.L(bodyEn, bodyFr, lang),
+                        url: "/schedule");
                 }
                 catch (Exception ex)
                 {
