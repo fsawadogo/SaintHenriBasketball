@@ -35,4 +35,7 @@ public static class FeatureFlagKeys
 
     // Phase 6 — In-app notifications
     public const string InAppNotifications = "in-app-notifications";
+
+    // Phase 7 — Public marketing
+    public const string Gallery = "gallery";
 }

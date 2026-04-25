@@ -81,5 +81,10 @@ public static class FeatureFlagDefinitions
         new FeatureFlagDefinition(FeatureFlagKeys.InAppNotifications,
             "Bell icon + in-app notification center.",
             "Icône cloche et centre de notifications dans l'application."),
+
+        // Phase 7
+        new FeatureFlagDefinition(FeatureFlagKeys.Gallery,
+            "Public /gallery page mirroring the Instagram feed.",
+            "Page publique /galerie miroir du fil Instagram."),
     };
 }
