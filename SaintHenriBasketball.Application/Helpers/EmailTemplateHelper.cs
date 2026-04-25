@@ -20,8 +20,10 @@ public static class EmailTemplateHelper
     private const string ColorDanger = "#ef4444";
     private const string LogoUrl = "https://sainthenribasketball.com/logo.png";
     private const string WhatsAppGroupUrl = "https://chat.whatsapp.com/JGAbUroUK9B6feJ6uDlwwD";
-    // Stable hosted WhatsApp brand mark (Wikimedia Commons CDN — reliable for email).
+    private const string InstagramProfileUrl = "https://www.instagram.com/sainthenribasketball";
+    // Stable hosted brand marks (Wikimedia Commons CDN — reliable for email rendering).
     private const string WhatsAppIconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/240px-WhatsApp.svg.png";
+    private const string InstagramIconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png";
 
     private static readonly CultureInfo FrenchCulture = new("fr-CA");
     private static readonly CultureInfo EnglishCulture = new("en-CA");
@@ -60,6 +62,7 @@ public static class EmailTemplateHelper
         var lang = language == EmailLanguage.English ? "en" : "fr";
         var signature = L("Team SHB", "Équipe SHB", language);
         var whatsappAria = L("WhatsApp group", "Groupe WhatsApp", language);
+        var instagramAria = L("Instagram profile", "Profil Instagram", language);
         var signoff = L("See you on the court,", "À bientôt sur le terrain,", language);
 
         return $@"<!DOCTYPE html>
@@ -103,9 +106,12 @@ public static class EmailTemplateHelper
                                             <p style='margin:0;color:{ColorTextLight};font-size:13px;'>{signoff}</p>
                                             <p style='margin:4px 0 0;font-weight:600;color:{ColorText};font-size:14px;'>{signature}</p>
                                         </td>
-                                        <td style='vertical-align:middle;text-align:right;width:48px;'>
+                                        <td style='vertical-align:middle;text-align:right;white-space:nowrap;width:96px;'>
+                                            <a href='{InstagramProfileUrl}' aria-label='{instagramAria}' title='{instagramAria}' style='display:inline-block;text-decoration:none;line-height:0;margin-right:8px;'>
+                                                <img src='{InstagramIconUrl}' alt='{instagramAria}' width='36' height='36' style='display:inline-block;border:0;vertical-align:middle;' />
+                                            </a>
                                             <a href='{WhatsAppGroupUrl}' aria-label='{whatsappAria}' title='{whatsappAria}' style='display:inline-block;text-decoration:none;line-height:0;'>
-                                                <img src='{WhatsAppIconUrl}' alt='{whatsappAria}' width='36' height='36' style='display:block;border:0;' />
+                                                <img src='{WhatsAppIconUrl}' alt='{whatsappAria}' width='36' height='36' style='display:inline-block;border:0;vertical-align:middle;' />
                                             </a>
                                         </td>
                                     </tr>
