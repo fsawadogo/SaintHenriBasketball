@@ -377,7 +377,11 @@ public static class EmailTemplates
         public static string GetSessionCancellationEmail(string userName, DateTime sessionDate, string startTime, string? location = null, string? cancellationReason = null, Guid? alternativeSessionId = null, EmailLanguage lang = EmailLanguage.French)
         {
             var content = Greeting(userName, lang) +
-                BuildAlertBox(L("A session has been cancelled:", "Une session a été annulée:", lang), "danger") +
+                P(L(
+                    "We're sorry to let you know that the upcoming Saint-Henri Basketball session has been cancelled.",
+                    "Nous sommes désolés de vous informer que la prochaine séance de basketball Saint-Henri a été annulée.",
+                    lang)) +
+                BuildAlertBox(L("Session cancelled", "Séance annulée", lang), "danger") +
                 BuildInfoBox(new Dictionary<string, string?> {
                     { "Date", sessionDate.ToString("dddd dd MMMM yyyy", GetCulture(lang)) },
                     { L("Time", "Heure", lang), startTime },
@@ -385,16 +389,18 @@ public static class EmailTemplates
                 });
 
             if (!string.IsNullOrEmpty(cancellationReason))
-                content += P($"{L("Reason", "Raison", lang)}: {cancellationReason}");
+                content += P($"<strong>{L("Reason", "Raison", lang)}:</strong> {cancellationReason}");
 
             if (alternativeSessionId.HasValue)
-                content += BuildAlertBox(L("An alternative session is available.", "Une session alternative est disponible.", lang), "info") +
+                content += BuildAlertBox(L("An alternative session is available — tap below to register.", "Une séance alternative est disponible — réservez votre place ci-dessous.", lang), "info") +
                     BuildButton("View Alternative", "Voir l'alternative", $"https://sainthenribasketball.com/session/{alternativeSessionId}/register", lang);
 
-            content += P(L("Contact us if you have questions: (438) 935-8129 or info@sainthenribasketball.com",
-                           "Contactez-nous si vous avez des questions: (438) 935-8129 ou info@sainthenribasketball.com", lang));
+            content += P(L(
+                "If you had paid for this drop-in, your payment will be applied to a future session — no action needed on your end.",
+                "Si vous aviez payé une séance à la pièce, votre paiement sera reporté à une séance future — aucune action requise de votre part.",
+                lang));
 
-            return BuildEmailLayout("Session Cancelled", "Session annulée", content, lang);
+            return BuildEmailLayout("Session Cancelled", "Séance annulée", content, lang);
         }
     }
     #endregion

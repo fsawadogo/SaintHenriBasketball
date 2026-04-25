@@ -20,6 +20,7 @@ public class EmailAutomationService : IEmailAutomationService
     private readonly INotificationService _notificationService;
     private readonly ISmsService _smsService;
     private readonly IUserRepository _userRepository;
+    private readonly ISessionRepository _sessionRepository;
     private readonly ILogger<EmailAutomationService> _logger;
 
     public EmailAutomationService(
@@ -33,6 +34,7 @@ public class EmailAutomationService : IEmailAutomationService
         INotificationService notificationService,
         ISmsService smsService,
         IUserRepository userRepository,
+        ISessionRepository sessionRepository,
         ILogger<EmailAutomationService> logger)
     {
         _sessionService = sessionService;
@@ -45,6 +47,7 @@ public class EmailAutomationService : IEmailAutomationService
         _notificationService = notificationService;
         _smsService = smsService;
         _userRepository = userRepository;
+        _sessionRepository = sessionRepository;
         _logger = logger;
     }
 
@@ -374,61 +377,41 @@ public class EmailAutomationService : IEmailAutomationService
     }
 
     /// <summary>
-    /// Sends session cancellation notifications to all registered users
+    /// Emails every email-confirmed user (respecting EmailNotificationsEnabled) about
+    /// a cancelled session and drops an in-app notification only for the registered
+    /// attendees who'd actually planned to come.
     /// </summary>
     public async Task SendSessionCancellationNotifications(Guid sessionId, string? cancellationReason = null)
     {
         try
         {
-            // Get session details
-            var session = await _sessionService.GetSessionAsync(sessionId);
-            if (session == null)
+            var sessionEntity = await _sessionRepository.GetByIdAsync(sessionId);
+            if (sessionEntity is null)
             {
                 _logger.LogWarning("Cannot send cancellation notification: Session {SessionId} not found", sessionId);
                 return;
             }
 
-            // Get all attendees for this session
+            var allUsers = (await _userRepository.GetAllUsersAsync())
+                .Where(u => u.EmailConfirmed && u.EmailNotificationsEnabled && !string.IsNullOrEmpty(u.Email))
+                .ToList();
+
+            await _emailService.SendSessionCancellationEmailAsync(sessionEntity, allUsers, cancellationReason);
+
+            _logger.LogInformation(
+                "Cancellation emails dispatched: session {SessionId}, audience {Count} user(s)",
+                sessionId, allUsers.Count);
+
+            // In-app prompt only for users who were actually attending — broadcasting
+            // an in-app to every user for every cancellation would be noise.
             var attendees = await _attendanceService.GetSessionAttendeesAsync(sessionId);
-            if (!attendees.Any())
-            {
-                _logger.LogInformation("No users registered for cancelled session {SessionId}", sessionId);
-                return;
-            }
-
-            int successCount = 0;
-            int failureCount = 0;
-            var failedEmails = new List<string?>();
-
             foreach (var attendee in attendees)
             {
                 try
                 {
-                    if (string.IsNullOrEmpty(attendee.Email))
-                        continue;
-
-                    var sessionDate = session.SessionDate.ToString("dddd, MMMM d");
-                    var message = $"Nous regrettons de vous informer que la séance de basketball prévue le {sessionDate} a été annulée.";
-
-                    if (!string.IsNullOrEmpty(cancellationReason))
-                    {
-                        message += $" Raison: {cancellationReason}";
-                    }
-
-                    message += " Nous nous excusons pour tout inconvénient causé.";
-
-                    // Use the EmailTemplates for consistent styling 
-                    await _emailService.SendGeneralAnnouncementEmailAsync(
-                        attendee.Email,
-                        $"{attendee.FirstName} {attendee.LastName}",
-                        message
-                    );
-
-                    successCount++;
-
-                    var user = await _userService.GetUserAsync(attendee.UserId);
+                    var user = allUsers.FirstOrDefault(u => u.Id == attendee.UserId);
                     var lang = user?.PreferredLanguage ?? Domain.Enums.EmailLanguage.English;
-                    var displayDate = session.SessionDate.ToString("dddd, MMMM d", Helpers.EmailTemplateHelper.GetCulture(lang));
+                    var displayDate = sessionEntity.SessionDate.ToString("dddd, MMMM d", Helpers.EmailTemplateHelper.GetCulture(lang));
                     var bodyEn = $"The session on {displayDate} has been cancelled.";
                     var bodyFr = $"La séance du {displayDate} a été annulée.";
                     if (!string.IsNullOrEmpty(cancellationReason))
@@ -445,15 +428,9 @@ public class EmailAutomationService : IEmailAutomationService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to send cancellation notification to user {UserId}", attendee.UserId);
-                    failureCount++;
-                    failedEmails.Add(attendee.Email);
+                    _logger.LogError(ex, "In-app cancellation notification failed for user {UserId}", attendee.UserId);
                 }
             }
-
-            _logger.LogInformation(
-                "Sent {SuccessCount} cancellation notifications for session {SessionId}, {FailureCount} failed",
-                successCount, sessionId, failureCount);
         }
         catch (Exception ex)
         {

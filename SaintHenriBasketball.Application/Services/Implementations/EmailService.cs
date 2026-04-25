@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Users;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
@@ -618,22 +619,26 @@ public class EmailService : IEmailService
     {
         foreach (var user in registeredUsers)
         {
+            if (string.IsNullOrEmpty(user.Email)) continue;
             try
             {
+                var lang = user.PreferredLanguage;
                 var content = EmailTemplates.Sessions.GetSessionCancellationEmail(
-                    $"{user.FirstName}",
+                    user.FirstName,
                     session.SessionDate,
                     session.StartTime,
                     session.Location,
                     cancellationReason,
-                    alternativeSession?.Id
+                    alternativeSession?.Id,
+                    lang
                 );
 
-                await SendEmailAsync(
-                    user.Email,
-                    "Session annulée - Saint Henri Basketball",
-                    content
-                );
+                var subject = EmailTemplateHelper.LSubject(
+                    "Session cancelled - Saint-Henri Basketball",
+                    "Séance annulée - Saint-Henri Basketball",
+                    lang);
+
+                await SendEmailAsync(user.Email, subject, content);
             }
             catch (Exception ex)
             {

@@ -19,6 +19,7 @@ public static class EmailTemplateHelper
     private const string ColorWarning = "#eab308";
     private const string ColorDanger = "#ef4444";
     private const string LogoUrl = "https://sainthenribasketball.com/logo.png";
+    private const string WhatsAppGroupUrl = "https://chat.whatsapp.com/JGAbUroUK9B6feJ6uDlwwD";
 
     private static readonly CultureInfo FrenchCulture = new("fr-CA");
     private static readonly CultureInfo EnglishCulture = new("en-CA");
@@ -48,11 +49,16 @@ public static class EmailTemplateHelper
         _ => FrenchCulture
     };
 
-    /// <summary>Builds the full email HTML layout with dark header, white content, dark footer.</summary>
+    /// <summary>Builds the full email HTML layout with dark header, white content, signature
+    /// + WhatsApp link, and dark footer. Every template flows through here so the
+    /// signature and chat link stay in lockstep across the app.</summary>
     public static string BuildEmailLayout(string titleEn, string titleFr, string content, EmailLanguage language = EmailLanguage.French)
     {
         var title = LSubject(titleEn, titleFr, language);
         var lang = language == EmailLanguage.English ? "en" : "fr";
+        var signature = L("Team SHB", "Équipe SHB", language);
+        var whatsappCta = L("Check the WhatsApp group for more details", "Consulter le groupe WhatsApp pour plus de détails", language);
+        var signoff = L("See you on the court,", "À bientôt sur le terrain,", language);
 
         return $@"<!DOCTYPE html>
 <html lang='{lang}'>
@@ -79,9 +85,19 @@ public static class EmailTemplateHelper
                     </tr>
                     <!-- Content -->
                     <tr>
-                        <td style='background-color:{ColorCard};padding:32px;'>
+                        <td style='background-color:{ColorCard};padding:32px 32px 8px;'>
                             <div style='color:{ColorText};font-size:15px;line-height:1.6;'>
                                 {content}
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- Signature + WhatsApp CTA -->
+                    <tr>
+                        <td style='background-color:{ColorCard};padding:0 32px 28px;'>
+                            <div style='border-top:1px solid {ColorBorder};padding-top:20px;color:{ColorText};font-size:14px;line-height:1.6;'>
+                                <p style='margin:0;color:{ColorTextLight};font-size:13px;'>{signoff}</p>
+                                <p style='margin:4px 0 16px;font-weight:600;color:{ColorText};'>{signature}</p>
+                                <a href='{WhatsAppGroupUrl}' style='display:inline-block;background-color:#25D366;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;padding:10px 18px;border-radius:6px;'>💬 {whatsappCta}</a>
                             </div>
                         </td>
                     </tr>
