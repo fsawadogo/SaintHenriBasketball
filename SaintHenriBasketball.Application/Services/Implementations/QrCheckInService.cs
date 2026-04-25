@@ -22,6 +22,7 @@ public class QrCheckInService : IQrCheckInService
     private readonly ISessionRepository _sessionRepository;
     private readonly ISessionRegistrationRepository _registrationRepository;
     private readonly ISessionAttendanceRepository _attendanceRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<QrCheckInService> _logger;
 
@@ -30,6 +31,7 @@ public class QrCheckInService : IQrCheckInService
         ISessionRepository sessionRepository,
         ISessionRegistrationRepository registrationRepository,
         ISessionAttendanceRepository attendanceRepository,
+        IUserRepository userRepository,
         IPaymentService paymentService,
         ILogger<QrCheckInService> logger)
     {
@@ -37,6 +39,7 @@ public class QrCheckInService : IQrCheckInService
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
         _attendanceRepository = attendanceRepository;
+        _userRepository = userRepository;
         _paymentService = paymentService;
         _logger = logger;
     }
@@ -66,7 +69,22 @@ public class QrCheckInService : IQrCheckInService
 
         var isRegistered = await _registrationRepository.IsUserRegisteredAsync(userId, sessionId);
         if (!isRegistered)
-            throw new ValidationException("You are not registered for this session");
+        {
+            // Walk-ins should be able to scan and check in. Auto-register them so the
+            // attendance + auto-bill flows have something to attach to. Capacity check
+            // prevents over-filling a session that's already full.
+            var session = await _sessionRepository.GetByIdAsync(sessionId)
+                ?? throw new ValidationException("Session not found");
+            var registeredCount = await _registrationRepository.GetRegistrationCountForSessionAsync(sessionId);
+            if (registeredCount >= session.MaxCapacity)
+                throw new ValidationException("This session is full");
+
+            var user = await _userRepository.GetByIdAsync(userId)
+                ?? throw new ValidationException("User not found");
+
+            await _registrationRepository.AddAsync(new SessionRegistration(userId, sessionId, user.PaymentPlan));
+            _logger.LogInformation("QR check-in: walk-in registration created for user {UserId} session {SessionId}", userId, sessionId);
+        }
 
         // Billing failure must never block attendance — the 11 AM cron retries idempotently.
         try

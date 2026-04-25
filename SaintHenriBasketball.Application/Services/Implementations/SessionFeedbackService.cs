@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.SessionFeedback;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
@@ -55,25 +56,34 @@ public class SessionFeedbackService : ISessionFeedbackService
     public async Task<PendingFeedbackDto?> GetPendingForUserAsync(Guid userId)
     {
         var history = await _attendanceRepository.GetUserAttendanceHistoryAsync(userId);
-        var cutoff = DateTime.UtcNow - FeedbackWindow;
+        var nowUtc = DateTime.UtcNow;
+        var cutoff = nowUtc - FeedbackWindow;
 
+        // Only surface feedback after the session has actually ended (Sat 12 PM ET, not
+        // Sat 00:00 UTC which would prompt Friday evening). EndTime is stored as a local
+        // time string; combine with SessionDate via SessionTimeHelper to get a real UTC instant.
         var candidate = history
             .Where(a => a.IsAttending && a.Session is not null)
-            .Where(a => a.Session!.SessionDate <= DateTime.UtcNow && a.Session.SessionDate >= cutoff.Date)
-            .OrderByDescending(a => a.Session!.SessionDate)
+            .Select(a => new
+            {
+                Attendance = a,
+                EndUtc = SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(a.Session!.SessionDate, a.Session.EndTime, fallbackHour: 12)),
+            })
+            .Where(x => x.EndUtc <= nowUtc && x.EndUtc >= cutoff)
+            .OrderByDescending(x => x.EndUtc)
             .FirstOrDefault();
 
         if (candidate is null) return null;
 
-        if (await _repository.ExistsAsync(candidate.SessionId, userId))
+        if (await _repository.ExistsAsync(candidate.Attendance.SessionId, userId))
             return null;
 
         return new PendingFeedbackDto
         {
-            SessionId = candidate.SessionId,
-            SessionDate = candidate.Session!.SessionDate,
-            StartTime = candidate.Session.StartTime,
-            Location = candidate.Session.Location,
+            SessionId = candidate.Attendance.SessionId,
+            SessionDate = candidate.Attendance.Session!.SessionDate,
+            StartTime = candidate.Attendance.Session.StartTime,
+            Location = candidate.Attendance.Session.Location,
         };
     }
 
