@@ -14,6 +14,11 @@ public class Payment
     public string? Reference { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    // Nullable: only auto-billed drop-in payments are tied to a specific session.
+    // Existing season payments and pre-migration rows leave it null.
+    public Guid? SessionId { get; set; }
+    public Session? Session { get; set; }
+
     private Payment() { } // For EF Core
 
     public Payment(Guid userId, decimal amount, PaymentPlan plan)
@@ -24,5 +29,11 @@ public class Payment
         Plan = plan;
         Status = PaymentStatus.Pending;
         PaymentDate = DateTime.UtcNow;
+    }
+
+    public Payment(Guid userId, decimal amount, PaymentPlan plan, Guid sessionId)
+        : this(userId, amount, plan)
+    {
+        SessionId = sessionId;
     }
 }

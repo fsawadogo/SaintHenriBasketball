@@ -182,6 +182,15 @@ public class ApplicationDbContext : DbContext
                     .WithMany()
                     .HasForeignKey(p => p.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(p => p.Session)
+                    .WithMany()
+                    .HasForeignKey(p => p.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Index serves the auto-billing idempotency query
+                // (UserId + SessionId + Status filter to skip Refunded duplicates).
+                entity.HasIndex(p => new { p.SessionId, p.UserId, p.Status });
             });
 
         modelBuilder.Entity<SessionAttendance>(entity =>

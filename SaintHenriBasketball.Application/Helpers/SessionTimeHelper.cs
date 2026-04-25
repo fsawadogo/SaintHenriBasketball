@@ -7,7 +7,8 @@ namespace SaintHenriBasketball.Application.Helpers;
 /// between Montreal local time (how sessions are stored) and UTC.
 public static class SessionTimeHelper
 {
-    private static readonly TimeZoneInfo MontrealTz = ResolveMontrealTz();
+    public static readonly TimeZoneInfo MontrealTimeZone = ResolveMontrealTz();
+    private static TimeZoneInfo MontrealTz => MontrealTimeZone;
 
     /// Combines a session date with an `HH:mm` (or `h:mm`) time string, returning an
     /// `Unspecified` DateTime. Callers convert to UTC via <see cref="ToUtc"/>.
@@ -26,6 +27,13 @@ public static class SessionTimeHelper
     {
         var unspecified = DateTime.SpecifyKind(localMontreal, DateTimeKind.Unspecified);
         return TimeZoneInfo.ConvertTimeToUtc(unspecified, MontrealTz);
+    }
+
+    /// Converts a UTC DateTime to Montreal-local time.
+    public static DateTime ToLocal(DateTime utc)
+    {
+        var asUtc = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        return TimeZoneInfo.ConvertTimeFromUtc(asUtc, MontrealTz);
     }
 
     /// Parses a session time string and returns the formatted `h:mm` for display.

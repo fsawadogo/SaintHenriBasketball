@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
@@ -14,6 +15,7 @@ public class PaymentService : IPaymentService
    private readonly IPaymentRepository _paymentRepository;
    private readonly IUserRepository _userRepository;
    private readonly ISessionRepository _sessionRepository;
+   private readonly ISessionRegistrationRepository _registrationRepository;
    private readonly IMapper _mapper;
    private readonly ILogger<PaymentService> _logger;
    private readonly IEmailService _emailService;
@@ -23,6 +25,7 @@ public class PaymentService : IPaymentService
        IPaymentRepository paymentRepository,
        IUserRepository userRepository,
        ISessionRepository sessionRepository,
+       ISessionRegistrationRepository registrationRepository,
        IMapper mapper,
        ILogger<PaymentService> logger,
        IEmailService emailService,
@@ -31,6 +34,7 @@ public class PaymentService : IPaymentService
        _paymentRepository = paymentRepository;
        _userRepository = userRepository;
        _sessionRepository = sessionRepository;
+       _registrationRepository = registrationRepository;
        _mapper = mapper;
        _logger = logger;
        _emailService = emailService;
@@ -325,5 +329,95 @@ public class PaymentService : IPaymentService
            InteracEmail = "pay@sainthenribasketball.com",
            ExpiresAt = session.SessionDate
        };
+   }
+
+   public async Task<(Guid Id, bool Created)?> EnsureDropInPaymentForSessionAsync(Guid userId, Guid sessionId)
+   {
+       var user = await _userRepository.GetByIdAsync(userId);
+       if (user is null || user.PaymentPlan != PaymentPlan.DropIn) return null;
+
+       var session = await _sessionRepository.GetByIdAsync(sessionId);
+       if (session is null) return null;
+
+       // Compare in local (Montreal) time so a Saturday session doesn't get billed on
+       // Friday-evening UTC ticks.
+       var todayLocal = SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
+       if (session.SessionDate.Date != todayLocal) return null;
+
+       if (!await _registrationRepository.IsUserRegisteredAsync(userId, sessionId)) return null;
+
+       return await EnsureCoreAsync(user, session, registrationConfirmed: true);
+   }
+
+   public async Task<int> RunDailyDropInBillingAsync()
+   {
+       var todayLocal = SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
+
+       var upcoming = await _sessionRepository.GetUpcomingSessionsAsync();
+       var todays = upcoming
+           .Where(s => s.Status == SessionStatus.Open && s.SessionDate.Date == todayLocal)
+           .ToList();
+
+       if (todays.Count == 0)
+       {
+           _logger.LogInformation("DropInBilling: no open sessions today; nothing to do");
+           return 0;
+       }
+
+       var created = 0;
+       foreach (var session in todays)
+       {
+           var registrations = await _registrationRepository.GetBySessionIdAsync(session.Id);
+           if (registrations.Count == 0) continue;
+
+           // Bulk-fetch users in one query instead of N round-trips.
+           var userIds = registrations.Select(r => r.UserId).Distinct().ToList();
+           var users = (await _userRepository.GetUsersByIdsAsync(userIds)).ToDictionary(u => u.Id);
+
+           foreach (var reg in registrations)
+           {
+               if (!users.TryGetValue(reg.UserId, out var user)) continue;
+               if (user.PaymentPlan != PaymentPlan.DropIn) continue;
+
+               var result = await EnsureCoreAsync(user, session, registrationConfirmed: true);
+               if (result.Created) created++;
+           }
+       }
+
+       _logger.LogInformation("DropInBilling run complete: {Sessions} session(s), {Created} new payments", todays.Count, created);
+       return created;
+   }
+
+   // Shared core: callers must have already verified user is on DropIn plan and the
+   // session is "today". `registrationConfirmed` lets the cron path skip a redundant
+   // IsUserRegisteredAsync query (it already loaded `registrations`).
+   private async Task<(Guid Id, bool Created)> EnsureCoreAsync(ApplicationUser user, Session session, bool registrationConfirmed)
+   {
+       if (!registrationConfirmed && !await _registrationRepository.IsUserRegisteredAsync(user.Id, session.Id))
+           throw new InvalidOperationException($"User {user.Id} not registered for session {session.Id}");
+
+       var existing = await _paymentRepository.GetByUserAndSessionAsync(user.Id, session.Id);
+       if (existing is not null) return (existing.Id, false);
+
+       var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
+       var payment = new Payment(user.Id, amount, PaymentPlan.DropIn, session.Id)
+       {
+           Reference = $"DROPIN-{session.SessionDate:yyMMdd}-{Random.Shared.Next(1000, 9999)}",
+       };
+       await _paymentRepository.AddAsync(payment);
+
+       _logger.LogInformation("Auto-billed drop-in payment {PaymentId} for user {UserId} session {SessionId}",
+           payment.Id, user.Id, session.Id);
+
+       try
+       {
+           await _emailService.SendPaymentCreatedConfirmationAsync(user.Id, payment.Amount, payment.Reference);
+       }
+       catch (Exception ex)
+       {
+           _logger.LogWarning(ex, "Auto-bill email failed for payment {PaymentId} — payment row still created", payment.Id);
+       }
+
+       return (payment.Id, true);
    }
 }

@@ -4,6 +4,7 @@ using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
+using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
@@ -17,6 +18,8 @@ public class EmailAutomationService : IEmailAutomationService
     private readonly ICacheService _cacheService;
     private readonly IMapper _mapper;
     private readonly INotificationService _notificationService;
+    private readonly ISmsService _smsService;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<EmailAutomationService> _logger;
 
     public EmailAutomationService(
@@ -28,6 +31,8 @@ public class EmailAutomationService : IEmailAutomationService
         ICacheService cacheService,
         IMapper mapper,
         INotificationService notificationService,
+        ISmsService smsService,
+        IUserRepository userRepository,
         ILogger<EmailAutomationService> logger)
     {
         _sessionService = sessionService;
@@ -38,6 +43,8 @@ public class EmailAutomationService : IEmailAutomationService
         _cacheService = cacheService;
         _mapper = mapper;
         _notificationService = notificationService;
+        _smsService = smsService;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -87,32 +94,19 @@ public class EmailAutomationService : IEmailAutomationService
     {
         try
         {
-            // Get today's date in local time
-            var today = DateTime.UtcNow.Date;
+            var today = Helpers.SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
 
-            // Only run this on Wednesday, Thursday, or Friday
-            if (today.DayOfWeek != DayOfWeek.Tuesday &&
-                today.DayOfWeek != DayOfWeek.Thursday &&
-                today.DayOfWeek != DayOfWeek.Friday)
-            {
-                _logger.LogInformation("Skipping attendance reminders schedule - today is not Wednesday, Thursday or Friday");
-                return;
-            }
-
-            // Get the upcoming sessions
+            // The cron schedule (Thu/Fri/Sat 10 AM ET) is the single source of truth
+            // for which days reminders fire. No additional day filter here.
             var upcomingSessions = await _sessionService.GetUpcomingSessionsAsync();
 
-            // Filter sessions that are 1 - 3 days ahead(based on today)
-            // Ensure we're comparing dates with the same timezone basis
-            var localToday = DateTime.UtcNow.Date;
-            var sessionsToRemind = upcomingSessions.Where(session => {
-                // Convert session date to local time for comparison if needed
-                var sessionLocalDate = TimeZoneInfo.ConvertTimeFromUtc(
-                    session.SessionDate.ToUniversalTime(),
-                    TimeZoneInfo.Local).Date;
-
+            // Match today's session (Saturday 10 AM reminder for the noon session)
+            // and any session in the next ~6 days (Thu/Fri reminders for the
+            // upcoming Saturday).
+            var sessionsToRemind = upcomingSessions.Where(session =>
+            {
                 var daysDifference = (session.SessionDate.Date - today).Days;
-                return daysDifference >= 1 && daysDifference <= 6;
+                return daysDifference >= 0 && daysDifference <= 6;
             }).ToList();
 
             if (!sessionsToRemind.Any())
@@ -175,10 +169,10 @@ public class EmailAutomationService : IEmailAutomationService
                         continue;
                     }
 
-                    // Get user details
-                    var user = await _userService.GetUserAsync(attendee.UserId);
+                    // Single fetch covers email language + SMS opt-in/phone — UserDto
+                    // doesn't expose the SMS fields so we read the entity directly.
+                    var user = await _userRepository.GetByIdAsync(attendee.UserId);
 
-                    // Send reminder
                     await _emailService.SendAttendanceReminderEmailAsync(
                         attendee.UserId,
                         $"Ne manquez pas la session de basket de ce week-end! Veuillez nous faire savoir si vous pouvez y assister."
@@ -197,6 +191,24 @@ public class EmailAutomationService : IEmailAutomationService
                             $"Rappel : votre séance le {displayDate}.",
                             lang),
                         url: "/dashboard");
+
+                    // SMS gated on per-user opt-in. Own try so a Twilio blip doesn't
+                    // count the whole attendee as "failed" for email/in-app purposes.
+                    if (user is not null && user.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber))
+                    {
+                        try
+                        {
+                            var smsBody = Helpers.EmailTemplateHelper.L(
+                                $"SHB reminder: session on {displayDate}. See you there!",
+                                $"Rappel SHB: séance le {displayDate}. À tantôt !",
+                                lang);
+                            await _smsService.SendAsync(user.PhoneNumber!, smsBody);
+                        }
+                        catch (Exception smsEx)
+                        {
+                            _logger.LogWarning(smsEx, "Attendance reminder SMS failed for user {UserId}", attendee.UserId);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -218,41 +230,45 @@ public class EmailAutomationService : IEmailAutomationService
     }
 
     /// <summary>
-    /// Schedules payment reminders for pending payments
+    /// Sends payment reminders for pending session-tied payments. Cron fires daily at
+    /// 12 PM ET; per-payment dispatch is gated on (today - sessionDate).Days ∈ {0, 2, 4, 6}
+    /// for a 4-reminder cap (day-of, +2d, +4d, +6d). Beyond +6d the payment escalates
+    /// to the Reconciliation page only.
     /// </summary>
     public async Task SchedulePaymentReminders()
     {
         try
         {
-            // Get all payments
             var allPayments = await _paymentService.GetAllPayments();
+            var todayLocal = Helpers.SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
 
-            // Filter to find pending payments
-            var pendingPayments = allPayments.Where(p => p.Status == PaymentStatus.Pending).ToList();
+            // Only auto-billed drop-in payments are scheduled. Manually-created Season
+            // payments (no SessionId) fall through to admin reconciliation only.
+            var due = allPayments
+                .Where(p => p.Status == PaymentStatus.Pending && p.SessionId.HasValue && p.SessionDate.HasValue)
+                .Where(p =>
+                {
+                    var diff = (todayLocal - p.SessionDate!.Value.Date).Days;
+                    return diff >= 0 && diff <= 6 && diff % 2 == 0;
+                })
+                .ToList();
 
-            foreach (var payment in pendingPayments)
+            if (due.Count == 0)
             {
-                // Calculate when to send the reminder
-                // If payment is older than 3 days, schedule for immediate sending
-                // Otherwise schedule for 3 days after creation
-                var paymentDate = payment.PaymentDate;
-                var reminderDate = paymentDate.AddDays(3);
-                var now = DateTime.UtcNow;
+                _logger.LogInformation("PaymentReminder: nothing due today");
+                return;
+            }
 
-                if (reminderDate <= now)
+            _logger.LogInformation("PaymentReminder: {Count} reminder(s) due", due.Count);
+            foreach (var payment in due)
+            {
+                try
                 {
-                    // Schedule immediately for payments older than 3 days
                     await SendPaymentReminderForUser(payment.UserId, payment.Id);
-                    _logger.LogInformation("Scheduled immediate payment reminder for user {UserId}, payment {PaymentId}",
-                        payment.UserId, payment.Id);
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Schedule for future for newer payments
-                    // Will be sent on next scheduled run when reminderDate has passed
-                    _logger.LogInformation("Payment reminder for user {UserId} will be sent after {ReminderDate}", payment.UserId, reminderDate);
-                    _logger.LogInformation("Scheduled payment reminder for user {UserId}, payment {PaymentId} at {ReminderTime}",
-                        payment.UserId, payment.Id, reminderDate);
+                    _logger.LogError(ex, "PaymentReminder failed for payment {PaymentId}", payment.Id);
                 }
             }
         }

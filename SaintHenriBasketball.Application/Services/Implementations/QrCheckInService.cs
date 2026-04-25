@@ -22,6 +22,7 @@ public class QrCheckInService : IQrCheckInService
     private readonly ISessionRepository _sessionRepository;
     private readonly ISessionRegistrationRepository _registrationRepository;
     private readonly ISessionAttendanceRepository _attendanceRepository;
+    private readonly IPaymentService _paymentService;
     private readonly ILogger<QrCheckInService> _logger;
 
     public QrCheckInService(
@@ -29,12 +30,14 @@ public class QrCheckInService : IQrCheckInService
         ISessionRepository sessionRepository,
         ISessionRegistrationRepository registrationRepository,
         ISessionAttendanceRepository attendanceRepository,
+        IPaymentService paymentService,
         ILogger<QrCheckInService> logger)
     {
         _configuration = configuration;
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
         _attendanceRepository = attendanceRepository;
+        _paymentService = paymentService;
         _logger = logger;
     }
 
@@ -64,6 +67,16 @@ public class QrCheckInService : IQrCheckInService
         var isRegistered = await _registrationRepository.IsUserRegisteredAsync(userId, sessionId);
         if (!isRegistered)
             throw new ValidationException("You are not registered for this session");
+
+        // Billing failure must never block attendance — the 11 AM cron retries idempotently.
+        try
+        {
+            await _paymentService.EnsureDropInPaymentForSessionAsync(userId, sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Auto-bill on QR check-in failed for user {UserId} session {SessionId}", userId, sessionId);
+        }
 
         var now = DateTime.UtcNow;
         var existing = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);

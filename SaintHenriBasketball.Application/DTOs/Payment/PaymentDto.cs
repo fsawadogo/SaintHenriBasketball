@@ -13,4 +13,6 @@ public class PaymentDto
     public required string UserName { get; set; }
     public required string? UserEmail { get; set; }
     public string? Reference { get; set; }
+    public Guid? SessionId { get; set; }
+    public DateTime? SessionDate { get; set; }
 }

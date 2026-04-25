@@ -19,4 +19,15 @@ public interface IPaymentService
     Task<PaymentDto> CreateDropInPaymentAsync(Guid userId, CreateDropInPaymentDto request);
     Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference);
     Task<DropInPaymentLinkDto> GetDropInPaymentLinkAsync(Guid userId, Guid sessionId);
+
+    /// Idempotently creates a Pending drop-in payment for the (user, session) pair if one
+    /// doesn't already exist. Returns the payment Id paired with whether it was newly
+    /// created, or null when the user is on Season plan / not registered for the
+    /// session / the session isn't today.
+    Task<(Guid Id, bool Created)?> EnsureDropInPaymentForSessionAsync(Guid userId, Guid sessionId);
+
+    /// Sweeps every open session whose date is today and ensures a Pending drop-in payment
+    /// for each registered drop-in player. Idempotent — safe to combine with QR check-in.
+    /// Returns the number of new payments created.
+    Task<int> RunDailyDropInBillingAsync();
 }

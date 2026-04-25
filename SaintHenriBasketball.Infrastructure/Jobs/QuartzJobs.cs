@@ -95,3 +95,25 @@ public class SmsReminderJob : IJob
         await svc.SendDueRemindersAsync();
     }
 }
+
+[DisallowConcurrentExecution]
+public class DropInBillingJob : IJob
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<DropInBillingJob> _logger;
+
+    public DropInBillingJob(IServiceProvider sp, ILogger<DropInBillingJob> logger)
+    {
+        _sp = sp;
+        _logger = logger;
+    }
+
+    public async Task Execute(IJobExecutionContext context)
+    {
+        _logger.LogInformation("Running DropInBilling");
+        using var scope = _sp.CreateScope();
+        var svc = scope.ServiceProvider.GetRequiredService<IPaymentService>();
+        var created = await svc.RunDailyDropInBillingAsync();
+        _logger.LogInformation("DropInBilling created {Count} payments", created);
+    }
+}

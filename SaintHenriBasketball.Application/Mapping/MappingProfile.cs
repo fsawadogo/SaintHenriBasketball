@@ -142,7 +142,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Plan, opt => opt.MapFrom(src => src.Plan))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => $"{src.User.FirstName} {src.User.LastName}"))
-            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User.Email));
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User.Email))
+            .ForMember(dest => dest.SessionId, opt => opt.MapFrom(src => src.SessionId))
+            .ForMember(dest => dest.SessionDate, opt => opt.MapFrom(src => src.Session != null ? (DateTime?)src.Session.SessionDate : null));
         
         CreateMap<CreatePaymentDto, Payment>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

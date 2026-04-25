@@ -19,6 +19,7 @@ public class PaymentRepository : IPaymentRepository
     {
         return await _context.Payments
             .Include(p => p.User)
+            .Include(p => p.Session)
             .Where(p => p.UserId == userId)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
@@ -28,13 +29,18 @@ public class PaymentRepository : IPaymentRepository
     {
         return (await _context.Payments
             .Include(p => p.User)
+            .Include(p => p.Session)
             .FirstOrDefaultAsync(p => p.Id == id))!;
     }
 
+    // Session must be Included on every read path: PaymentDto.SessionDate is mapped from
+    // Payment.Session.SessionDate, and the payment-reminder cron's `(today - sessionDate)`
+    // modulus filter silently excludes every row when Session is null.
     public async Task<IReadOnlyList<Payment>> GetAllAsync()
     {
         return await _context.Payments
             .Include(p => p.User)
+            .Include(p => p.Session)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
     }
@@ -43,6 +49,7 @@ public class PaymentRepository : IPaymentRepository
     {
         return await _context.Payments
             .Include(p => p.User)
+            .Include(p => p.Session)
             .Where(p => p.Status == status)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
@@ -52,6 +59,7 @@ public class PaymentRepository : IPaymentRepository
     {
         return await _context.Payments
             .Include(p => p.User)
+            .Include(p => p.Session)
             .Where(p => p.Plan == plan)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
@@ -76,5 +84,13 @@ public class PaymentRepository : IPaymentRepository
             .Include(p => p.User)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<Payment?> GetByUserAndSessionAsync(Guid userId, Guid sessionId)
+    {
+        return await _context.Payments
+            .Where(p => p.UserId == userId && p.SessionId == sessionId && p.Status != PaymentStatus.Refunded)
+            .OrderByDescending(p => p.PaymentDate)
+            .FirstOrDefaultAsync();
     }
 }
