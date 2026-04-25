@@ -28,6 +28,7 @@ public class ApplicationUser
     public string? MedicalAlerts { get; set; }
     public string? PhoneNumber { get; set; }
     public bool SmsOptIn { get; set; }
+    public bool SmsAnnouncementDismissed { get; set; }
     public bool EmailNotificationsEnabled { get; set; } = true;
     public bool InAppNotificationsEnabled { get; set; } = true;
 

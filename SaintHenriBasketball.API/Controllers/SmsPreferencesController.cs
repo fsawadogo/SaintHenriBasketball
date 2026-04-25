@@ -36,7 +36,7 @@ public class SmsPreferencesController : BaseApiController
         if (userId is null) return Unauthorized();
         var user = await _userRepository.GetByIdAsync(userId.Value);
         if (user is null) return NotFound();
-        return Ok(new SmsPreferenceDto { SmsOptIn = user.SmsOptIn, PhoneNumber = user.PhoneNumber });
+        return Ok(ToDto(user));
     }
 
     [HttpPut("api/v{version:apiVersion}/users/me/sms-preferences")]
@@ -63,12 +63,32 @@ public class SmsPreferencesController : BaseApiController
         }
 
         var refreshed = await _userRepository.GetByIdAsync(userId.Value);
-        return Ok(new SmsPreferenceDto
-        {
-            SmsOptIn = refreshed?.SmsOptIn ?? false,
-            PhoneNumber = refreshed?.PhoneNumber,
-        });
+        return Ok(refreshed is null
+            ? new SmsPreferenceDto()
+            : ToDto(refreshed));
     }
+
+    [HttpPost("api/v{version:apiVersion}/users/me/sms-preferences/dismiss-announcement")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DismissAnnouncement()
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        var user = await _userRepository.GetByIdAsync(userId.Value);
+        if (user is null) return NotFound();
+        if (user.SmsAnnouncementDismissed) return NoContent();
+
+        user.SmsAnnouncementDismissed = true;
+        await _userRepository.UpdateAsync(user);
+        return NoContent();
+    }
+
+    private static SmsPreferenceDto ToDto(SaintHenriBasketball.Domain.Entities.ApplicationUser u) => new()
+    {
+        SmsOptIn = u.SmsOptIn,
+        PhoneNumber = u.PhoneNumber,
+        SmsAnnouncementDismissed = u.SmsAnnouncementDismissed,
+    };
 
     [HttpPost("api/v{version:apiVersion}/users/me/sms-preferences/test")]
     [ProducesResponseType(typeof(SmsTestResultDto), StatusCodes.Status200OK)]

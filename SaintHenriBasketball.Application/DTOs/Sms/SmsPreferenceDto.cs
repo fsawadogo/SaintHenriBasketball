@@ -4,6 +4,7 @@ public class SmsPreferenceDto
 {
     public bool SmsOptIn { get; set; }
     public string? PhoneNumber { get; set; }
+    public bool SmsAnnouncementDismissed { get; set; }
 }
 
 public class SmsTestResultDto
