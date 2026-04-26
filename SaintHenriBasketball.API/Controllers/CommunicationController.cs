@@ -353,9 +353,6 @@ public class CommunicationController : ControllerBase
     [HttpPost("preview")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [HttpPost("preview")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult PreviewEmailTemplate([FromBody] EmailPreviewRequestDto request)
     {
         try
