@@ -26,6 +26,9 @@ public class UserService : IUserService
     private readonly IEmailService _emailService;
     private readonly ILogger<UserService> _logger;
     private readonly IFeatureFlagService _featureFlagService;
+    private readonly IReferralRepository _referralRepository;
+
+    public const string InvalidReferralCodeMessage = "Referral code not found or no longer valid.";
 
     public UserService(
         IConfiguration configuration,
@@ -33,7 +36,8 @@ public class UserService : IUserService
         IUserRepository userRepository,
         IEmailService emailService,
         ILogger<UserService> logger,
-        IFeatureFlagService featureFlagService)
+        IFeatureFlagService featureFlagService,
+        IReferralRepository referralRepository)
     {
         _configuration = configuration;
         _mapper = mapper;
@@ -41,6 +45,7 @@ public class UserService : IUserService
         _emailService = emailService;
         _logger = logger;
         _featureFlagService = featureFlagService;
+        _referralRepository = referralRepository;
     }
 
     public async Task<UserResponseDto> RegisterAsync(RegisterUserDto registerDto)
@@ -53,6 +58,16 @@ public class UserService : IUserService
         if (await _userRepository.UsernameExistsAsync(registerDto.Username))
         {
             throw new ValidationException("Username is already taken");
+        }
+
+        // Signing up is the only chance to redeem: login needs a confirmed email first.
+        ReferralCode? referralCode = null;
+        if (!string.IsNullOrWhiteSpace(registerDto.ReferralCode)
+            && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Referrals))
+        {
+            referralCode = await _referralRepository.GetCodeByValueAsync(registerDto.ReferralCode.Trim().ToUpperInvariant());
+            if (referralCode is null || (referralCode.MaxUses is int maxUses && referralCode.TimesUsed >= maxUses))
+                throw new ValidationException(InvalidReferralCodeMessage);
         }
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password);
@@ -69,7 +84,19 @@ public class UserService : IUserService
         // Generate and set email confirmation token
         user.EmailConfirmationToken = Guid.NewGuid().ToString("N");
 
-        await _userRepository.AddAsync(user);
+        if (referralCode is null)
+        {
+            await _userRepository.AddAsync(user);
+        }
+        else
+        {
+            // The account, the Pending redemption and the code's use count commit together or not at all.
+            var outcome = await _referralRepository.TryRedeemAsync(
+                new ReferralRedemption(referralCode.Id, referralCode.OwnerUserId, user.Id), user);
+            if (outcome != ReferralRedeemOutcome.Redeemed)
+                throw new ValidationException(InvalidReferralCodeMessage);
+            _logger.LogInformation("New user {UserId} registered with referral code {Code}", user.Id, referralCode.Code);
+        }
 
         try
         {

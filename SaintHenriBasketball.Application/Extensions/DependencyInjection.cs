@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IPromoCodeService, PromoCodeService>();
         services.AddScoped<IWaiverService, WaiverService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IAccountCreditService, AccountCreditService>();
         // `Sms:Provider` in configuration picks the impl. Defaults to log-only so
         // development doesn't require Twilio credentials.
         services.AddScoped<SmsService>();

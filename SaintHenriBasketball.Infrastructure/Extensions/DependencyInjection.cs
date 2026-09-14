@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
         services.AddScoped<IWaiverRepository, WaiverRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IAccountCreditRepository, AccountCreditRepository>();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);

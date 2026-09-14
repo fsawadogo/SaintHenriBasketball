@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
@@ -12,6 +13,8 @@ using SaintHenriBasketball.Domain.Interfaces.Repositories;
 namespace SaintHenriBasketball.Application.Services.Implementations;
 public class PaymentService : IPaymentService
 {
+   private const string InteracReferenceRequiredMessage = "Enter a bank confirmation number of up to 80 characters";
+
    private readonly IPaymentRepository _paymentRepository;
    private readonly ISeasonRepository _seasonRepository;
    private readonly IUserRepository _userRepository;
@@ -21,6 +24,10 @@ public class PaymentService : IPaymentService
    private readonly ILogger<PaymentService> _logger;
    private readonly IEmailService _emailService;
    private readonly INotificationService _notificationService;
+   private readonly IPromoCodeRepository _promoCodeRepository;
+   private readonly IAccountCreditRepository _accountCreditRepository;
+   private readonly IReferralService _referralService;
+   private readonly IFeatureFlagService _featureFlagService;
 
    public PaymentService(
        IPaymentRepository paymentRepository,
@@ -31,7 +38,11 @@ public class PaymentService : IPaymentService
        ILogger<PaymentService> logger,
        IEmailService emailService,
        INotificationService notificationService,
-       ISeasonRepository seasonRepository)
+       ISeasonRepository seasonRepository,
+       IPromoCodeRepository promoCodeRepository,
+       IAccountCreditRepository accountCreditRepository,
+       IReferralService referralService,
+       IFeatureFlagService featureFlagService)
    {
        _paymentRepository = paymentRepository;
        _seasonRepository = seasonRepository;
@@ -42,6 +53,10 @@ public class PaymentService : IPaymentService
        _logger = logger;
        _emailService = emailService;
        _notificationService = notificationService;
+       _promoCodeRepository = promoCodeRepository;
+       _accountCreditRepository = accountCreditRepository;
+       _referralService = referralService;
+       _featureFlagService = featureFlagService;
    }
 
    public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto createPaymentDto)
@@ -52,13 +67,13 @@ public class PaymentService : IPaymentService
 
        await ValidateSeasonAsync(createPaymentDto.Plan, createPaymentDto.SeasonId);
        var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan) { SeasonId = createPaymentDto.SeasonId };
-       
+
        var reference = createPaymentDto.Plan == PaymentPlan.Season
            ? $"SEASON-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}"
            : $"DROPIN-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
-       
+
        payment.Reference = reference;
-       
+
        await _paymentRepository.AddAsync(payment);
 
        _logger.LogInformation("Payment created for user {UserId}", createPaymentDto.UserId);
@@ -76,7 +91,7 @@ public class PaymentService : IPaymentService
        var payment = await _paymentRepository.GetByIdAsync(id);
        if (payment == null)
            throw new NotFoundException($"Payment with ID {id} not found");
-           
+
        return _mapper.Map<PaymentDto>(payment);
    }
 
@@ -104,15 +119,7 @@ public class PaymentService : IPaymentService
        await _paymentRepository.UpdateAsync(payment);
        _logger.LogInformation("Payment {PaymentId} status updated to {Status}", id, status);
 
-       if (previousStatus != status)
-       {
-           var user = await _userRepository.GetByIdAsync(payment.UserId);
-           if (user != null)
-               await NotifyPaymentStatusChangeAsync(user, payment);
-           else
-               _logger.LogWarning(
-                   "Cannot send payment status notification: user {UserId} not found", payment.UserId);
-       }
+       await OnStatusSavedAsync(payment, previousStatus);
 
        return _mapper.Map<PaymentDto>(payment);
    }
@@ -120,7 +127,7 @@ public class PaymentService : IPaymentService
    public async Task<PaymentSummaryDto> GetPaymentSummaryAsync()
    {
        var payments = await _paymentRepository.GetAllAsync();
-       
+
        return new PaymentSummaryDto
        {
            TotalPayments = payments.Count(),
@@ -173,7 +180,7 @@ public class PaymentService : IPaymentService
    public async Task<PaymentReconciliationDto> ReconcilePaymentsAsync(DateTime startDate, DateTime endDate)
    {
        var payments = await _paymentRepository.GetPaymentsByDateRangeAsync(startDate, endDate);
-       
+
        return new PaymentReconciliationDto
        {
            StartDate = startDate,
@@ -202,22 +209,57 @@ public class PaymentService : IPaymentService
             throw new ValidationException("A session payment cannot be converted into a season payment.");
         payment.SeasonId = updatePaymentDto.SeasonId;
         var previousStatus = payment.Status;
+        // The admin edits the charged amount; keep Amount = OriginalAmount - DiscountAmount - CreditApplied true.
+        if (payment.OriginalAmount != null && payment.Amount != updatePaymentDto.Amount)
+            payment.OriginalAmount = updatePaymentDto.Amount + payment.DiscountAmount + payment.CreditApplied;
         payment.Amount = updatePaymentDto.Amount;
         payment.Plan = updatePaymentDto.Plan;
         payment.Status = updatePaymentDto.Status;
+        if (payment.Status == PaymentStatus.Completed && previousStatus != PaymentStatus.Completed)
+            payment.PaymentDate = DateTime.UtcNow;
         await _paymentRepository.UpdateAsync(payment);
 
-        if (previousStatus != payment.Status)
-        {
-            var user = await _userRepository.GetByIdAsync(payment.UserId);
-            if (user != null)
-                await NotifyPaymentStatusChangeAsync(user, payment);
-            else
-                _logger.LogWarning(
-                    "Cannot send payment status notification: user {UserId} not found", payment.UserId);
-        }
+        await OnStatusSavedAsync(payment, previousStatus);
 
         return _mapper.Map<PaymentDto>(payment);
+   }
+
+   /// <summary>
+   /// Side effects of a saved status. Ledger effects run on every save in the matching status —
+   /// both are idempotent — so re-saving the status retries one that failed; notifications are
+   /// sent only when the status actually changed.
+   /// </summary>
+   private async Task OnStatusSavedAsync(Payment payment, PaymentStatus previousStatus)
+   {
+       if (payment.Status == PaymentStatus.Completed)
+           await _referralService.GrantRewardForPaymentAsync(payment.UserId, payment.Id, payment.Amount, payment.PaymentDate);
+       else if (payment.Status is PaymentStatus.Failed or PaymentStatus.Refunded && payment.CreditApplied > 0)
+           await ReleaseCreditAsync(payment);
+
+       if (previousStatus == payment.Status) return;
+       var user = await _userRepository.GetByIdAsync(payment.UserId);
+       if (user != null)
+           await NotifyPaymentStatusChangeAsync(user, payment);
+       else
+           _logger.LogWarning(
+               "Cannot send payment status notification: user {UserId} not found", payment.UserId);
+   }
+
+   /// Gives back the credit a failed or refunded payment consumed. The promo use is not returned.
+   private async Task ReleaseCreditAsync(Payment payment)
+   {
+       try
+       {
+           var released = await _accountCreditRepository.TryAddAsync(
+               new AccountCredit(payment.UserId, payment.CreditApplied, AccountCreditKind.Released, paymentId: payment.Id));
+           if (released)
+               _logger.LogInformation("Released {Credit} credit from payment {PaymentId} ({Status})",
+                   payment.CreditApplied, payment.Id, payment.Status);
+       }
+       catch (Exception ex)
+       {
+           _logger.LogError(ex, "Failed to release credit for payment {PaymentId}; re-save its status to retry", payment.Id);
+       }
    }
 
    private async Task NotifyPaymentStatusChangeAsync(ApplicationUser user, Payment payment, string? failureReason = null)
@@ -272,22 +314,52 @@ public class PaymentService : IPaymentService
            throw new ValidationException("This session is cancelled");
        if (session.DropInPrice <= 0)
            throw new ValidationException("No payment is required for this session");
-       if (request.PaymentMethod == 0 && (string.IsNullOrWhiteSpace(request.InteracReference) || request.InteracReference.Trim().Length > 80))
-           throw new ValidationException("Enter a bank confirmation number of up to 80 characters");
+       var interacReference = request.InteracReference?.Trim();
+       if (request.PaymentMethod == 0)
+       {
+           if (interacReference?.Length > 80)
+               throw new ValidationException(InteracReferenceRequiredMessage);
+           // Credit or a promo can bring the total to zero, in which case there is nothing to transfer.
+           if (string.IsNullOrEmpty(interacReference))
+           {
+               var existing = await _paymentRepository.GetByUserAndSessionAsync(userId, request.SessionId);
+               await EnsureNothingToTransferAsync(userId, PaymentPlan.DropIn, existing, session.DropInPrice, request.PromoCode, InteracReferenceRequiredMessage);
+           }
+       }
+       else
+       {
+           // Checked read-only first so no promo use is reserved and no credit is debited for a charge Stripe would refuse.
+           var quote = await GetQuoteAsync(userId, new PaymentQuoteRequestDto { Plan = PaymentPlan.DropIn, SessionId = request.SessionId, PromoCode = request.PromoCode });
+           if (PaymentPricing.IsBelowCardMinimum(quote.Total))
+               throw new ValidationException(PaymentPricing.BelowCardMinimumMessage);
+       }
 
        var (payment, created) = await _paymentRepository.GetOrCreateSessionPaymentAsync(userId, request.SessionId, session.DropInPrice);
        if (payment.Status != PaymentStatus.Pending)
            throw new ValidationException("This payment is not pending. Check your payment history.");
+
+       await ApplyAdjustmentsAsync(payment, request.PromoCode);
+       if (IsSettledByAdjustments(payment))
+           return await UpdatePaymentStatusAsync(payment.Id, PaymentStatus.Completed);
+       // Credit can change between the quote and the adjustment; never hand Stripe a sub-minimum charge.
+       if (request.PaymentMethod != 0 && PaymentPricing.IsBelowCardMinimum(payment.Amount))
+           throw new ValidationException(PaymentPricing.BelowCardMinimumMessage);
+
        if (request.PaymentMethod == 0)
-           return await ConfirmInteracPaymentAsync(payment.Id, request.InteracReference!);
+       {
+           if (string.IsNullOrEmpty(interacReference))
+               throw new ValidationException(InteracReferenceRequiredMessage);
+           return await ConfirmInteracPaymentAsync(payment.Id, interacReference);
+       }
        if (payment.Reference?.Contains("|INTERAC:") == true)
            throw new ValidationException("Your Interac transfer is awaiting verification. Do not pay twice.");
 
-       return _mapper.Map<PaymentDto>(payment);
+       return _mapper.Map<PaymentDto>(await _paymentRepository.GetByIdAsync(payment.Id));
    }
 
    public async Task<PaymentDto> CreateSeasonPaymentAsync(Guid userId, CreateSeasonPaymentDto request)
    {
+       const string seasonReferenceMessage = "Enter a bank confirmation number of up to 80 characters.";
        var user = await _userRepository.GetByIdAsync(userId);
        if (user == null) throw new NotFoundException($"User with ID {userId} not found");
        if (user.PaymentPlan != PaymentPlan.Season) throw new ValidationException("Choose the Season plan before paying season fees.");
@@ -295,13 +367,24 @@ public class PaymentService : IPaymentService
        if (season == null) throw new NotFoundException($"Season with ID {request.SeasonId} not found");
        if (season.Price <= 0) throw new ValidationException("No payment is required for this season.");
        if (request.PaymentMethod != 0) throw new ValidationException("Interac is currently the available season payment method.");
-       if (string.IsNullOrWhiteSpace(request.InteracReference) || request.InteracReference.Trim().Length > 80)
-           throw new ValidationException("Enter a bank confirmation number of up to 80 characters.");
+       var interacReference = request.InteracReference?.Trim();
+       if (interacReference?.Length > 80)
+           throw new ValidationException(seasonReferenceMessage);
+       if (string.IsNullOrEmpty(interacReference))
+       {
+           var existing = await _paymentRepository.GetByUserAndSeasonAsync(userId, request.SeasonId);
+           await EnsureNothingToTransferAsync(userId, PaymentPlan.Season, existing, season.Price, request.PromoCode, seasonReferenceMessage);
+       }
 
        var (payment, _) = await _paymentRepository.GetOrCreateSeasonPaymentAsync(userId, request.SeasonId, season.Price);
-       if (payment.Status == PaymentStatus.Completed) return _mapper.Map<PaymentDto>(payment);
+       // Runs before the Completed short-circuit so a promo code sent for a settled payment is refused.
+       await ApplyAdjustmentsAsync(payment, request.PromoCode);
+       if (payment.Status == PaymentStatus.Completed) return _mapper.Map<PaymentDto>(await _paymentRepository.GetByIdAsync(payment.Id));
        if (payment.Status != PaymentStatus.Pending) throw new ValidationException("This season payment cannot be submitted. Contact the club.");
-       return await ConfirmInteracPaymentAsync(payment.Id, request.InteracReference);
+       if (IsSettledByAdjustments(payment))
+           return await UpdatePaymentStatusAsync(payment.Id, PaymentStatus.Completed);
+       if (string.IsNullOrEmpty(interacReference)) throw new ValidationException(seasonReferenceMessage);
+       return await ConfirmInteracPaymentAsync(payment.Id, interacReference);
    }
 
    public async Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference)
@@ -333,6 +416,158 @@ public class PaymentService : IPaymentService
            "Interac reference {Reference} attached to payment {PaymentId}", reference, paymentId);
 
        return _mapper.Map<PaymentDto>(payment);
+   }
+
+   public async Task<PaymentQuoteDto> GetQuoteAsync(Guid userId, PaymentQuoteRequestDto request)
+   {
+       Payment? existing;
+       decimal listPrice;
+       switch (request.Plan)
+       {
+           case PaymentPlan.DropIn:
+               if (request.SessionId is not Guid sessionId) throw new ValidationException("Select a session to quote.");
+               var session = await _sessionRepository.GetByIdAsync(sessionId)
+                   ?? throw new NotFoundException($"Session with ID {sessionId} not found");
+               existing = await _paymentRepository.GetByUserAndSessionAsync(userId, sessionId);
+               listPrice = session.DropInPrice;
+               break;
+           case PaymentPlan.Season:
+               if (request.SeasonId is not Guid seasonId) throw new ValidationException("Select a season to quote.");
+               var season = await _seasonRepository.GetByIdAsync(seasonId)
+                   ?? throw new NotFoundException($"Season with ID {seasonId} not found");
+               existing = await _paymentRepository.GetByUserAndSeasonAsync(userId, seasonId);
+               listPrice = season.Price;
+               break;
+           default:
+               throw new ValidationException("Unsupported payment plan.");
+       }
+
+       var pricing = await PriceAsync(userId, request.Plan, existing, listPrice, request.PromoCode);
+       return new PaymentQuoteDto
+       {
+           OriginalAmount = pricing.OriginalAmount,
+           DiscountAmount = pricing.DiscountAmount,
+           CreditApplied = pricing.CreditApplied,
+           Total = pricing.Total,
+           PromoCode = pricing.AppliedCode,
+           PromoError = pricing.PromoError,
+           Locked = pricing.Locked,
+       };
+   }
+
+   /// <param name="AppliedCode">Promo code the total includes (already on the payment, or newly valid).</param>
+   /// <param name="ReservePromoCodeId">Set when applying the pricing must reserve a new promo use.</param>
+   private sealed record Pricing(
+       decimal OriginalAmount, decimal DiscountAmount, decimal CreditApplied, decimal Total,
+       Guid? PromoCodeId, string? AppliedCode, Guid? ReservePromoCodeId, string? PromoError, bool Locked);
+
+   /// <summary>
+   /// Single source of the pricing rules; read-only. A locked payment keeps its stored values.
+   /// Otherwise: base = the payment's OriginalAmount ?? Amount (or the list price when there is no
+   /// payment yet), an already-applied promo and credit are kept, a new promo is evaluated only
+   /// while the promo-codes flag is on, and credit = min(balance, base - discount).
+   /// </summary>
+   private async Task<Pricing> PriceAsync(Guid userId, PaymentPlan plan, Payment? payment, decimal listPrice, string? promoCode)
+   {
+       var code = PaymentPricing.NormalizeCode(promoCode);
+       var existingCode = payment is null ? null : await GetAppliedPromoCodeAsync(payment);
+
+       if (payment != null && PaymentPricing.IsLocked(payment))
+       {
+           return new Pricing(payment.OriginalAmount ?? payment.Amount, payment.DiscountAmount, payment.CreditApplied, payment.Amount,
+               payment.PromoCodeId, existingCode, null,
+               code != null && code != existingCode ? PaymentPricing.PaymentLockedMessage : null, Locked: true);
+       }
+
+       var original = payment?.OriginalAmount ?? payment?.Amount ?? listPrice;
+       var discount = payment?.DiscountAmount ?? 0m;
+       var promoCodeId = payment?.PromoCodeId;
+       var appliedCode = existingCode;
+       Guid? reserve = null;
+       string? promoError = null;
+
+       if (code != null && code != existingCode)
+       {
+           if (promoCodeId != null)
+               promoError = PaymentPricing.PromoAlreadyAppliedMessage;
+           else if (!await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.PromoCodes))
+               promoError = PaymentPricing.PromoCodesUnavailableMessage;
+           else
+           {
+               var promo = await _promoCodeRepository.GetByCodeAsync(code);
+               promoError = PaymentPricing.GetIneligibilityReason(promo, plan, DateTime.UtcNow);
+               if (promoError == null)
+               {
+                   discount = PaymentPricing.CalculateDiscount(promo!, original);
+                   promoCodeId = promo!.Id;
+                   appliedCode = promo.Code;
+                   reserve = promo.Id;
+               }
+           }
+       }
+
+       var credit = payment?.CreditApplied ?? 0m;
+       if (credit == 0)
+       {
+           var balance = PaymentPricing.RoundCents(await _accountCreditRepository.GetBalanceAsync(userId));
+           credit = Math.Clamp(balance, 0m, Math.Max(0m, original - discount));
+       }
+
+       var total = Math.Max(0m, PaymentPricing.RoundCents(original - discount - credit));
+       return new Pricing(original, discount, credit, total, promoCodeId, appliedCode, reserve, promoError, Locked: false);
+   }
+
+   /// <summary>
+   /// Applies the promo code and available credit to a payment the caller just got or created.
+   /// Throws ValidationException when the promo cannot be used or the payment changed underneath;
+   /// in that case nothing was written. On success <paramref name="payment"/> holds the new values.
+   /// </summary>
+   private async Task ApplyAdjustmentsAsync(Payment payment, string? promoCode)
+   {
+       var pricing = await PriceAsync(payment.UserId, payment.Plan, payment, payment.Amount, promoCode);
+       if (pricing.PromoError != null) throw new ValidationException(pricing.PromoError);
+       if (pricing.Locked) return;
+
+       var unchanged = pricing.PromoCodeId == payment.PromoCodeId
+           && pricing.DiscountAmount == payment.DiscountAmount
+           && pricing.CreditApplied == payment.CreditApplied
+           && pricing.Total == payment.Amount
+           && pricing.OriginalAmount == (payment.OriginalAmount ?? payment.Amount);
+       if (unchanged) return;
+
+       var result = await _paymentRepository.TryApplyAdjustmentsAsync(payment, new PaymentAdjustment(
+           pricing.OriginalAmount, pricing.DiscountAmount, pricing.CreditApplied,
+           pricing.PromoCodeId, pricing.ReservePromoCodeId, pricing.Total));
+       switch (result)
+       {
+           case PaymentAdjustmentResult.PromoUnavailable:
+               throw new ValidationException(PaymentPricing.PromoUsageLimitMessage);
+           case PaymentAdjustmentResult.PaymentChanged:
+               throw new ValidationException(PaymentPricing.PaymentChangedMessage);
+       }
+
+       _logger.LogInformation(
+           "Payment {PaymentId} adjusted: original {Original}, discount {Discount} (promo {PromoCode}), credit {Credit}, total {Total}",
+           payment.Id, pricing.OriginalAmount, pricing.DiscountAmount, pricing.AppliedCode, pricing.CreditApplied, pricing.Total);
+   }
+
+   /// Rejects a request without an Interac reference unless the discount and credit cover the whole price.
+   private async Task EnsureNothingToTransferAsync(Guid userId, PaymentPlan plan, Payment? existing, decimal listPrice, string? promoCode, string referenceMessage)
+   {
+       var pricing = await PriceAsync(userId, plan, existing, listPrice, promoCode);
+       if (pricing.PromoError != null) throw new ValidationException(pricing.PromoError);
+       if (pricing.Total > 0) throw new ValidationException(referenceMessage);
+   }
+
+   /// A Pending payment that the promo discount and/or credit fully cover; it completes without Interac or Stripe.
+   private static bool IsSettledByAdjustments(Payment payment) =>
+       payment.Status == PaymentStatus.Pending && payment.Amount == 0
+       && (payment.DiscountAmount > 0 || payment.CreditApplied > 0);
+
+   private async Task<string?> GetAppliedPromoCodeAsync(Payment payment)
+   {
+       if (payment.PromoCodeId is not Guid promoCodeId) return null;
+       return payment.PromoCode?.Code ?? (await _promoCodeRepository.GetByIdAsync(promoCodeId))?.Code;
    }
 
    public async Task<DropInPaymentLinkDto> GetDropInPaymentLinkAsync(Guid userId, Guid sessionId)

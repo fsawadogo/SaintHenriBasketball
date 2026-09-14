@@ -6,6 +6,8 @@ public class ReferralCodeDto
     public int TimesUsed { get; set; }
     public int? MaxUses { get; set; }
     public string ShareUrl { get; set; } = string.Empty;
+    /// Credit (CAD) the owner earns when a referred player completes their first paid payment.
+    public decimal RewardAmount { get; set; }
 }
 
 public class RedeemReferralCodeDto

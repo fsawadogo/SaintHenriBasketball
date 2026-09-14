@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.PromoCodes;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
@@ -9,6 +10,8 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 
 public class PromoCodeService : IPromoCodeService
 {
+    private const int MaxCodeLength = 32; // PromoCodes.Code column length
+
     private readonly IPromoCodeRepository _repository;
     private readonly ILogger<PromoCodeService> _logger;
 
@@ -34,7 +37,9 @@ public class PromoCodeService : IPromoCodeService
         var entity = new PromoCode(code, body.DiscountType, body.DiscountValue,
             body.ValidFrom, body.ValidUntil, body.AppliesTo, body.MaxUses, body.IsActive);
 
-        await _repository.AddAsync(entity);
+        // The pre-check above can race another admin creating the same code.
+        if (!await _repository.TryAddAsync(entity))
+            throw new ValidationException("A promo code with that value already exists");
         return ToDto(entity);
     }
 
@@ -60,11 +65,16 @@ public class PromoCodeService : IPromoCodeService
     {
         var entity = await _repository.GetByIdAsync(id)
             ?? throw new NotFoundException($"Promo code {id} not found");
+        if (await _repository.IsUsedByPaymentsAsync(entity.Id))
+            throw new ValidationException("This promo code has been used on payments. Deactivate it instead of deleting it.");
         await _repository.DeleteAsync(entity.Id);
     }
 
     public async Task<ValidatePromoCodeResultDto> ValidateAsync(ValidatePromoCodeDto body)
     {
+        if (body.Amount < 0)
+            throw new ValidationException("Amount cannot be negative");
+
         var result = new ValidatePromoCodeResultDto
         {
             OriginalAmount = body.Amount,
@@ -93,9 +103,7 @@ public class PromoCodeService : IPromoCodeService
             return result;
         }
 
-        var discount = promo.DiscountType == PromoDiscountType.Percent
-            ? Math.Round(body.Amount * (promo.DiscountValue / 100m), 2)
-            : Math.Min(promo.DiscountValue, body.Amount);
+        var discount = PaymentPricing.CalculateDiscount(promo, body.Amount);
 
         result.Valid = true;
         result.DiscountAmount = discount;
@@ -107,10 +115,18 @@ public class PromoCodeService : IPromoCodeService
     {
         if (string.IsNullOrWhiteSpace(body.Code))
             throw new ValidationException("Code is required");
+        if (body.Code.Trim().Length > MaxCodeLength)
+            throw new ValidationException($"Code cannot be longer than {MaxCodeLength} characters");
+        if (!Enum.IsDefined(body.DiscountType))
+            throw new ValidationException("Discount type must be Percent (0) or Fixed (1)");
+        if (!Enum.IsDefined(body.AppliesTo))
+            throw new ValidationException("Applies-to must be DropIn (0), Season (1) or Both (2)");
         if (body.DiscountValue <= 0)
             throw new ValidationException("Discount value must be positive");
         if (body.DiscountType == PromoDiscountType.Percent && body.DiscountValue > 100)
             throw new ValidationException("Percentage discount cannot exceed 100");
+        if (body.MaxUses is < 1)
+            throw new ValidationException("Max uses must be at least 1 when set");
         if (body.ValidUntil <= body.ValidFrom)
             throw new ValidationException("Valid-until must be after valid-from");
     }
