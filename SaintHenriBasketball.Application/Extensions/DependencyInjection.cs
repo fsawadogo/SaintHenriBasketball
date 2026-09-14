@@ -12,6 +12,9 @@ public static class DependencyInjection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<SaintHenriBasketball.Application.Helpers.AttendanceLinks>();
+        services.AddScoped<SaintHenriBasketball.Application.Helpers.UnsubscribeLinks>();
+        services.AddSingleton<BroadcastQueue>();
+        services.AddHostedService<BroadcastWorker>();
         services.AddAutoMapper(cfg => { }, Assembly.GetExecutingAssembly());
 
         services.AddScoped<IUserService, UserService>();
@@ -41,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IPromoCodeService, PromoCodeService>();
         services.AddScoped<IWaiverService, WaiverService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IAccountCreditService, AccountCreditService>();
         // `Sms:Provider` in configuration picks the impl (Twilio, Brevo, or log-only by default)
         // so development doesn't require provider credentials. BrevoSmsService is registered
         // as a typed HttpClient in the API's Program.cs.

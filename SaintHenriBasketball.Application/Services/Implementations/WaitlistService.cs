@@ -25,6 +25,7 @@ public class WaitlistService : IWaitlistService
 {
 
     private readonly IParticipationRepository _participation;
+    private readonly IWaiverService _waiverService;
 
     private readonly IConfiguration _configuration;
 
@@ -44,7 +45,7 @@ public class WaitlistService : IWaitlistService
 
     public WaitlistService(
 
-        IParticipationRepository participation, IConfiguration configuration, INotificationService notifications,
+        IParticipationRepository participation, IConfiguration configuration, INotificationService notifications, IWaiverService waiverService,
 
         IWaitlistRepository waitlistRepository,
 
@@ -58,7 +59,7 @@ public class WaitlistService : IWaitlistService
 
     {
 
-        _participation = participation; _configuration = configuration; _notifications = notifications;
+        _participation = participation; _configuration = configuration; _notifications = notifications; _waiverService = waiverService;
 
         _waitlistRepository = waitlistRepository;
 
@@ -78,6 +79,7 @@ public class WaitlistService : IWaitlistService
 
     {
 
+        await _waiverService.EnsureAcceptedAsync(userId);
         var entry = await _participation.JoinWaitlistAsync(request.SessionId, userId, request.Notes);
 
         await PromoteNextAsync(request.SessionId);

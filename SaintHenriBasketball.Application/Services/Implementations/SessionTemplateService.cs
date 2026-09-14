@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.SessionTemplate;
 using SaintHenriBasketball.Application.Exceptions;
@@ -10,6 +11,7 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 public class SessionTemplateService : ISessionTemplateService
 {
     private const int MaxGenerateRangeDays = 366;
+    private static readonly string[] TimeFormats = { @"h\:mm", @"hh\:mm", @"h\:mm\:ss", @"hh\:mm\:ss" };
 
     private readonly ISessionTemplateRepository _templateRepository;
     private readonly ISessionRepository _sessionRepository;
@@ -33,9 +35,9 @@ public class SessionTemplateService : ISessionTemplateService
 
     public async Task<SessionTemplateDto> CreateAsync(UpsertSessionTemplateDto body)
     {
-        ValidateTimeSlot(body);
+        var (startTime, endTime) = ValidateTimeSlot(body);
         var template = new SessionTemplate(
-            body.DayOfWeek, body.StartTime, body.EndTime, body.Location,
+            body.DayOfWeek, startTime, endTime, body.Location,
             body.MaxCapacity, body.DropInPrice)
         { IsActive = body.IsActive };
 
@@ -45,13 +47,13 @@ public class SessionTemplateService : ISessionTemplateService
 
     public async Task<SessionTemplateDto> UpdateAsync(Guid id, UpsertSessionTemplateDto body)
     {
-        ValidateTimeSlot(body);
+        var (startTime, endTime) = ValidateTimeSlot(body);
         var template = await _templateRepository.GetByIdAsync(id)
             ?? throw new NotFoundException($"Session template {id} not found");
 
         template.DayOfWeek = body.DayOfWeek;
-        template.StartTime = body.StartTime;
-        template.EndTime = body.EndTime;
+        template.StartTime = startTime;
+        template.EndTime = endTime;
         template.Location = body.Location;
         template.MaxCapacity = body.MaxCapacity;
         template.DropInPrice = body.DropInPrice;
@@ -82,15 +84,16 @@ public class SessionTemplateService : ISessionTemplateService
 
         var existingSessions = await _sessionRepository.GetAllSessionsAsync();
         var existingKeys = existingSessions
-            .Select(s => (s.SessionDate.Date, s.StartTime))
+            .Select(s => (s.SessionDate.Date, NormalizeTime(s.StartTime)))
             .ToHashSet();
+        var templateStart = NormalizeTime(template.StartTime);
 
         var result = new GenerateSessionsResultDto();
         for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
         {
             if (date.DayOfWeek != template.DayOfWeek) continue;
 
-            if (existingKeys.Contains((date, template.StartTime)))
+            if (existingKeys.Contains((date, templateStart)))
             {
                 result.Skipped++;
                 result.SkippedDates.Add(date);
@@ -117,15 +120,29 @@ public class SessionTemplateService : ISessionTemplateService
         return result;
     }
 
-    private static void ValidateTimeSlot(UpsertSessionTemplateDto body)
+    /// Returns the start and end times normalised to HH:mm.
+    private static (string StartTime, string EndTime) ValidateTimeSlot(UpsertSessionTemplateDto body)
     {
         if (string.IsNullOrWhiteSpace(body.StartTime) || string.IsNullOrWhiteSpace(body.EndTime))
             throw new ValidationException("Start and end times are required");
+        if (!TryParseTime(body.StartTime, out var start) || !TryParseTime(body.EndTime, out var end))
+            throw new ValidationException("Start and end times must be valid times (HH:mm)");
+        if (end <= start)
+            throw new ValidationException("End time must be after start time");
         if (body.MaxCapacity <= 0)
             throw new ValidationException("Max capacity must be greater than zero");
         if (body.DropInPrice < 0)
             throw new ValidationException("Drop-in price must not be negative");
+        return (start.ToString(@"hh\:mm"), end.ToString(@"hh\:mm"));
     }
+
+    private static bool TryParseTime(string? value, out TimeSpan time) =>
+        TimeSpan.TryParseExact(value?.Trim(), TimeFormats, CultureInfo.InvariantCulture, out time)
+        && time < TimeSpan.FromDays(1);
+
+    // Stored session times mix "10:00" and "10:00:00", so compare them as HH:mm.
+    private static string? NormalizeTime(string? value) =>
+        TryParseTime(value, out var time) ? time.ToString(@"hh\:mm") : value?.Trim();
 
     private static SessionTemplateDto ToDto(SessionTemplate t) => new()
     {

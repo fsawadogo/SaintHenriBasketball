@@ -42,11 +42,13 @@ public class FeatureFlagService : IFeatureFlagService
         return flags.Values.Select(ToDto).ToList();
     }
 
-    public async Task<IReadOnlyDictionary<string, bool>> GetPublicFlagsAsync()
+    public Task<IReadOnlyDictionary<string, bool>> GetPublicFlagsAsync() => GetClientFlagsAsync(includeAdminOnly: false);
+
+    public async Task<IReadOnlyDictionary<string, bool>> GetClientFlagsAsync(bool includeAdminOnly)
     {
         var flags = await GetAllFlagsCachedAsync();
         return flags.Values
-            .Where(f => f.IsPublic)
+            .Where(f => includeAdminOnly || f.IsPublic)
             .ToDictionary(f => f.Key, f => f.Enabled);
     }
 

@@ -31,9 +31,9 @@ public class TaxReceiptsController : BaseApiController
         return Ok(years);
     }
 
+    // No [Produces("application/pdf")]: it forced the 404 message through PDF negotiation, returning 406.
     [HttpGet("api/v{version:apiVersion}/users/me/tax-receipts/{year:int}/pdf")]
-    [Produces("application/pdf")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadPdf(int year)
     {
