@@ -20,6 +20,7 @@ public class SessionService : ISessionService
     private readonly ILogger<SessionService> _logger;
     private readonly ICacheService _cacheService;
     private readonly IParticipationRepository _participation;
+    private readonly IWaiverService _waiverService;
 
     // Cache keys
     private const string UpcomingSessionsCacheKey = "UpcomingSessions";
@@ -33,8 +34,9 @@ public class SessionService : ISessionService
         IWaitlistService waitlistService,
         IMapper mapper,
         ILogger<SessionService> logger,
-        ICacheService cacheService, IParticipationRepository participation)
+        ICacheService cacheService, IParticipationRepository participation, IWaiverService waiverService)
     {
+        _waiverService = waiverService;
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
         _userRepository = userRepository;
@@ -200,6 +202,7 @@ public class SessionService : ISessionService
 
     public async Task<SessionRegistrationResponseDto> RegisterForSessionAsync(Guid sessionId, Guid userId)
     {
+        await _waiverService.EnsureAcceptedAsync(userId);
         var registration = await _participation.ReserveAsync(sessionId, userId);
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);

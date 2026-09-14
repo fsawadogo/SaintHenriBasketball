@@ -22,6 +22,17 @@ public class Payment
     public Guid? SeasonId { get; set; }
     public Season? Season { get; set; }
 
+    /// <summary>
+    /// List price before any promo discount or account credit. Null on payments that were never
+    /// adjusted; read it as <c>OriginalAmount ?? Amount</c>. <see cref="Amount"/> is always what is
+    /// charged: OriginalAmount - DiscountAmount - CreditApplied.
+    /// </summary>
+    public decimal? OriginalAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal CreditApplied { get; set; }
+    public Guid? PromoCodeId { get; set; }
+    public PromoCode? PromoCode { get; set; }
+
     private Payment() { } // For EF Core
 
     public Payment(Guid userId, decimal amount, PaymentPlan plan)

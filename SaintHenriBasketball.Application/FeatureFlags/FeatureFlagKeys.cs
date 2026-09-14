@@ -43,4 +43,5 @@ public static class FeatureFlagKeys
     public const string SessionAttendees = "session-attendees";
     public const string SeasonPaymentReminders = "season-payment-reminders";
     public const string InteracReviewQueue = "interac-review-queue";
+    public const string SeasonCardPayments = "season-card-payments";
 }

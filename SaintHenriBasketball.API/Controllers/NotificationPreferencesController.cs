@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.Notifications;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -19,6 +20,36 @@ public class NotificationPreferencesController : BaseApiController
     {
         _userRepository = userRepository;
         _logger = logger;
+    }
+
+    public record UnsubscribeRequest(string Token);
+
+    /// Checks an emailed unsubscribe link without changing anything: mail scanners open GET links.
+    [HttpGet("api/v{version:apiVersion}/notification-preferences/unsubscribe")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult PreviewUnsubscribe([FromQuery] string? token, [FromServices] UnsubscribeLinks links) =>
+        links.Validate(token) is null ? BadRequest("This link is invalid or expired.") : Ok(new { valid = true });
+
+    /// Turns off community updates (club broadcasts) for the user the signed link belongs to.
+    [HttpPost("api/v{version:apiVersion}/notification-preferences/unsubscribe")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Unsubscribe([FromBody] UnsubscribeRequest request, [FromServices] UnsubscribeLinks links)
+    {
+        var data = links.Validate(request.Token);
+        if (data is null) return BadRequest("This link is invalid or expired.");
+        var user = await _userRepository.GetByIdAsync(data.UserId);
+        if (user is null) return NotFound();
+        if (user.CommunityUpdatesEnabled)
+        {
+            user.CommunityUpdatesEnabled = false;
+            await _userRepository.UpdateAsync(user);
+            _logger.LogInformation("User {UserId} unsubscribed from community updates via email link", user.Id);
+        }
+        return NoContent();
     }
 
     [HttpGet("api/v{version:apiVersion}/users/me/notification-preferences")]

@@ -23,10 +23,19 @@ public class PromoCodeRepository : IPromoCodeRepository
     public async Task<PromoCode?> GetByCodeAsync(string code) =>
         await _context.PromoCodes.FirstOrDefaultAsync(p => p.Code == code);
 
-    public async Task AddAsync(PromoCode promoCode)
+    public async Task<bool> TryAddAsync(PromoCode promoCode)
     {
         await _context.PromoCodes.AddAsync(promoCode);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException ex) when (DbUpdateExceptions.IsUniqueViolation(ex))
+        {
+            DbUpdateExceptions.Detach(_context, promoCode);
+            return false;
+        }
     }
 
     public async Task UpdateAsync(PromoCode promoCode)
@@ -42,4 +51,7 @@ public class PromoCodeRepository : IPromoCodeRepository
         _context.PromoCodes.Remove(entity);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<bool> IsUsedByPaymentsAsync(Guid id) =>
+        await _context.Payments.AnyAsync(p => p.PromoCodeId == id);
 }

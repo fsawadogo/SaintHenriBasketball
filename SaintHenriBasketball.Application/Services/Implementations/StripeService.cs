@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Settings;
+using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using Stripe;
@@ -13,6 +15,7 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 public class StripeService : IStripeService
 {
     private readonly ISessionRepository _sessionRepository;
+    private readonly ISeasonRepository _seasonRepository;
     private readonly IUserRepository _userRepository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly StripeSettings _stripeSettings;
@@ -20,12 +23,14 @@ public class StripeService : IStripeService
 
     public StripeService(
         ISessionRepository sessionRepository,
+        ISeasonRepository seasonRepository,
         IUserRepository userRepository,
         IPaymentRepository paymentRepository,
         IOptions<StripeSettings> stripeSettings,
         ILogger<StripeService> logger)
     {
         _sessionRepository = sessionRepository;
+        _seasonRepository = seasonRepository;
         _userRepository = userRepository;
         _paymentRepository = paymentRepository;
         _stripeSettings = stripeSettings.Value;
@@ -38,6 +43,35 @@ public class StripeService : IStripeService
         if (session == null)
             throw new NotFoundException($"Session {sessionId} not found");
 
+        var sessionDate = session.SessionDate.ToString("MMM d, yyyy");
+        return await CreateAsync(userId, paymentId,
+            name: $"Drop-In Basketball - {sessionDate}",
+            description: $"{session.StartTime} - {session.EndTime} at {session.Location}",
+            metadataKey: "sessionId", metadataValue: sessionId,
+            successUrl: _stripeSettings.SuccessUrl.Replace("{SESSION_ID}", sessionId.ToString()),
+            cancelUrl: _stripeSettings.CancelUrl.Replace("{SESSION_ID}", sessionId.ToString()),
+            idempotencyPrefix: "drop-in");
+    }
+
+    public async Task<string> CreateSeasonCheckoutSessionAsync(Guid userId, Guid seasonId, Guid paymentId)
+    {
+        var season = await _seasonRepository.GetByIdAsync(seasonId);
+        if (season == null)
+            throw new NotFoundException($"Season {seasonId} not found");
+
+        var seasonName = string.IsNullOrWhiteSpace(season.Name) ? "Season" : season.Name;
+        return await CreateAsync(userId, paymentId,
+            name: $"Season Pass - {seasonName}",
+            description: $"{season.StartDate:MMM d, yyyy} - {season.EndDate:MMM d, yyyy}",
+            metadataKey: "seasonId", metadataValue: seasonId,
+            successUrl: _stripeSettings.SeasonSuccessUrl.Replace("{SEASON_ID}", seasonId.ToString()),
+            cancelUrl: _stripeSettings.SeasonCancelUrl.Replace("{SEASON_ID}", seasonId.ToString()),
+            idempotencyPrefix: "season");
+    }
+
+    private async Task<string> CreateAsync(Guid userId, Guid paymentId, string name, string description,
+        string metadataKey, Guid metadataValue, string successUrl, string cancelUrl, string idempotencyPrefix)
+    {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
             throw new NotFoundException($"User {userId} not found");
@@ -45,13 +79,8 @@ public class StripeService : IStripeService
         var payment = await _paymentRepository.GetByIdAsync(paymentId);
         if (payment == null)
             throw new NotFoundException($"Payment {paymentId} not found");
-
-        var amount = payment.Amount;
-        var amountInCents = (long)(amount * 100);
-
-        var sessionDate = session.SessionDate.ToString("MMM d, yyyy");
-        var successUrl = _stripeSettings.SuccessUrl.Replace("{SESSION_ID}", sessionId.ToString());
-        var cancelUrl = _stripeSettings.CancelUrl.Replace("{SESSION_ID}", sessionId.ToString());
+        if (payment.UserId != userId || !BelongsTo(payment, metadataKey, metadataValue))
+            throw new ValidationException("This payment does not match the checkout request.");
 
         var options = new StripeCheckout.SessionCreateOptions
         {
@@ -64,11 +93,11 @@ public class StripeService : IStripeService
                     PriceData = new StripeCheckout.SessionLineItemPriceDataOptions
                     {
                         Currency = "cad",
-                        UnitAmount = amountInCents,
+                        UnitAmount = StripeCheckoutMatch.ToCents(payment.Amount),
                         ProductData = new StripeCheckout.SessionLineItemPriceDataProductDataOptions
                         {
-                            Name = $"Drop-In Basketball - {sessionDate}",
-                            Description = $"{session.StartTime} - {session.EndTime} at {session.Location}",
+                            Name = name,
+                            Description = description,
                         },
                     },
                     Quantity = 1,
@@ -78,14 +107,14 @@ public class StripeService : IStripeService
             {
                 { "paymentId", paymentId.ToString() },
                 { "userId", userId.ToString() },
-                { "sessionId", sessionId.ToString() },
+                { metadataKey, metadataValue.ToString() },
             },
             SuccessUrl = successUrl,
             CancelUrl = cancelUrl,
         };
 
         var service = new StripeCheckout.SessionService();
-        var checkoutSession = await service.CreateAsync(options, new RequestOptions { IdempotencyKey = $"drop-in-{payment.Id}" });
+        var checkoutSession = await service.CreateAsync(options, new RequestOptions { IdempotencyKey = $"{idempotencyPrefix}-{payment.Id}" });
 
         // Store the Stripe Checkout Session ID in the payment reference
         if (!await _paymentRepository.TrySetPendingReferenceAsync(payment.Id, payment.Reference, checkoutSession.Id))
@@ -97,4 +126,8 @@ public class StripeService : IStripeService
 
         return checkoutSession.Url;
     }
+
+    private static bool BelongsTo(Payment payment, string metadataKey, Guid id) => metadataKey == "seasonId"
+        ? payment.Plan == PaymentPlan.Season && payment.SeasonId == id
+        : payment.SessionId == id;
 }

@@ -5,6 +5,7 @@ using SaintHenriBasketball.Application.DTOs.Broadcast;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using System.Security.Claims;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -31,14 +32,15 @@ public class BroadcastController : BaseApiController
     }
 
     [HttpPost("send")]
-    [ProducesResponseType(typeof(SendBroadcastResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SendBroadcastResultDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SendBroadcastResultDto>> Send([FromBody] SendBroadcastRequestDto body)
     {
         try
         {
-            var result = await _broadcastService.SendAsync(body);
-            return Ok(result);
+            var adminName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue(ClaimTypes.Email) ?? "Admin";
+            var result = await _broadcastService.QueueAsync(body, GetUserId(), adminName);
+            return Accepted(result);
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }
     }
