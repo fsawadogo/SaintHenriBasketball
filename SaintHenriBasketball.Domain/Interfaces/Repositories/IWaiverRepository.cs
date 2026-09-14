@@ -11,5 +11,6 @@ public interface IWaiverRepository
     Task UpdateTemplateAsync(WaiverTemplate template);
 
     Task<WaiverAcceptance?> GetAcceptanceAsync(Guid userId, int version);
+    Task<IReadOnlyList<WaiverAcceptance>> GetAcceptancesAsync(int version);
     Task AddAcceptanceAsync(WaiverAcceptance acceptance);
 }

@@ -22,39 +22,7 @@ public class AdminController : ControllerBase
         _logger = logger;
     }
 
-    #region Audit Log
-
-    [HttpGet("audit-log")]
-    public async Task<IActionResult> GetAuditLog(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] string? entityType = null,
-        [FromQuery] string? action = null,
-        [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null)
-    {
-        var query = _db.AuditLogs.AsQueryable();
-
-        if (!string.IsNullOrEmpty(entityType))
-            query = query.Where(a => a.EntityType == entityType);
-        if (!string.IsNullOrEmpty(action))
-            query = query.Where(a => a.Action.Contains(action));
-        if (from.HasValue)
-            query = query.Where(a => a.CreatedAt >= from.Value);
-        if (to.HasValue)
-            query = query.Where(a => a.CreatedAt <= to.Value);
-
-        var total = await query.CountAsync();
-        var items = await query
-            .OrderByDescending(a => a.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return Ok(new { items, total, page, pageSize });
-    }
-
-    #endregion
+    // The audit log is served by AuditLogController, behind the audit-log-viewer flag.
 
     #region User Notes
 

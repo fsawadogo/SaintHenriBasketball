@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using SaintHenriBasketball.Application.DTOs.QrCheckIn;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
@@ -16,7 +17,8 @@ public class QrCheckInService : IQrCheckInService
 {
     private const string Audience = "shb-qr-checkin";
     private const string SessionClaim = "session_id";
-    private static readonly TimeSpan TokenLifetime = TimeSpan.FromHours(24);
+    // Codes can be printed ahead of time: a token stays valid until shortly after its session ends.
+    private static readonly TimeSpan ExpiryGrace = TimeSpan.FromMinutes(30);
 
     private readonly IConfiguration _configuration;
     private readonly IParticipationRepository _participation;
@@ -49,7 +51,8 @@ public class QrCheckInService : IQrCheckInService
         var session = await _sessionRepository.GetByIdAsync(sessionId)
             ?? throw new NotFoundException($"Session {sessionId} not found");
 
-        var expiresAt = DateTime.UtcNow.Add(TokenLifetime);
+        var sessionEndUtc = SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(session.SessionDate, session.EndTime, fallbackHour: 12));
+        var expiresAt = (sessionEndUtc > DateTime.UtcNow ? sessionEndUtc : DateTime.UtcNow).Add(ExpiryGrace);
         var token = WriteToken(sessionId, expiresAt);
 
         var url = $"{checkInBaseUrl.TrimEnd('/')}/check-in?token={Uri.EscapeDataString(token)}";

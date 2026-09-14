@@ -23,6 +23,7 @@ public class BroadcastService : IBroadcastService
     private readonly INotificationService _notificationService;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly UnsubscribeLinks _unsubscribeLinks;
+    private readonly BroadcastQueue _queue;
     private readonly ILogger<BroadcastService> _logger;
 
     public BroadcastService(
@@ -33,6 +34,7 @@ public class BroadcastService : IBroadcastService
         INotificationService notificationService,
         IAuditLogRepository auditLogRepository,
         UnsubscribeLinks unsubscribeLinks,
+        BroadcastQueue queue,
         ILogger<BroadcastService> logger)
     {
         _userRepository = userRepository;
@@ -42,53 +44,64 @@ public class BroadcastService : IBroadcastService
         _notificationService = notificationService;
         _auditLogRepository = auditLogRepository;
         _unsubscribeLinks = unsubscribeLinks;
+        _queue = queue;
         _logger = logger;
     }
 
     public async Task<BroadcastAudiencePreviewDto> PreviewAudienceAsync(BroadcastAudience audience)
     {
-        var recipients = await ResolveAudienceAsync(audience);
+        var emailRecipients = (await ResolveAudienceAsync(audience)).Where(ReceivesEmail).ToList();
         return new BroadcastAudiencePreviewDto
         {
-            RecipientCount = recipients.Count,
-            SampleEmails = recipients
-                .Where(u => !string.IsNullOrEmpty(u.Email))
+            RecipientCount = emailRecipients.Count,
+            SampleEmails = emailRecipients
                 .Take(PreviewSampleSize)
                 .Select(u => u.Email!)
                 .ToList(),
         };
     }
 
-    public async Task<SendBroadcastResultDto> SendAsync(SendBroadcastRequestDto request, Guid? adminId, string adminName)
+    public async Task<SendBroadcastResultDto> QueueAsync(SendBroadcastRequestDto request, Guid? adminId, string adminName)
     {
         if (string.IsNullOrWhiteSpace(request.Subject))
             throw new ValidationException("Subject is required");
         if (string.IsNullOrWhiteSpace(request.BodyEn))
             throw new ValidationException("English body is required");
 
-        var recipients = await ResolveAudienceAsync(request.Audience);
-        var result = new SendBroadcastResultDto { Attempted = recipients.Count };
+        var emailRecipients = (await ResolveAudienceAsync(request.Audience)).Count(ReceivesEmail);
+        await _queue.EnqueueAsync(new QueuedBroadcast(request, adminId, adminName));
+        _logger.LogInformation("Broadcast queued — audience {Audience}, {Recipients} email recipients", request.Audience, emailRecipients);
+        return new SendBroadcastResultDto { Attempted = emailRecipients, Queued = true };
+    }
 
-        foreach (var user in recipients)
+    public async Task<SendBroadcastResultDto> DeliverAsync(QueuedBroadcast broadcast)
+    {
+        var request = broadcast.Request;
+        var audience = await ResolveAudienceAsync(request.Audience);
+        var result = new SendBroadcastResultDto { Attempted = audience.Count(ReceivesEmail) };
+
+        foreach (var user in audience)
         {
-            if (string.IsNullOrEmpty(user.Email)) continue;
             var french = user.PreferredLanguage == EmailLanguage.French;
             var subject = french && !string.IsNullOrWhiteSpace(request.SubjectFr) ? request.SubjectFr! : request.Subject;
             var body = french && !string.IsNullOrWhiteSpace(request.BodyFr) ? request.BodyFr! : request.BodyEn;
-            try
+
+            if (ReceivesEmail(user))
             {
-                var html = BuildEmailHtml(subject, body, _unsubscribeLinks.CreateUrl(user.Id), user.PreferredLanguage);
-                await _emailService.SendEmailAsync(user.Email, subject, html);
-                result.Succeeded++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Broadcast send failed for {Email}", user.Email);
-                result.Failed++;
+                try
+                {
+                    var html = BuildEmailHtml(subject, body, _unsubscribeLinks.CreateUrl(user.Id), user.PreferredLanguage);
+                    await _emailService.SendEmailAsync(user.Email, subject, html);
+                    result.Succeeded++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Broadcast send failed for {Email}", user.Email);
+                    result.Failed++;
+                }
             }
 
-            // Audience filter upstream excludes EmailNotificationsEnabled=false users —
-            // so opting out of email broadcasts also suppresses the in-app mirror.
+            // The in-app copy follows the user's in-app preference (checked by NotificationService), not email opt-in.
             await _notificationService.CreateAsync(
                 user.Id,
                 Domain.Entities.NotificationType.AdminBroadcast,
@@ -98,12 +111,15 @@ public class BroadcastService : IBroadcastService
         }
 
         _logger.LogInformation(
-            "Broadcast sent — audience {Audience}, attempted {Attempted}, succeeded {Succeeded}, failed {Failed}",
+            "Broadcast delivered — audience {Audience}, attempted {Attempted}, succeeded {Succeeded}, failed {Failed}",
             request.Audience, result.Attempted, result.Succeeded, result.Failed);
 
-        await WriteAuditAsync(request, result, adminId, adminName);
+        await WriteAuditAsync(request, result, broadcast.AdminId, broadcast.AdminName);
         return result;
     }
+
+    private static bool ReceivesEmail(ApplicationUser user) =>
+        !string.IsNullOrEmpty(user.Email) && user.EmailNotificationsEnabled;
 
     /// Turns the admin's plain-text body into escaped paragraphs inside the club email layout,
     /// keeping line breaks, and appends the unsubscribe footer CASL requires.
@@ -147,11 +163,11 @@ public class BroadcastService : IBroadcastService
 
     private async Task<IReadOnlyList<ApplicationUser>> ResolveAudienceAsync(BroadcastAudience audience)
     {
-        // Honor per-user email opt-out for marketing/broadcast traffic. Transactional
-        // emails (receipts, password reset, payment confirmation) bypass this and
-        // continue to send — standard CASL/CAN-SPAM convention.
+        // Broadcasts only reach players who kept community updates on. Email opt-out is applied
+        // per channel in DeliverAsync; transactional emails (receipts, password reset, payment
+        // confirmation) bypass both — standard CASL/CAN-SPAM convention.
         var all = (await _userRepository.GetAllUsersAsync())
-            .Where(u => u.EmailConfirmed && !string.IsNullOrEmpty(u.Email) && u.EmailNotificationsEnabled && u.CommunityUpdatesEnabled)
+            .Where(u => u.EmailConfirmed && u.CommunityUpdatesEnabled)
             .ToList();
 
         return audience switch

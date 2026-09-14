@@ -122,6 +122,37 @@ public class WaiverService : IWaiverService
         return ToDto(template);
     }
 
+    public async Task<WaiverAcceptancesDto> GetAcceptancesAsync(int version)
+    {
+        var acceptances = await _repository.GetAcceptancesAsync(version);
+        var confirmedUsers = (await _userRepository.GetAllUsersAsync()).Where(u => u.EmailConfirmed).ToList();
+        var usersById = confirmedUsers.ToDictionary(u => u.Id);
+        var acceptedIds = acceptances.Select(a => a.UserId).ToHashSet();
+
+        var rows = acceptances
+            .Select(a =>
+            {
+                usersById.TryGetValue(a.UserId, out var user);
+                return new WaiverAcceptanceDto
+                {
+                    UserId = a.UserId,
+                    Name = user is null ? "(unconfirmed or deleted account)" : $"{user.FirstName} {user.LastName}".Trim(),
+                    Email = user?.Email,
+                    AcceptedAt = DateTime.SpecifyKind(a.AcceptedAt, DateTimeKind.Utc),
+                };
+            })
+            .OrderByDescending(r => r.AcceptedAt)
+            .ToList();
+
+        return new WaiverAcceptancesDto
+        {
+            Version = version,
+            AcceptedCount = rows.Count,
+            PendingCount = confirmedUsers.Count(u => !acceptedIds.Contains(u.Id)),
+            Acceptances = rows,
+        };
+    }
+
     private static WaiverTemplateDto ToDto(WaiverTemplate t) => new()
     {
         Id = t.Id,

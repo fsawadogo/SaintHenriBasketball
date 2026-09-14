@@ -32,15 +32,15 @@ public class BroadcastController : BaseApiController
     }
 
     [HttpPost("send")]
-    [ProducesResponseType(typeof(SendBroadcastResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SendBroadcastResultDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SendBroadcastResultDto>> Send([FromBody] SendBroadcastRequestDto body)
     {
         try
         {
             var adminName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue(ClaimTypes.Email) ?? "Admin";
-            var result = await _broadcastService.SendAsync(body, GetUserId(), adminName);
-            return Ok(result);
+            var result = await _broadcastService.QueueAsync(body, GetUserId(), adminName);
+            return Accepted(result);
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }
     }

@@ -70,15 +70,21 @@ public class PromoCodesController : BaseApiController
             await _promoCodeService.DeleteAsync(id);
             return NoContent();
         }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
         catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
 
     [HttpPost("api/v{version:apiVersion}/promo-codes/validate")]
     [Authorize]
     [ProducesResponseType(typeof(ValidatePromoCodeResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ValidatePromoCodeResultDto>> Validate([FromBody] ValidatePromoCodeDto body)
     {
-        var result = await _promoCodeService.ValidateAsync(body);
-        return Ok(result);
+        try
+        {
+            var result = await _promoCodeService.ValidateAsync(body);
+            return Ok(result);
+        }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
     }
 }

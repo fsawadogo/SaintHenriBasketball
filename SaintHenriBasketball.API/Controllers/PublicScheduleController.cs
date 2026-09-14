@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.PublicSchedule;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
@@ -41,8 +42,11 @@ public class PublicScheduleController : ControllerBase
         }
 
         var upcoming = await _sessionRepository.GetUpcomingSessionsAsync();
+        var now = DateTime.UtcNow;
         var result = upcoming
             .Where(s => s.Status == SessionStatus.Open)
+            // The repository query compares dates only; hide sessions from earlier today that have ended.
+            .Where(s => SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(s.SessionDate, s.EndTime, fallbackHour: 12)) > now)
             .OrderBy(s => s.SessionDate)
             .Take(clampedTake)
             .Select(s => new PublicSessionDto
