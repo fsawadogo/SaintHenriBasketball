@@ -94,9 +94,9 @@ public static class FeatureFlagDefinitions
         new FeatureFlagDefinition(FeatureFlagKeys.SeasonPaymentReminders,
             "Remind season players with unpaid fees before they confirm attendance.",
             "Rappeler les frais de saison impayés avant la confirmation de présence."),
-        // Public so the admin payments page can read it through the public flag endpoint.
         new FeatureFlagDefinition(FeatureFlagKeys.InteracReviewQueue,
             "Admin queue for verifying submitted Interac e-Transfers against bank deposits.",
-            "File d'administration pour vérifier les virements Interac soumis avec les dépôts bancaires."),
+            "File d'administration pour vérifier les virements Interac soumis avec les dépôts bancaires.",
+            IsPublic: false),
     };
 }

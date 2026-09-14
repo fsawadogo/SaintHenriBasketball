@@ -55,12 +55,16 @@ public class FeatureFlagsController : BaseApiController
         }
     }
 
+    /// Flags the client app gates on. Anonymous callers and players get public flags only;
+    /// an authenticated admin also receives admin-only flags so admin screens can gate on them.
     [HttpGet("api/v{version:apiVersion}/feature-flags/public")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(IReadOnlyDictionary<string, bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyDictionary<string, bool>>> GetPublic()
     {
-        var flags = await _featureFlagService.GetPublicFlagsAsync();
+        var includeAdminOnly = User.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+        var flags = await _featureFlagService.GetClientFlagsAsync(includeAdminOnly);
+        Response.Headers.Vary = "Authorization";
         return Ok(flags);
     }
 

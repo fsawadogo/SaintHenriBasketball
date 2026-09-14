@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Helpers;
+using SaintHenriBasketball.Application.Services.Implementations;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Infrastructure.Data.Context;
@@ -154,4 +158,22 @@ var seasonPaymentResults = await Task.WhenAll(Enumerable.Range(0, 6).Select(asyn
 }));
 Assert(seasonPaymentResults.Count(r => r.Created) == 1 && seasonPaymentResults.Select(r => r.Payment.Id).Distinct().Count() == 1,
     "concurrent season payment submissions reuse one season payment");
+await using (var db = Db()) {
+    var flagService = new FeatureFlagService(
+        new FeatureFlagRepository(db),
+        new MemoryCacheService(new MemoryCache(new MemoryCacheOptions()), NullLogger<MemoryCacheService>.Instance),
+        new AuditLogRepository(db),
+        NullLogger<FeatureFlagService>.Instance);
+    await flagService.SeedDefaultsAsync(new[] {
+        new FeatureFlagDefinition("regression-player-flag", "Player flag", "Drapeau joueur"),
+        new FeatureFlagDefinition("regression-admin-flag", "Admin flag", "Drapeau admin", IsPublic: false),
+    });
+    await flagService.SetEnabledAsync("regression-admin-flag", true, null, "Regression");
+    var visitorFlags = await flagService.GetClientFlagsAsync(includeAdminOnly: false);
+    var adminFlags = await flagService.GetClientFlagsAsync(includeAdminOnly: true);
+    Assert(visitorFlags.ContainsKey("regression-player-flag") && !visitorFlags.ContainsKey("regression-admin-flag"),
+        "visitors and players never receive admin-only flags");
+    Assert(adminFlags.TryGetValue("regression-admin-flag", out var adminFlagEnabled) && adminFlagEnabled,
+        "admins receive enabled admin-only flags");
+}
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
