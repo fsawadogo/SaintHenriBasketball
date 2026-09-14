@@ -620,6 +620,68 @@ await using (var db = Db()) {
     Assert(negativeRefused && usedDeleteRefused, "promo validation rejects a negative amount and a used promo code cannot be deleted");
 }
 
+async Task<string?> TrySeasonAsync(Guid userId, Guid seasonId, int method, string? promoCode = null, string? reference = null)
+{
+    await using var db = Db();
+    try
+    {
+        await PaymentsFor(db).CreateSeasonPaymentAsync(userId, new CreateSeasonPaymentDto { SeasonId = seasonId, PaymentMethod = method, PromoCode = promoCode, InteracReference = reference });
+        return null;
+    }
+    catch (ValidationException ex) { return ex.Message; }
+}
+ApplicationUser SeasonPlayer(string name) => new(name, $"{name}@example.test", "test-only", "Season", name, PaymentPlan.Season) { EmailConfirmed = true };
+
+var cardSeason = new Season(DateTime.UtcNow.Date.AddDays(-7), DateTime.UtcNow.Date.AddDays(60), 100m) { Name = "Card season" };
+var seasonCardPlayer = SeasonPlayer("season_card");
+var seasonCoveredPlayer = SeasonPlayer("season_covered");
+var seasonMinPlayer = SeasonPlayer("season_min");
+var seasonInteracPlayer = SeasonPlayer("season_interac");
+var seasonMinPromo = new PromoCode("QA-SEASONMIN", PromoDiscountType.Fixed, 99.7m, creditNow.AddDays(-1), creditNow.AddDays(30), PromoAppliesTo.Season, maxUses: 5);
+await using (var db = Db()) {
+    db.Seasons.Add(cardSeason);
+    db.Users.AddRange(seasonCardPlayer, seasonCoveredPlayer, seasonMinPlayer, seasonInteracPlayer);
+    db.PromoCodes.Add(seasonMinPromo);
+    db.AccountCredits.Add(new AccountCredit(seasonCoveredPlayer.Id, 100m, AccountCreditKind.ReferralReward, Guid.NewGuid()));
+    await db.SaveChangesAsync();
+}
+Assert(await TrySeasonAsync(seasonCardPlayer.Id, cardSeason.Id, method: 1) == "Interac is currently the available season payment method.",
+    "season card payment is refused while season-card-payments is off");
+await using (var db = Db()) {
+    Assert(!await db.Payments.AnyAsync(p => p.SeasonId == cardSeason.Id), "a refused season card payment creates nothing");
+    await CreditFlags(db).SetEnabledAsync(FeatureFlagKeys.SeasonCardPayments, true, null, "Regression");
+}
+Assert(await TrySeasonAsync(seasonCardPlayer.Id, cardSeason.Id, method: 1) == null, "season card payment starts once the flag is on");
+Assert(await TrySeasonAsync(seasonCoveredPlayer.Id, cardSeason.Id, method: 1) == null, "a season fee covered by credit completes through card checkout");
+Assert(await TrySeasonAsync(seasonMinPlayer.Id, cardSeason.Id, method: 1, promoCode: "QA-SEASONMIN") == PaymentPricing.BelowCardMinimumMessage,
+    "season card checkout refuses a total below Stripe's minimum");
+Assert(await TrySeasonAsync(seasonInteracPlayer.Id, cardSeason.Id, method: 0, reference: "BANK-SEASON-1") == null
+    && await TrySeasonAsync(seasonInteracPlayer.Id, cardSeason.Id, method: 1) == "Your Interac transfer is awaiting verification. Do not pay twice.",
+    "a submitted season Interac transfer blocks a second payment by card");
+await using (var db = Db()) {
+    var seasonPayments = await db.Payments.AsNoTracking().Where(p => p.SeasonId == cardSeason.Id).ToListAsync();
+    Assert(seasonPayments.Single(p => p.UserId == seasonCardPlayer.Id) is { Status: PaymentStatus.Pending, Amount: 100m, Plan: PaymentPlan.Season }
+        && seasonPayments.Single(p => p.UserId == seasonCoveredPlayer.Id) is { Status: PaymentStatus.Completed, Amount: 0m, CreditApplied: 100m }
+        && !seasonPayments.Any(p => p.UserId == seasonMinPlayer.Id)
+        && (await db.PromoCodes.AsNoTracking().SingleAsync(p => p.Id == seasonMinPromo.Id)).TimesUsed == 0,
+        "season card payments store the right amount and status, and a refused one reserves nothing");
+}
+
+var matchUser = Guid.NewGuid();
+var matchSession = Guid.NewGuid();
+var matchSeason = Guid.NewGuid();
+Dictionary<string, string> CheckoutMeta(params (string Key, Guid Value)[] entries) => entries.ToDictionary(e => e.Key, e => e.Value.ToString());
+Assert(StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("sessionId", matchSession)), "cad", 1000, matchUser, matchSession, null, 10m)
+    && StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("seasonId", matchSeason)), "cad", 11050, matchUser, null, matchSeason, 110.5m),
+    "Stripe checkout matching accepts a drop-in session and a season payment");
+Assert(!StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("seasonId", matchSeason)), "cad", 11049, matchUser, null, matchSeason, 110.5m)
+    && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("seasonId", Guid.NewGuid())), "cad", 11050, matchUser, null, matchSeason, 110.5m)
+    && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("sessionId", matchSession), ("seasonId", matchSeason)), "cad", 11050, matchUser, null, matchSeason, 110.5m)
+    && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", Guid.NewGuid()), ("seasonId", matchSeason)), "cad", 11050, matchUser, null, matchSeason, 110.5m)
+    && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("seasonId", matchSeason)), "usd", 11050, matchUser, null, matchSeason, 110.5m)
+    && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("sessionId", matchSession)), "cad", 1000, matchUser, null, matchSession, 10m),
+    "Stripe checkout matching rejects a wrong amount, season, owner or currency, and a session id presented as a season");
+
 await using (var db = Db()) {
     db.Users.Remove(await db.Users.SingleAsync(u => u.Id == partialPlayer.Id));
     await db.SaveChangesAsync();
