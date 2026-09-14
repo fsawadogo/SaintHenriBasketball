@@ -153,52 +153,7 @@ public class AdminController : ControllerBase
 
     #endregion
 
-    #region Session Templates (Recurring)
-
-    [HttpGet("session-templates")]
-    public async Task<IActionResult> GetSessionTemplates()
-    {
-        var templates = await _db.SessionTemplates.OrderBy(t => t.DayOfWeek).ToListAsync();
-        return Ok(templates);
-    }
-
-    [HttpPost("session-templates")]
-    public async Task<IActionResult> CreateSessionTemplate([FromBody] SessionTemplate template)
-    {
-        _db.SessionTemplates.Add(template);
-        await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetSessionTemplates), new { id = template.Id }, template);
-    }
-
-    [HttpPut("session-templates/{id}")]
-    public async Task<IActionResult> UpdateSessionTemplate(Guid id, [FromBody] SessionTemplate update)
-    {
-        var template = await _db.SessionTemplates.FindAsync(id);
-        if (template == null) return NotFound();
-
-        template.DayOfWeek = update.DayOfWeek;
-        template.StartTime = update.StartTime;
-        template.EndTime = update.EndTime;
-        template.Location = update.Location;
-        template.MaxCapacity = update.MaxCapacity;
-        template.DropInPrice = update.DropInPrice;
-        template.IsActive = update.IsActive;
-        await _db.SaveChangesAsync();
-
-        return Ok(template);
-    }
-
-    [HttpDelete("session-templates/{id}")]
-    public async Task<IActionResult> DeleteSessionTemplate(Guid id)
-    {
-        var template = await _db.SessionTemplates.FindAsync(id);
-        if (template == null) return NotFound();
-        _db.SessionTemplates.Remove(template);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    #endregion
+    // Session templates live in SessionTemplatesController (flag-gated, validated).
 
     #region Email Templates (Saved)
 

@@ -1,6 +1,8 @@
+using System.Net;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Broadcast;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
@@ -19,6 +21,8 @@ public class BroadcastService : IBroadcastService
     private readonly ISessionAttendanceRepository _attendanceRepository;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
+    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly UnsubscribeLinks _unsubscribeLinks;
     private readonly ILogger<BroadcastService> _logger;
 
     public BroadcastService(
@@ -27,6 +31,8 @@ public class BroadcastService : IBroadcastService
         ISessionAttendanceRepository attendanceRepository,
         IEmailService emailService,
         INotificationService notificationService,
+        IAuditLogRepository auditLogRepository,
+        UnsubscribeLinks unsubscribeLinks,
         ILogger<BroadcastService> logger)
     {
         _userRepository = userRepository;
@@ -34,6 +40,8 @@ public class BroadcastService : IBroadcastService
         _attendanceRepository = attendanceRepository;
         _emailService = emailService;
         _notificationService = notificationService;
+        _auditLogRepository = auditLogRepository;
+        _unsubscribeLinks = unsubscribeLinks;
         _logger = logger;
     }
 
@@ -51,7 +59,7 @@ public class BroadcastService : IBroadcastService
         };
     }
 
-    public async Task<SendBroadcastResultDto> SendAsync(SendBroadcastRequestDto request)
+    public async Task<SendBroadcastResultDto> SendAsync(SendBroadcastRequestDto request, Guid? adminId, string adminName)
     {
         if (string.IsNullOrWhiteSpace(request.Subject))
             throw new ValidationException("Subject is required");
@@ -64,12 +72,13 @@ public class BroadcastService : IBroadcastService
         foreach (var user in recipients)
         {
             if (string.IsNullOrEmpty(user.Email)) continue;
-            var body = user.PreferredLanguage == EmailLanguage.French && !string.IsNullOrWhiteSpace(request.BodyFr)
-                ? request.BodyFr
-                : request.BodyEn;
+            var french = user.PreferredLanguage == EmailLanguage.French;
+            var subject = french && !string.IsNullOrWhiteSpace(request.SubjectFr) ? request.SubjectFr! : request.Subject;
+            var body = french && !string.IsNullOrWhiteSpace(request.BodyFr) ? request.BodyFr! : request.BodyEn;
             try
             {
-                await _emailService.SendEmailAsync(user.Email, request.Subject, body);
+                var html = BuildEmailHtml(subject, body, _unsubscribeLinks.CreateUrl(user.Id), user.PreferredLanguage);
+                await _emailService.SendEmailAsync(user.Email, subject, html);
                 result.Succeeded++;
             }
             catch (Exception ex)
@@ -83,7 +92,7 @@ public class BroadcastService : IBroadcastService
             await _notificationService.CreateAsync(
                 user.Id,
                 Domain.Entities.NotificationType.AdminBroadcast,
-                title: request.Subject,
+                title: subject,
                 body: body,
                 url: null);
         }
@@ -92,7 +101,48 @@ public class BroadcastService : IBroadcastService
             "Broadcast sent — audience {Audience}, attempted {Attempted}, succeeded {Succeeded}, failed {Failed}",
             request.Audience, result.Attempted, result.Succeeded, result.Failed);
 
+        await WriteAuditAsync(request, result, adminId, adminName);
         return result;
+    }
+
+    /// Turns the admin's plain-text body into escaped paragraphs inside the club email layout,
+    /// keeping line breaks, and appends the unsubscribe footer CASL requires.
+    public static string BuildEmailHtml(string subject, string body, string unsubscribeUrl, EmailLanguage language)
+    {
+        var paragraphs = body.Replace("\r\n", "\n")
+            .Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(paragraph => EmailTemplateHelper.P(WebUtility.HtmlEncode(paragraph).Replace("\n", "<br/>")));
+
+        var footer =
+            "<p style='margin:24px 0 0;font-size:12px;line-height:1.5;color:#637369;'>" +
+            EmailTemplateHelper.L(
+                "You're receiving this because community updates are turned on in your SHB account.",
+                "Vous recevez ce message parce que les nouvelles du club sont activées dans votre compte SHB.",
+                language) +
+            $" <a href='{WebUtility.HtmlEncode(unsubscribeUrl)}' style='color:{EmailTemplateHelper.ColorAccent};'>" +
+            EmailTemplateHelper.L("Unsubscribe", "Se désabonner", language) +
+            "</a></p>";
+
+        return EmailTemplateHelper.BuildEmailLayout(subject, subject, string.Concat(paragraphs) + footer, language);
+    }
+
+    private async Task WriteAuditAsync(SendBroadcastRequestDto request, SendBroadcastResultDto result, Guid? adminId, string adminName)
+    {
+        try
+        {
+            var subject = request.Subject.Length > 100 ? request.Subject[..100] : request.Subject;
+            await _auditLogRepository.AddAsync(new AuditLog(
+                action: "Broadcast.Sent",
+                entityType: "Broadcast",
+                entityId: Guid.NewGuid(),
+                details: $"Audience: {request.Audience}; subject: {subject}; attempted: {result.Attempted}; succeeded: {result.Succeeded}; failed: {result.Failed}",
+                userId: adminId,
+                userName: adminName));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Audit entry failed for broadcast to {Audience}", request.Audience);
+        }
     }
 
     private async Task<IReadOnlyList<ApplicationUser>> ResolveAudienceAsync(BroadcastAudience audience)

@@ -23,6 +23,7 @@ public class QrCheckInService : IQrCheckInService
     private readonly ICacheService _cache;
     private readonly ISessionRepository _sessionRepository;
     private readonly IPaymentService _paymentService;
+    private readonly IWaiverService _waiverService;
     private readonly ILogger<QrCheckInService> _logger;
 
     public QrCheckInService(
@@ -31,6 +32,7 @@ public class QrCheckInService : IQrCheckInService
         ICacheService cache,
         ISessionRepository sessionRepository,
         IPaymentService paymentService,
+        IWaiverService waiverService,
         ILogger<QrCheckInService> logger)
     {
         _configuration = configuration;
@@ -38,6 +40,7 @@ public class QrCheckInService : IQrCheckInService
         _cache = cache;
         _sessionRepository = sessionRepository;
         _paymentService = paymentService;
+        _waiverService = waiverService;
         _logger = logger;
     }
 
@@ -63,6 +66,7 @@ public class QrCheckInService : IQrCheckInService
     {
         var sessionId = ReadSessionId(token)
             ?? throw new ValidationException("Invalid or expired check-in token");
+        await _waiverService.EnsureAcceptedAsync(userId);
 
         var attendance = await _participation.CheckInAsync(sessionId, userId);
         foreach (var key in new[] { $"Attendance:User:{userId}", $"Attendance:Session:{sessionId}", $"Attendance:Session:{sessionId}:Summary", $"Attendance:Session:{sessionId}:Attendees", $"Session_{sessionId}", "AvailableSessions", "UpcomingSessions" })
@@ -79,7 +83,8 @@ public class QrCheckInService : IQrCheckInService
         }
 
         _logger.LogInformation("QR check-in: user {UserId} → session {SessionId}", userId, sessionId);
-        return new QrCheckInResultDto { SessionId = sessionId, CheckedInAt = attendance.CheckInTime!.Value };
+        // Stored as UTC; a repeat scan reads it back without a Kind, so mark it explicitly.
+        return new QrCheckInResultDto { SessionId = sessionId, CheckedInAt = DateTime.SpecifyKind(attendance.CheckInTime!.Value, DateTimeKind.Utc) };
     }
 
     private string WriteToken(Guid sessionId, DateTime expiresAt)
@@ -125,7 +130,9 @@ public class QrCheckInService : IQrCheckInService
             var raw = principal.FindFirst(SessionClaim)?.Value;
             return Guid.TryParse(raw, out var id) ? id : null;
         }
-        catch (SecurityTokenException)
+        // Malformed input (e.g. not three JWT segments) throws SecurityTokenMalformedException,
+        // an ArgumentException rather than a SecurityTokenException.
+        catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
         {
             return null;
         }

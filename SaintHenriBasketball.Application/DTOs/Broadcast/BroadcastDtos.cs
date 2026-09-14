@@ -18,6 +18,8 @@ public class SendBroadcastRequestDto
 {
     public BroadcastAudience Audience { get; set; }
     public string Subject { get; set; } = string.Empty;
+    /// Optional French subject; French-speaking recipients fall back to Subject.
+    public string? SubjectFr { get; set; }
     public string BodyEn { get; set; } = string.Empty;
     public string? BodyFr { get; set; }
 }

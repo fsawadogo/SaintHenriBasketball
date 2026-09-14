@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Waivers;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
@@ -14,18 +15,30 @@ public class WaiverService : IWaiverService
     private readonly IWaiverRepository _repository;
     private readonly IUserRepository _userRepository;
     private readonly INotificationService _notificationService;
+    private readonly IFeatureFlagService _featureFlagService;
     private readonly ILogger<WaiverService> _logger;
 
     public WaiverService(
         IWaiverRepository repository,
         IUserRepository userRepository,
         INotificationService notificationService,
+        IFeatureFlagService featureFlagService,
         ILogger<WaiverService> logger)
     {
         _repository = repository;
         _userRepository = userRepository;
         _notificationService = notificationService;
+        _featureFlagService = featureFlagService;
         _logger = logger;
+    }
+
+    public async Task EnsureAcceptedAsync(Guid userId)
+    {
+        if (!await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Waiver)) return;
+        var active = await _repository.GetActiveTemplateAsync();
+        if (active is null) return;
+        if (await _repository.GetAcceptanceAsync(userId, active.Version) is null)
+            throw new ValidationException("Please review and accept the current waiver before booking or checking in.");
     }
 
     public async Task<CurrentWaiverDto> GetCurrentAsync(Guid userId)

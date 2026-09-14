@@ -5,6 +5,7 @@ using SaintHenriBasketball.Application.DTOs.Broadcast;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using System.Security.Claims;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -37,7 +38,8 @@ public class BroadcastController : BaseApiController
     {
         try
         {
-            var result = await _broadcastService.SendAsync(body);
+            var adminName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue(ClaimTypes.Email) ?? "Admin";
+            var result = await _broadcastService.SendAsync(body, GetUserId(), adminName);
             return Ok(result);
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }
