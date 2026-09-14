@@ -63,8 +63,10 @@ public class PaymentsController : ControllerBase
             await _cacheService.RemoveAsync("Payments:Summary");
             await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
 
+            Guid? adminId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedAdminId) ? parsedAdminId : null;
+            var adminName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue(ClaimTypes.Email) ?? "Admin";
             await _auditLogService.LogAsync("Created", "Payment", payment.Id,
-                $"Amount: ${payment.Amount}, Plan: {payment.Plan}");
+                $"Amount: ${payment.Amount}, Plan: {payment.Plan}", adminId, adminName);
 
             return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
         }

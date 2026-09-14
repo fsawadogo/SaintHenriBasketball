@@ -1,4 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.EntityFrameworkCore;
+using SaintHenriBasketball.Application.DTOs.Broadcast;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -244,5 +246,35 @@ await using (var db = Db()) {
     await waivers.AcceptCurrentAsync(signer, null);
     await waivers.EnsureAcceptedAsync(signer);
     Assert(true, "accepting the current waiver lifts the block");
+}
+await using (var db = Db()) {
+    var auditRepository = new AuditLogRepository(db);
+    var tinyPage = await auditRepository.GetAllAsync(page: 0, pageSize: -5);
+    var hugePage = await auditRepository.GetAllAsync(page: -1, pageSize: 100_000);
+    Assert(tinyPage.Count <= 1 && hugePage.Count <= 200, "audit log paging is clamped instead of failing");
+}
+await using (var db = Db()) {
+    var qrSession = new Session(new DateTime(2033, 6, 4), 10, 10, "10:00", "12:00", "Regression QR court");
+    db.Sessions.Add(qrSession);
+    await db.SaveChangesAsync();
+    var qrTokens = new QrCheckInService(config, null!, null!, new SessionRepository(db), null!, null!, NullLogger<QrCheckInService>.Instance);
+    var issued = await qrTokens.GenerateTokenAsync(qrSession.Id, "http://localhost");
+    var expectedExpiry = SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(qrSession.SessionDate, "12:00")).AddMinutes(30);
+    var tokenExpiry = new JwtSecurityTokenHandler().ReadJwtToken(issued.Token).ValidTo;
+    Assert(Math.Abs((tokenExpiry - expectedExpiry).TotalSeconds) < 2, "QR codes printed early stay valid until 30 minutes after the session ends");
+}
+var broadcastQueue = new BroadcastQueue();
+await broadcastQueue.EnqueueAsync(new QueuedBroadcast(new SendBroadcastRequestDto { Subject = "Queued", BodyEn = "Body" }, null, "Regression"));
+using (var queueTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+{
+    await foreach (var queued in broadcastQueue.ReadAllAsync(queueTimeout.Token))
+    {
+        Assert(queued.Request.Subject == "Queued" && queued.AdminName == "Regression", "queued broadcast reaches the background worker");
+        break;
+    }
+}
+await using (var db = Db()) {
+    var acceptanceRows = await new WaiverRepository(db).GetAcceptancesAsync(1);
+    Assert(acceptanceRows.Count == 1 && acceptanceRows[0].UserId == players[5].Id, "waiver acceptances are listed per version for admins");
 }
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");

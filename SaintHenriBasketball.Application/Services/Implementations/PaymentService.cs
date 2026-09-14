@@ -98,6 +98,9 @@ public class PaymentService : IPaymentService
 
        var previousStatus = payment.Status;
        payment.Status = status;
+       // PaymentDate is when the club received the money; receipts and revenue reports group by it.
+       if (status == PaymentStatus.Completed && previousStatus != PaymentStatus.Completed)
+           payment.PaymentDate = DateTime.UtcNow;
        await _paymentRepository.UpdateAsync(payment);
        _logger.LogInformation("Payment {PaymentId} status updated to {Status}", id, status);
 

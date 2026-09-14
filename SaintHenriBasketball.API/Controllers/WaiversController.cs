@@ -58,6 +58,12 @@ public class WaiversController : BaseApiController
         return Ok(all);
     }
 
+    [HttpGet("api/v{version:apiVersion}/admin/waivers/{waiverVersion:int}/acceptances")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(WaiverAcceptancesDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<WaiverAcceptancesDto>> GetAcceptances(int waiverVersion) =>
+        Ok(await _waiverService.GetAcceptancesAsync(waiverVersion));
+
     [HttpPost("api/v{version:apiVersion}/admin/waivers")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(WaiverTemplateDto), StatusCodes.Status201Created)]

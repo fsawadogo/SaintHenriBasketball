@@ -56,8 +56,8 @@ public static class FeatureFlagDefinitions
 
         // Phase 4
         new FeatureFlagDefinition(FeatureFlagKeys.TaxReceipts,
-            "Annual tax-receipt PDF generation.",
-            "Génération annuelle des reçus fiscaux en PDF."),
+            "Annual payment summary PDF for players (not an official tax receipt).",
+            "Sommaire annuel des paiements en PDF pour les joueurs (pas un reçu fiscal officiel)."),
         new FeatureFlagDefinition(FeatureFlagKeys.Referrals,
             "Referral codes and invite-a-friend rewards.",
             "Codes de parrainage et récompenses d'invitation."),

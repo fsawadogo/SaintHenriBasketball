@@ -26,7 +26,11 @@ public class SendBroadcastRequestDto
 
 public class SendBroadcastResultDto
 {
+    /// Email recipients. When Queued, delivery counts are recorded in the audit log instead.
     public int Attempted { get; set; }
     public int Succeeded { get; set; }
     public int Failed { get; set; }
+    public bool Queued { get; set; }
 }
+
+public record QueuedBroadcast(SendBroadcastRequestDto Request, Guid? AdminId, string AdminName);

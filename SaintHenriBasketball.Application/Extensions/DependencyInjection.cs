@@ -13,6 +13,8 @@ public static class DependencyInjection
     {
         services.AddScoped<SaintHenriBasketball.Application.Helpers.AttendanceLinks>();
         services.AddScoped<SaintHenriBasketball.Application.Helpers.UnsubscribeLinks>();
+        services.AddSingleton<BroadcastQueue>();
+        services.AddHostedService<BroadcastWorker>();
         services.AddAutoMapper(cfg => { }, Assembly.GetExecutingAssembly());
 
         services.AddScoped<IUserService, UserService>();

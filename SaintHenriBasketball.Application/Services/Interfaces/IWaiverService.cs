@@ -10,4 +10,6 @@ public interface IWaiverService
     Task EnsureAcceptedAsync(Guid userId);
     Task<IReadOnlyList<WaiverTemplateDto>> GetAllTemplatesAsync();
     Task<WaiverTemplateDto> CreateTemplateAsync(CreateWaiverTemplateDto body);
+    /// Who accepted a waiver version, and how many confirmed accounts still haven't.
+    Task<WaiverAcceptancesDto> GetAcceptancesAsync(int version);
 }
