@@ -1,4 +1,4 @@
-﻿using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Context;
@@ -32,6 +32,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WaiverTemplate> WaiverTemplates { get; set; }
     public DbSet<WaiverAcceptance> WaiverAcceptances { get; set; }
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<AccountCredit> AccountCredits { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +41,11 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.SessionRemindersEnabled).HasDefaultValue(true);
+            entity.Property(e => e.PaymentRemindersEnabled).HasDefaultValue(true);
+            entity.Property(e => e.WaitlistAlertsEnabled).HasDefaultValue(true);
+            entity.Property(e => e.CommunityUpdatesEnabled).HasDefaultValue(true);
+
 
             // Required fields
             entity.Property(e => e.Email)
@@ -191,7 +197,32 @@ public class ApplicationDbContext : DbContext
                 // Index serves the auto-billing idempotency query
                 // (UserId + SessionId + Status filter to skip Refunded duplicates).
                 entity.HasIndex(p => new { p.SessionId, p.UserId, p.Status });
+                entity.HasOne(p => p.Season).WithMany().HasForeignKey(p => p.SeasonId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(p => new { p.SeasonId, p.UserId, p.Status });
+
+                entity.Property(p => p.OriginalAmount).HasColumnType("decimal(18,2)");
+                entity.Property(p => p.DiscountAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+                entity.Property(p => p.CreditApplied).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+                // Restrict: a used promo code must be deactivated, not deleted, so the discount stays explainable.
+                entity.HasOne(p => p.PromoCode).WithMany().HasForeignKey(p => p.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
             });
+
+        modelBuilder.Entity<AccountCredit>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.Kind).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            // NO ACTION: Users already cascade to both Payments and AccountCredits.
+            entity.HasOne<Payment>().WithMany().HasForeignKey(e => e.PaymentId).OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(e => e.UserId);
+            // One reward per redemption, and at most one debit and one release per payment.
+            entity.HasIndex(e => e.ReferralRedemptionId).IsUnique().HasFilter("[ReferralRedemptionId] IS NOT NULL");
+            entity.HasIndex(e => new { e.PaymentId, e.Kind }).IsUnique().HasFilter("[PaymentId] IS NOT NULL");
+        });
 
         modelBuilder.Entity<SessionAttendance>(entity =>
         {

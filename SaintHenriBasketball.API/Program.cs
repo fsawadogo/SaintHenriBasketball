@@ -155,6 +155,10 @@ builder.Services.Configure<ResendClientOptions>(o =>
 });
 builder.Services.AddTransient<IResend, ResendClient>();
 
+// Brevo SMS (used when Sms:Provider = Brevo)
+builder.Services.AddHttpClient<SaintHenriBasketball.Application.Services.Implementations.BrevoSmsService>(client =>
+    client.Timeout = TimeSpan.FromSeconds(15));
+
 // Configure Stripe
 builder.Services.Configure<SaintHenriBasketball.Application.Settings.StripeSettings>(
     builder.Configuration.GetSection(SaintHenriBasketball.Application.Settings.StripeSettings.SectionName));
@@ -165,7 +169,8 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Add Quartz.NET job scheduling
-builder.Services.AddQuartzJobs();
+builder.Services.AddQuartzJobs(startScheduler: !(builder.Environment.IsDevelopment()
+    && builder.Configuration.GetValue<bool>("LocalTesting:DisableScheduledJobs")));
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -187,7 +192,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        context.Database.Migrate();
+        if (builder.Environment.IsDevelopment()
+            && builder.Configuration.GetValue<bool>("LocalTesting:UseModelSchema"))
+        {
+            context.Database.EnsureCreated();
+        }
+        else
+        {
+            context.Database.Migrate();
+        }
     }
     catch (Exception ex)
     {

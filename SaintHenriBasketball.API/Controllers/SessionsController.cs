@@ -197,6 +197,7 @@ public class SessionsController : BaseApiController
             await _sessionService.UnregisterFromSessionAsync(sessionId, Guid.Parse(userId));
             return NoContent();
         }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
         catch (NotFoundException ex)
         {
             return NotFound(ex.Message);

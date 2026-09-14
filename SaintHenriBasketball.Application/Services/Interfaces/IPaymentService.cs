@@ -17,8 +17,13 @@ public interface IPaymentService
     Task<PaymentReconciliationDto> ReconcilePaymentsAsync(DateTime startDate, DateTime endDate);
     Task<PaymentDto> UpdatePaymentAsync(Guid id, UpdatePaymentDto updatePaymentDto);
     Task<PaymentDto> CreateDropInPaymentAsync(Guid userId, CreateDropInPaymentDto request);
+    Task<PaymentDto> CreateSeasonPaymentAsync(Guid userId, CreateSeasonPaymentDto request);
     Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference);
     Task<DropInPaymentLinkDto> GetDropInPaymentLinkAsync(Guid userId, Guid sessionId);
+
+    /// Read-only price breakdown (promo discount, account credit, total) for the caller's
+    /// drop-in or season payment, reflecting an existing payment when there is one.
+    Task<PaymentQuoteDto> GetQuoteAsync(Guid userId, PaymentQuoteRequestDto request);
 
     /// Idempotently creates a Pending drop-in payment for the (user, session) pair if one
     /// doesn't already exist. Returns the payment Id paired with whether it was newly

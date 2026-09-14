@@ -60,6 +60,7 @@ public class WaitlistController : ControllerBase
     }
 
     [HttpGet("session/{sessionId}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(IReadOnlyList<WaitlistDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<WaitlistDto>>> GetSessionWaitlist(Guid sessionId)
     {

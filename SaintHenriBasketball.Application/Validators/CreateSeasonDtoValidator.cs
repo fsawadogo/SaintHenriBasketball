@@ -6,6 +6,10 @@ public class CreateSeasonDtoValidator : AbstractValidator<CreateSeasonDto>
 {
     public CreateSeasonDtoValidator()
     {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Season name is required")
+            .MaximumLength(100).WithMessage("Season name cannot exceed 100 characters");
+
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Start date is required")
             .Must(BeInFuture).WithMessage("Start date must be in the future");

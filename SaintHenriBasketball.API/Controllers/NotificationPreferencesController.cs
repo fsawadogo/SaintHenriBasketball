@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.Notifications;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -21,6 +22,36 @@ public class NotificationPreferencesController : BaseApiController
         _logger = logger;
     }
 
+    public record UnsubscribeRequest(string Token);
+
+    /// Checks an emailed unsubscribe link without changing anything: mail scanners open GET links.
+    [HttpGet("api/v{version:apiVersion}/notification-preferences/unsubscribe")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult PreviewUnsubscribe([FromQuery] string? token, [FromServices] UnsubscribeLinks links) =>
+        links.Validate(token) is null ? BadRequest("This link is invalid or expired.") : Ok(new { valid = true });
+
+    /// Turns off community updates (club broadcasts) for the user the signed link belongs to.
+    [HttpPost("api/v{version:apiVersion}/notification-preferences/unsubscribe")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Unsubscribe([FromBody] UnsubscribeRequest request, [FromServices] UnsubscribeLinks links)
+    {
+        var data = links.Validate(request.Token);
+        if (data is null) return BadRequest("This link is invalid or expired.");
+        var user = await _userRepository.GetByIdAsync(data.UserId);
+        if (user is null) return NotFound();
+        if (user.CommunityUpdatesEnabled)
+        {
+            user.CommunityUpdatesEnabled = false;
+            await _userRepository.UpdateAsync(user);
+            _logger.LogInformation("User {UserId} unsubscribed from community updates via email link", user.Id);
+        }
+        return NoContent();
+    }
+
     [HttpGet("api/v{version:apiVersion}/users/me/notification-preferences")]
     [ProducesResponseType(typeof(NotificationPreferencesDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<NotificationPreferencesDto>> GetOwn()
@@ -29,7 +60,7 @@ public class NotificationPreferencesController : BaseApiController
         if (userId is null) return Unauthorized();
         var user = await _userRepository.GetByIdAsync(userId.Value);
         if (user is null) return NotFound();
-        return Ok(ToDto(user.EmailNotificationsEnabled, user.SmsOptIn, user.PhoneNumber, user.InAppNotificationsEnabled));
+        return Ok(ToDto(user));
     }
 
     [HttpPut("api/v{version:apiVersion}/users/me/notification-preferences")]
@@ -45,6 +76,11 @@ public class NotificationPreferencesController : BaseApiController
         user.SmsOptIn = body.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber);
         user.EmailNotificationsEnabled = body.EmailEnabled;
         user.InAppNotificationsEnabled = body.InAppEnabled;
+        user.SessionRemindersEnabled = body.SessionRemindersEnabled;
+        user.PaymentRemindersEnabled = body.PaymentRemindersEnabled;
+        user.WaitlistAlertsEnabled = body.WaitlistAlertsEnabled;
+        user.CommunityUpdatesEnabled = body.CommunityUpdatesEnabled;
+
 
         try
         {
@@ -57,14 +93,19 @@ public class NotificationPreferencesController : BaseApiController
         }
 
         var refreshed = await _userRepository.GetByIdAsync(userId.Value);
-        return Ok(ToDto(refreshed!.EmailNotificationsEnabled, refreshed.SmsOptIn, refreshed.PhoneNumber, refreshed.InAppNotificationsEnabled));
+        return Ok(ToDto(refreshed!));
     }
 
-    private static NotificationPreferencesDto ToDto(bool email, bool sms, string? phone, bool inApp) => new()
+    private static NotificationPreferencesDto ToDto(SaintHenriBasketball.Domain.Entities.ApplicationUser user) => new()
     {
-        EmailEnabled = email,
-        SmsOptIn = sms,
-        PhoneNumber = phone,
-        InAppEnabled = inApp,
+        EmailEnabled = user.EmailNotificationsEnabled,
+        SmsOptIn = user.SmsOptIn,
+        PhoneNumber = user.PhoneNumber,
+        InAppEnabled = user.InAppNotificationsEnabled,
+        SessionRemindersEnabled = user.SessionRemindersEnabled,
+        PaymentRemindersEnabled = user.PaymentRemindersEnabled,
+        WaitlistAlertsEnabled = user.WaitlistAlertsEnabled,
+        CommunityUpdatesEnabled = user.CommunityUpdatesEnabled,
+
     };
 }

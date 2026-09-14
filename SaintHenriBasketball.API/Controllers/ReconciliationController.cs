@@ -4,6 +4,7 @@ using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.Reconciliation;
 using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using System.Security.Claims;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -33,7 +34,8 @@ public class ReconciliationController : BaseApiController
     [ProducesResponseType(typeof(BulkCompletePaymentsResultDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<BulkCompletePaymentsResultDto>> BulkComplete([FromBody] BulkCompletePaymentsDto body)
     {
-        var result = await _reconciliationService.BulkCompleteAsync(body.PaymentIds);
+        var adminName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue(ClaimTypes.Email) ?? "Admin";
+        var result = await _reconciliationService.BulkCompleteAsync(body.PaymentIds, GetUserId(), adminName);
         return Ok(result);
     }
 }

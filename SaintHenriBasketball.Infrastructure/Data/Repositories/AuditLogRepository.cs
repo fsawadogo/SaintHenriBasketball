@@ -14,8 +14,13 @@ public class AuditLogRepository : IAuditLogRepository
         _context = context;
     }
 
+    private const int MaxPageSize = 200;
+
     public async Task<IReadOnlyList<AuditLog>> GetAllAsync(int page = 1, int pageSize = 50, string? entityType = null)
     {
+        // Out-of-range paging used to reach SQL as a negative OFFSET (500).
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         var query = _context.AuditLogs.AsQueryable();
         if (!string.IsNullOrEmpty(entityType))
             query = query.Where(l => l.EntityType == entityType);

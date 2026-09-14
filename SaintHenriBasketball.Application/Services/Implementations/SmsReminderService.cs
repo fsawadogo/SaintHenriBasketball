@@ -107,7 +107,7 @@ public class SmsReminderService : ISmsReminderService
     }
 
     private static bool CanReceiveSms(Domain.Entities.ApplicationUser user) =>
-        user.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber);
+        user.SessionRemindersEnabled && user.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber);
 
     private static bool IsWithinWindow(DateTime sessionDate, string? startTime, DateTime lowerUtc, DateTime upperUtc)
     {

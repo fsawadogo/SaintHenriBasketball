@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Settings;
 using SaintHenriBasketball.Domain.Enums;
@@ -44,7 +45,7 @@ public class StripeWebhookController : ControllerBase
                 Request.Headers["Stripe-Signature"],
                 _stripeSettings.WebhookSecret);
 
-            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
+            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted || stripeEvent.Type == "checkout.session.async_payment_succeeded")
             {
                 var session = stripeEvent.Data.Object as StripeCheckout.Session;
                 if (session == null)
@@ -90,6 +91,11 @@ public class StripeWebhookController : ControllerBase
                 return;
             }
 
+            if (session.PaymentStatus != "paid") return;
+            if (payment.Status != PaymentStatus.Pending ||
+                !StripeCheckoutMatch.Matches(session.Metadata, session.Currency, session.AmountTotal,
+                    payment.UserId, payment.SessionId, payment.SeasonId, payment.Amount))
+                throw new InvalidOperationException("Checkout payment does not match the payment record");
             await _paymentService.UpdatePaymentStatusAsync(paymentId, PaymentStatus.Completed);
 
             // Invalidate caches
@@ -105,6 +111,7 @@ public class StripeWebhookController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling checkout.session.completed for payment {PaymentId}", paymentId);
+            throw;
         }
     }
 }

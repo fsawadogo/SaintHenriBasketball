@@ -6,12 +6,16 @@ namespace SaintHenriBasketball.Infrastructure.Jobs;
 
 public static class QuartzExtensions
 {
-    public static IServiceCollection AddQuartzJobs(this IServiceCollection services)
+    public static IServiceCollection AddQuartzJobs(this IServiceCollection services, bool startScheduler = true)
     {
         var montreal = SessionTimeHelper.MontrealTimeZone;
 
         services.AddQuartz(q =>
         {
+            var waitlistJobKey = new JobKey("WaitlistOffers");
+            q.AddJob<WaitlistOfferJob>(opts => opts.WithIdentity(waitlistJobKey));
+            q.AddTrigger(opts => opts.ForJob(waitlistJobKey).WithIdentity("WaitlistOffers-trigger")
+                .WithSimpleSchedule(s => s.WithIntervalInMinutes(1).RepeatForever()));
             // All triggers run in Montreal time so DST shifts don't drift the schedule.
 
             var attendanceJobKey = new JobKey("AttendanceReminder");
@@ -80,7 +84,7 @@ public static class QuartzExtensions
                 .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(montreal)));
         });
 
-        services.AddQuartzHostedService(options =>
+        if (startScheduler) services.AddQuartzHostedService(options =>
         {
             options.WaitForJobsToComplete = true;
         });

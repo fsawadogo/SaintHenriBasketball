@@ -31,7 +31,7 @@ public class SessionRecapService : ISessionRecapService
         var session = await _sessionRepository.GetByIdAsync(sessionId)
             ?? throw new NotFoundException($"Session {sessionId} not found");
 
-        var recap = new SessionRecap(session.Id, photoUrl.Trim(), caption?.Trim(), adminId);
+        var recap = new SessionRecap(session.Id, photoUrl.Trim(), caption?.Trim(), adminId) { PhotoConsentRecordedAt = DateTime.UtcNow };
         await _repository.AddAsync(recap);
         _logger.LogInformation("Session recap added by {AdminId} for session {SessionId}", adminId, sessionId);
 
@@ -49,7 +49,7 @@ public class SessionRecapService : ISessionRecapService
     {
         var items = await _repository.GetBySessionAsync(sessionId);
         var session = await _sessionRepository.GetByIdAsync(sessionId);
-        return items.Select(r => ToDto(r, session?.SessionDate)).ToList();
+        return items.Where(r => r.PhotoConsentRecordedAt != null).Select(r => ToDto(r, session?.SessionDate)).ToList();
     }
 
     public async Task<IReadOnlyList<SessionRecapDto>> GetRecentAsync(int take = 6)
@@ -62,7 +62,7 @@ public class SessionRecapService : ISessionRecapService
             var s = await _sessionRepository.GetByIdAsync(id);
             if (s is not null) sessionDates[id] = s.SessionDate;
         }
-        return recent.Select(r => ToDto(r, sessionDates.TryGetValue(r.SessionId, out var d) ? d : null)).ToList();
+        return recent.Where(r => r.PhotoConsentRecordedAt != null).Select(r => ToDto(r, sessionDates.TryGetValue(r.SessionId, out var d) ? d : null)).ToList();
     }
 
     private static SessionRecapDto ToDto(SessionRecap r, DateTime? sessionDate) => new()

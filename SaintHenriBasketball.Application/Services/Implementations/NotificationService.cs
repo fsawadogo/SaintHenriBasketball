@@ -31,6 +31,9 @@ public class NotificationService : INotificationService
             var user = await _userRepository.GetByIdAsync(userId);
             if (user is null) return;
             if (!user.InAppNotificationsEnabled) return;
+            if (type == NotificationType.SessionReminder && !user.SessionRemindersEnabled) return;
+            if (type == NotificationType.WaitlistOffer && !user.WaitlistAlertsEnabled) return;
+            if ((type == NotificationType.Generic || type == NotificationType.AdminBroadcast) && !user.CommunityUpdatesEnabled) return;
 
             await _repository.AddAsync(new Notification(userId, type, title, body, url));
         }

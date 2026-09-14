@@ -15,8 +15,8 @@ public static class EmailTemplates
                 P(L("We're excited to welcome you to our basketball community. Please confirm your email address to get started:",
                      "Nous sommes ravis de vous accueillir dans notre communauté de basketball. Veuillez confirmer votre adresse courriel:", lang)) +
                 BuildButton("Confirm Email", "Confirmer le courriel", confirmationLink, lang) +
-                P(L($"Or copy and paste this link in your browser:<br/><span style='font-size:12px;color:#6b7280;word-break:break-all;'>{confirmationLink}</span>",
-                     $"Ou copiez et collez ce lien dans votre navigateur:<br/><span style='font-size:12px;color:#6b7280;word-break:break-all;'>{confirmationLink}</span>", lang)),
+                P(L($"Or copy and paste this link in your browser:<br/><span style='font-size:12px;color:#637369;word-break:break-all;'>{confirmationLink}</span>",
+                     $"Ou copiez et collez ce lien dans votre navigateur:<br/><span style='font-size:12px;color:#637369;word-break:break-all;'>{confirmationLink}</span>", lang)),
             lang);
 
         public static string GetPasswordResetEmail(string userName, string resetLink, EmailLanguage lang = EmailLanguage.French) =>
@@ -168,9 +168,9 @@ public static class EmailTemplates
             return BuildEmailLayout("Attendance Confirmation", "Confirmation de présence", content, lang);
         }
 
-        public static string GetAttendanceReminderEmail(Guid userId, Guid sessionId, DateTime sessionDate, string userName, string startTime, string endTime, string? location = null, string? customMessage = null, EmailLanguage lang = EmailLanguage.French)
+        public static string GetAttendanceReminderEmail(Guid userId, Guid sessionId, DateTime sessionDate, string userName, string startTime, string endTime, string? location = null, string? customMessage = null, EmailLanguage lang = EmailLanguage.French, string? confirmationUrl = null, string? cancellationUrl = null)
         {
-            var confirmUrl = $"https://sainthenribasketball.com/attendance/confirm?sessionId={sessionId}&userId={userId}&attending=true";
+            var confirmUrl = confirmationUrl ?? $"https://sainthenribasketball.com/sessions/{sessionId}/book";
 
             var content = Greeting(userName, lang) +
                 P(L("A basketball session is coming up! Don't forget to confirm your attendance.",
@@ -186,7 +186,8 @@ public static class EmailTemplates
 
             content += P(L("What to bring: water bottle, clean indoor shoes, towel",
                            "À apporter: bouteille d'eau, souliers d'intérieur propres, serviette", lang)) +
-                BuildButton("I'll Be There!", "J'y serai!", confirmUrl, lang);
+                BuildButton("I'll Be There!", "J'y serai!", confirmUrl, lang) +
+                BuildButton("Cancel my place", "Annuler ma place", cancellationUrl ?? confirmUrl, lang);
 
             return BuildEmailLayout("Session Reminder", "Rappel de session", content, lang);
         }

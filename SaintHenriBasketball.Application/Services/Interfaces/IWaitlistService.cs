@@ -9,4 +9,5 @@ public interface IWaitlistService
     Task<IReadOnlyList<WaitlistDto>> GetSessionWaitlistAsync(Guid sessionId);
     Task<WaitlistDto?> GetUserWaitlistEntryAsync(Guid userId, Guid sessionId);
     Task PromoteNextAsync(Guid sessionId);
+    Task ProcessOffersAsync();
 }

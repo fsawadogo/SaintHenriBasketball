@@ -38,4 +38,10 @@ public static class FeatureFlagKeys
 
     // Phase 7 — Public marketing
     public const string Gallery = "gallery";
+
+    // Phase 8 — Player engagement & payment follow-up
+    public const string SessionAttendees = "session-attendees";
+    public const string SeasonPaymentReminders = "season-payment-reminders";
+    public const string InteracReviewQueue = "interac-review-queue";
+    public const string SeasonCardPayments = "season-card-payments";
 }

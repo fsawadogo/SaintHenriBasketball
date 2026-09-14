@@ -13,6 +13,7 @@ public class WaitlistDto
     public WaitlistStatus Status { get; set; }
     public DateTime RegistrationDate { get; set; }
     public string? Notes { get; set; }
+    public DateTime? OfferExpiresAt { get; set; }
 }
 
 public class JoinWaitlistDto

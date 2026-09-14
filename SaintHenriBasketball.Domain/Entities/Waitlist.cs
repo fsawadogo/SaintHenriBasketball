@@ -11,6 +11,7 @@ public class Waitlist
     public WaitlistStatus Status { get; set; }
     public DateTime RegistrationDate { get; set; }
     public string? Notes { get; set; }
+    public DateTime? OfferExpiresAt { get; set; }
     public DateTime CreatedOn { get; private set; }
 
     public virtual ApplicationUser User { get; set; } = null!;

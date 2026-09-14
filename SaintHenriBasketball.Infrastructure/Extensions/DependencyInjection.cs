@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<ISessionAttendanceRepository, SessionAttendanceRepository>();
         services.AddScoped<IWaitlistRepository, WaitlistRepository>();
+        services.AddScoped<IParticipationRepository, ParticipationRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<ISessionFeedbackRepository, SessionFeedbackRepository>();
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
         services.AddScoped<IWaiverRepository, WaiverRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IAccountCreditRepository, AccountCreditRepository>();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);

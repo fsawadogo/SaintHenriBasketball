@@ -18,6 +18,10 @@ public class UnreadCountDto
 
 public class NotificationPreferencesDto
 {
+    public bool SessionRemindersEnabled { get; set; } = true;
+    public bool PaymentRemindersEnabled { get; set; } = true;
+    public bool WaitlistAlertsEnabled { get; set; } = true;
+    public bool CommunityUpdatesEnabled { get; set; } = true;
     public bool EmailEnabled { get; set; }
     public bool SmsOptIn { get; set; }
     public string? PhoneNumber { get; set; }

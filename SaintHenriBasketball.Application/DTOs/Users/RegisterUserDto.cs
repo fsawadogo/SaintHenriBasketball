@@ -10,4 +10,6 @@ public class RegisterUserDto
     public required string FirstName { get; set; }
     public required string LastName { get; set; }
     public PaymentPlan PaymentPlan { get; set; }
+    /// Optional; honoured only while the referrals flag is on.
+    public string? ReferralCode { get; set; }
 }

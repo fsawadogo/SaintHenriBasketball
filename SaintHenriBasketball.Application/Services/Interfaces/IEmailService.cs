@@ -29,7 +29,7 @@ public interface IEmailService
     // Attendance Related Emails
     Task SendAttendanceConfirmationEmailAsync(SessionAttendance attendance);
     Task SendAttendanceUpdateEmailAsync(SessionAttendance attendance, bool previousStatus, string? reason = null);
-    Task SendAttendanceReminderEmailAsync(Guid userId, string? customMessage = null);
+    Task SendAttendanceReminderEmailAsync(Guid userId, string? customMessage = null, Guid? sessionId = null);
     Task SendLowAttendanceWarningEmailAsync(SessionDto session, List<UserDto> registeredUsers);
 
     // Session Related Emails

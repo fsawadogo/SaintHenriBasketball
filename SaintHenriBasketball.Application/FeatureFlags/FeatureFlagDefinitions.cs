@@ -56,8 +56,8 @@ public static class FeatureFlagDefinitions
 
         // Phase 4
         new FeatureFlagDefinition(FeatureFlagKeys.TaxReceipts,
-            "Annual tax-receipt PDF generation.",
-            "Génération annuelle des reçus fiscaux en PDF."),
+            "Annual payment summary PDF for players (not an official tax receipt).",
+            "Sommaire annuel des paiements en PDF pour les joueurs (pas un reçu fiscal officiel)."),
         new FeatureFlagDefinition(FeatureFlagKeys.Referrals,
             "Referral codes and invite-a-friend rewards.",
             "Codes de parrainage et récompenses d'invitation."),
@@ -73,8 +73,8 @@ public static class FeatureFlagDefinitions
             "Emergency contact and medical alerts on the user profile.",
             "Contact d'urgence et alertes médicales sur le profil."),
         new FeatureFlagDefinition(FeatureFlagKeys.SmsReminders,
-            "SMS session-day reminders via Twilio.",
-            "Rappels SMS le jour de la séance via Twilio."),
+            "SMS session-day reminders via the configured SMS provider (Twilio or Brevo).",
+            "Rappels SMS le jour de la séance via le fournisseur SMS configuré (Twilio ou Brevo)."),
         new FeatureFlagDefinition(FeatureFlagKeys.PublicSchedule,
             "Public anonymous schedule / upcoming-sessions page.",
             "Page publique anonyme du calendrier / séances à venir."),
@@ -86,5 +86,20 @@ public static class FeatureFlagDefinitions
         new FeatureFlagDefinition(FeatureFlagKeys.Gallery,
             "Public /gallery page mirroring the Instagram feed.",
             "Page publique /galerie miroir du fil Instagram."),
+
+        // Phase 8
+        new FeatureFlagDefinition(FeatureFlagKeys.SessionAttendees,
+            "Dashboard list of players who confirmed attendance (first name and last initial).",
+            "Liste au tableau de bord des joueurs ayant confirmé leur présence (prénom et initiale)."),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonPaymentReminders,
+            "Remind season players with unpaid fees before they confirm attendance.",
+            "Rappeler les frais de saison impayés avant la confirmation de présence."),
+        new FeatureFlagDefinition(FeatureFlagKeys.InteracReviewQueue,
+            "Admin queue for verifying submitted Interac e-Transfers against bank deposits.",
+            "File d'administration pour vérifier les virements Interac soumis avec les dépôts bancaires.",
+            IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonCardPayments,
+            "Season players can pay the season fee by card (Stripe Checkout) in the app.",
+            "Les joueurs de saison peuvent payer les frais de saison par carte (Stripe Checkout) dans l'application."),
     };
 }

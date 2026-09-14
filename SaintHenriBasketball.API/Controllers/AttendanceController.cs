@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.Attendance;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using System.Security.Claims;
 
@@ -13,6 +15,7 @@ namespace SaintHenriBasketball.API.Controllers;
 [Authorize]
 public class AttendanceController : BaseApiController
 {
+    private readonly SaintHenriBasketball.Application.Helpers.AttendanceLinks _links;
     private readonly IAttendanceService _attendanceService;
     private readonly IEmailService _emailService;
     private readonly ISessionService _sessionService;
@@ -20,12 +23,14 @@ public class AttendanceController : BaseApiController
     private readonly ILogger<AttendanceController> _logger;
 
     public AttendanceController(
+        SaintHenriBasketball.Application.Helpers.AttendanceLinks links,
         IAttendanceService attendanceService,
         IEmailService emailService,
         ISessionService sessionService,
         IUserService userService,
         ILogger<AttendanceController> logger)
     {
+        _links = links;
         _attendanceService = attendanceService;
         _emailService = emailService;
         _sessionService = sessionService;
@@ -184,100 +189,83 @@ public class AttendanceController : BaseApiController
     }
 
     /// <summary>
-    /// Confirm attendance from email link
+    /// Get the privacy-safe list of players who confirmed they are attending.
     /// </summary>
-    [HttpGet("confirm")]
-    [AllowAnonymous] // Allow non-authenticated users to confirm via email link
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [HttpGet("sessions/{sessionId}/players")]
+    [RequireFeature(FeatureFlagKeys.SessionAttendees)]
+    [ProducesResponseType(typeof(IEnumerable<SessionPlayerDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ConfirmAttendanceFromEmail(
-        [FromQuery] Guid sessionId,
-        [FromQuery] Guid userId,
-        [FromQuery] bool attending)
+    public async Task<ActionResult<IEnumerable<SessionPlayerDto>>> GetSessionPlayers(Guid sessionId)
     {
         try
         {
-            // Validate session still exists and is upcoming
-            var session = await _sessionService.GetSessionAsync(sessionId);
-            if (session == null)
-            {
-                return NotFound("Session not found");
-            }
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var attendees = await _attendanceService.GetSessionAttendeesAsync(sessionId);
+            var players = attendees
+                .Where(attendee => attendee.IsAttending)
+                .Select(attendee =>
+                {
+                    var firstName = attendee.FirstName.Trim();
+                    var lastName = attendee.LastName.Trim();
+                    var lastInitial = string.IsNullOrWhiteSpace(lastName) ? string.Empty : $" {char.ToUpperInvariant(lastName[0])}.";
+                    var displayName = string.IsNullOrWhiteSpace(firstName) ? "Player" : $"{firstName}{lastInitial}";
+                    var initials = string.Concat(
+                        string.IsNullOrWhiteSpace(firstName) ? string.Empty : char.ToUpperInvariant(firstName[0]),
+                        string.IsNullOrWhiteSpace(lastName) ? string.Empty : char.ToUpperInvariant(lastName[0]));
 
-            if (session.SessionDate < DateTime.UtcNow)
-            {
-                return BadRequest("Cannot confirm attendance for a past session");
-            }
+                    return new SessionPlayerDto(
+                        displayName,
+                        string.IsNullOrWhiteSpace(initials) ? "P" : initials,
+                        attendee.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
+                })
+                .OrderBy(player => player.DisplayName)
+                .ToList();
 
-            // Check if user exists
-            var user = await _userService.GetUserAsync(userId);
-            if (user == null)
-            {
-                return NotFound("User not found");
-            }
-
-            // Check if attendance is already marked
-            var existingAttendance = await _attendanceService.UpdateAttendanceAsync(sessionId, userId, attending, null, "Updated via email link");
-
-            AttendanceResponseDto response;
-            string message;
-
-            if (existingAttendance != null)
-            {
-                // Update existing attendance
-                response = await _attendanceService.UpdateAttendanceAsync(
-                    sessionId,
-                    userId,
-                    attending,
-                    null, // No notes when confirming from email
-                    "Updated via email link"
-                );
-
-                message = attending
-                    ? "Your attendance has been confirmed. We look forward to seeing you at the session!"
-                    : "You have been marked as not attending this session. We hope to see you at a future session!";
-            }
-            else
-            {
-                // Create new attendance record
-                response = await _attendanceService.MarkAttendanceAsync(
-                    sessionId,
-                    userId,
-                    attending,
-                    null // No notes when confirming from email
-                );
-
-                message = attending
-                    ? "Thank you for confirming your attendance. We look forward to seeing you at the session!"
-                    : "You have been marked as not attending this session. We hope to see you at a future session!";
-            }
-
-            // Instead of returning a raw message, let's redirect to a confirmation page on the frontend
-            var redirectUrl = $"https://sainthenribasketball.com/attendance/confirmation?status=success&attending={attending}";
-            return Redirect(redirectUrl);
-        }
-        catch (ValidationException ex)
-        {
-            _logger.LogWarning(ex, "Attendance confirmation failed for session {SessionId}", sessionId);
-            return BadRequest(ex.Message);
+            return Ok(players);
         }
         catch (NotFoundException ex)
         {
-            _logger.LogWarning(ex, "Session or user not found for attendance confirmation {SessionId}, {UserId}", sessionId, userId);
             return NotFound(ex.Message);
         }
-        catch (Exception ex)
+    }
+
+    public record SessionPlayerDto(string DisplayName, string Initials, bool IsCurrentUser);
+
+    /// <summary>
+    /// Confirm attendance from email link
+    /// </summary>
+    [HttpGet("confirm")]
+    [AllowAnonymous]
+    public async Task<IActionResult> PreviewAttendanceLink([FromQuery] string? token)
+    {
+        var data = _links.Validate(token);
+        if (data == null) return BadRequest("This link is invalid or expired. Sign in to manage your booking.");
+        var session = await _sessionService.GetSessionAsync(data.SessionId);
+        return Ok(new { session = new { session.Id, session.SessionDate, session.StartTime, session.EndTime, session.Location, session.DropInPrice }, data.Attending });
+    }
+
+    public record ConfirmLinkRequest(string Token);
+
+    [HttpPost("confirm")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ApplyAttendanceLink([FromBody] ConfirmLinkRequest request)
+    {
+        var data = _links.Validate(request.Token);
+        if (data == null) return BadRequest("This link is invalid or expired. Sign in to manage your booking.");
+        try
         {
-            _logger.LogError(ex, "Error confirming attendance for session {SessionId}", sessionId);
-            return StatusCode(500, "An unexpected error occurred while confirming attendance");
+            var result = await _attendanceService.UpdateAttendanceAsync(data.SessionId, data.UserId, data.Attending, null, "Signed reminder link");
+            return Ok(result);
         }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
 
     /// <summary>
     /// Add multiple participants to a session (Admin only)
     /// </summary>
     [HttpPost("sessions/{sessionId}/add-participants")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(AddParticipantsResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

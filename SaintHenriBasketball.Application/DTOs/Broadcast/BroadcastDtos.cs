@@ -18,13 +18,19 @@ public class SendBroadcastRequestDto
 {
     public BroadcastAudience Audience { get; set; }
     public string Subject { get; set; } = string.Empty;
+    /// Optional French subject; French-speaking recipients fall back to Subject.
+    public string? SubjectFr { get; set; }
     public string BodyEn { get; set; } = string.Empty;
     public string? BodyFr { get; set; }
 }
 
 public class SendBroadcastResultDto
 {
+    /// Email recipients. When Queued, delivery counts are recorded in the audit log instead.
     public int Attempted { get; set; }
     public int Succeeded { get; set; }
     public int Failed { get; set; }
+    public bool Queued { get; set; }
 }
+
+public record QueuedBroadcast(SendBroadcastRequestDto Request, Guid? AdminId, string AdminName);

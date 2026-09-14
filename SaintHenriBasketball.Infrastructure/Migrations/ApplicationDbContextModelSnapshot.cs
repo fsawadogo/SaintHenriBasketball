@@ -22,6 +22,45 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.AccountCredit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ReferralRedemptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReferralRedemptionId")
+                        .IsUnique()
+                        .HasFilter("[ReferralRedemptionId] IS NOT NULL");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PaymentId", "Kind")
+                        .IsUnique()
+                        .HasFilter("[PaymentId] IS NOT NULL");
+
+                    b.ToTable("AccountCredits");
+                });
+
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -34,6 +73,11 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<string>("CalendarFeedToken")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("CommunityUpdatesEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("datetime2");
@@ -99,12 +143,22 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<int>("PaymentPlan")
                         .HasColumnType("int");
 
+                    b.Property<bool>("PaymentRemindersEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
                     b.Property<int>("PreferredLanguage")
                         .HasColumnType("int");
+
+                    b.Property<bool>("SessionRemindersEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<bool>("SmsAnnouncementDismissed")
                         .HasColumnType("bit");
@@ -127,6 +181,11 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("WaitlistAlertsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.HasKey("Id");
 
@@ -327,14 +386,33 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("CreditApplied")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("DiscountAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal?>("OriginalAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("PaymentDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Plan")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("PromoCodeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Reference")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SeasonId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("SessionId")
                         .HasColumnType("uniqueidentifier");
@@ -347,7 +425,11 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PromoCodeId");
+
                     b.HasIndex("UserId");
+
+                    b.HasIndex("SeasonId", "UserId", "Status");
 
                     b.HasIndex("SessionId", "UserId", "Status");
 
@@ -732,6 +814,9 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("PhotoConsentRecordedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PhotoUrl")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -828,6 +913,9 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTime?>("OfferExpiresAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Position")
                         .HasColumnType("int");
 
@@ -916,8 +1004,32 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.ToTable("WaiverTemplates");
                 });
 
+            modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.AccountCredit", b =>
+                {
+                    b.HasOne("SaintHenriBasketball.Domain.Entities.Payment", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("SaintHenriBasketball.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.Payment", b =>
                 {
+                    b.HasOne("SaintHenriBasketball.Domain.Entities.PromoCode", "PromoCode")
+                        .WithMany()
+                        .HasForeignKey("PromoCodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SaintHenriBasketball.Domain.Entities.Season", "Season")
+                        .WithMany()
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SaintHenriBasketball.Domain.Entities.Session", "Session")
                         .WithMany()
                         .HasForeignKey("SessionId")
@@ -928,6 +1040,10 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("PromoCode");
+
+                    b.Navigation("Season");
 
                     b.Navigation("Session");
 

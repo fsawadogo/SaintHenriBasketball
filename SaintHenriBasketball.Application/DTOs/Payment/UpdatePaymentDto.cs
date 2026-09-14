@@ -6,5 +6,6 @@ public class UpdatePaymentDto
 {
     public decimal Amount { get; set; }
     public PaymentPlan Plan { get; set; }
+    public Guid? SeasonId { get; set; }
     public PaymentStatus Status { get; set; }   
 }

@@ -19,6 +19,7 @@ public class AttendanceService : IAttendanceService
     private readonly IMapper _mapper;
     private readonly ILogger<AttendanceService> _logger;
     private readonly ICacheService _cacheService;
+    private readonly IParticipationRepository _participation;
 
     public AttendanceService(
         ISessionAttendanceRepository attendanceRepository,
@@ -28,7 +29,7 @@ public class AttendanceService : IAttendanceService
         IWaitlistService waitlistService,
         IMapper mapper,
         ILogger<AttendanceService> logger,
-        ICacheService cacheService)
+        ICacheService cacheService, IParticipationRepository participation)
     {
         _attendanceRepository = attendanceRepository;
         _sessionRepository = sessionRepository;
@@ -38,191 +39,33 @@ public class AttendanceService : IAttendanceService
         _mapper = mapper;
         _logger = logger;
         _cacheService = cacheService;
+        _participation = participation;
     }
 
-    public async Task<AttendanceResponseDto> MarkAttendanceAsync(
-        Guid sessionId,
-        Guid userId,
-        bool isAttending,
-        string? notes)
+    public Task<AttendanceResponseDto> MarkAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes = null)
+        => SaveAttendanceAsync(sessionId, userId, isAttending, notes, null);
+
+    public Task<AttendanceResponseDto> UpdateAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes = null, string? updateReason = null)
+        => SaveAttendanceAsync(sessionId, userId, isAttending, notes, updateReason);
+
+    private async Task<AttendanceResponseDto> SaveAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes, string? reason)
     {
-        try
+        var record = await _participation.SetAttendanceAsync(sessionId, userId, isAttending, notes, reason);
+        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}");
+        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}:Summary");
+        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}:Attendees");
+        await _cacheService.RemoveAsync($"Attendance:User:{userId}");
+        await _cacheService.RemoveAsync("UpcomingSessions");
+        await _cacheService.RemoveAsync("AvailableSessions");
+        await _cacheService.RemoveAsync($"Session_{sessionId}");
+        if (!isAttending)
         {
-            // Check if session exists
-            var session = await _sessionRepository.GetByIdAsync(sessionId);
-            if (session == null)
-            {
-                throw new NotFoundException($"Session {sessionId} not found");
-            }
-
-            // Check for existing attendance
-            var hasMarkedAttendance = await _attendanceRepository.HasUserMarkedAttendanceAsync(sessionId, userId);
-            if (hasMarkedAttendance)
-            {
-                throw new ValidationException("Attendance already marked for this session");
-            }
-
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null)
-            {
-                throw new NotFoundException($"User {userId} not found");
-            }
-
-            var attendance = new SessionAttendance
-            {
-                SessionId = sessionId,
-                UserId = userId,
-                IsAttending = isAttending,
-                Notes = notes,
-                CheckInTime = isAttending ? DateTime.UtcNow : null,
-                CreatedOn = DateTime.UtcNow,
-                LastUpdated = DateTime.UtcNow
-            };
-
-            // Populate navigation properties for email sending
-            attendance.Session = session;
-            attendance.User = user;
-
-            // Update session spots if attending
-            if (isAttending)
-            {
-                session.RegisteredPlayersCount++;
-                if (session.RegisteredPlayersCount >= session.MaxCapacity)
-                {
-                    session.Status = SessionStatus.Full;
-                }
-                await _sessionRepository.UpdateAsync(session);
-            }
-
-            // Add attendance record
-            await _attendanceRepository.AddAsync(attendance);
-
-            // Invalidate cache
-            string sessionCacheKey = $"Attendance:Session:{sessionId}";
-            string userCacheKey = $"Attendance:User:{userId}";
-            await _cacheService.RemoveAsync(sessionCacheKey);
-            await _cacheService.RemoveAsync(userCacheKey);
-
-            // Send confirmation email — fire-and-forget so email failures
-            // don't return 500 after the attendance record was already saved
-            try
-            {
-                await _emailService.SendAttendanceConfirmationEmailAsync(attendance);
-            }
-            catch (Exception emailEx)
-            {
-                _logger.LogWarning(emailEx,
-                    "Failed to send attendance confirmation email for session {SessionId}, user {UserId}. Attendance was saved successfully.",
-                    sessionId, userId);
-            }
-
-            return _mapper.Map<AttendanceResponseDto>(attendance);
+            try { await _waitlistService.PromoteNextAsync(sessionId); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Waitlist notification failed for {SessionId}", sessionId); }
         }
-        catch (Exception ex) when (ex is not NotFoundException && ex is not ValidationException)
-        {
-            _logger.LogError(ex, "Error marking attendance for session {SessionId} and user {UserId}",
-                sessionId, userId);
-            throw;
-        }
-    }
-
-    public async Task<AttendanceResponseDto> UpdateAttendanceAsync(
-        Guid sessionId,
-        Guid userId,
-        bool isAttending,
-        string? notes = null,
-        string? updateReason = null)
-    {
-        try
-        {
-            var attendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
-            if (attendance == null)
-            {
-                throw new NotFoundException("Attendance record not found");
-            }
-
-            var session = await _sessionRepository.GetByIdAsync(sessionId);
-            if (session == null)
-            {
-                throw new NotFoundException($"Session {sessionId} not found");
-            }
-
-            // Ensure session navigation property is populated for email sending
-            attendance.Session ??= session;
-
-            // Track previous status for session count update
-            var wasAttending = attendance.IsAttending;
-
-            // Update attendance
-            attendance.IsAttending = isAttending;
-            attendance.Notes = notes ?? attendance.Notes;
-            attendance.UpdateReason = updateReason;
-            attendance.LastUpdated = DateTime.UtcNow;
-            attendance.CheckInTime = isAttending ? (attendance.CheckInTime ?? DateTime.UtcNow) : null;
-
-            // Update session spots if status changed
-            if (wasAttending != isAttending)
-            {
-                if (isAttending)
-                {
-                    session.RegisteredPlayersCount++;
-                    if (session.RegisteredPlayersCount >= session.MaxCapacity)
-                    {
-                        session.Status = SessionStatus.Full;
-                    }
-                }
-                else
-                {
-                    session.RegisteredPlayersCount--;
-                    if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
-                    {
-                        session.Status = SessionStatus.Open;
-                    }
-
-                    // Promote next person from waitlist when a slot opens
-                    try { await _waitlistService.PromoteNextAsync(sessionId); }
-                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to promote from waitlist for session {SessionId}", sessionId); }
-                }
-                await _sessionRepository.UpdateAsync(session);
-            }
-
-            await _attendanceRepository.UpdateAsync(attendance);
-
-            // Invalidate cache
-            string sessionCacheKey = $"Attendance:Session:{sessionId}";
-            string userCacheKey = $"Attendance:User:{userId}";
-            await _cacheService.RemoveAsync(sessionCacheKey);
-            await _cacheService.RemoveAsync(userCacheKey);
-            
-            // If session status or capacity changed, invalidate session list caches
-            if (wasAttending != isAttending)
-            {
-                await _cacheService.RemoveAsync("UpcomingSessions");
-                await _cacheService.RemoveAsync("AvailableSessions");
-                await _cacheService.RemoveAsync($"Session_{sessionId}");
-            }
-
-            // Send update confirmation email — fire-and-forget so email failures
-            // don't return 500 after the attendance update was already saved
-            try
-            {
-                await _emailService.SendAttendanceUpdateEmailAsync(attendance, wasAttending, updateReason);
-            }
-            catch (Exception emailEx)
-            {
-                _logger.LogWarning(emailEx,
-                    "Failed to send attendance update email for session {SessionId}, user {UserId}. Attendance was updated successfully.",
-                    sessionId, userId);
-            }
-
-            return _mapper.Map<AttendanceResponseDto>(attendance);
-        }
-        catch (Exception ex) when (ex is not NotFoundException && ex is not ValidationException)
-        {
-            _logger.LogError(ex, "Error updating attendance for session {SessionId} and user {UserId}",
-                sessionId, userId);
-            throw;
-        }
+        try { await _emailService.SendAttendanceConfirmationEmailAsync(record); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Attendance saved; email failed for {SessionId}", sessionId); }
+        return _mapper.Map<AttendanceResponseDto>(record);
     }
 
     public async Task<IEnumerable<AttendanceResponseDto>> GetUserAttendanceHistoryAsync(Guid userId)
@@ -378,49 +221,15 @@ public class AttendanceService : IAttendanceService
                 try
                 {
                     // Check if user already has attendance marked
-                    var hasMarkedAttendance = await _attendanceRepository.HasUserMarkedAttendanceAsync(sessionId, userId);
-                    if (hasMarkedAttendance)
+                    var existingAttendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
+                    if (existingAttendance?.IsAttending == true && request.IsAttending)
                     {
                         response.AlreadyRegistered++;
                         response.AlreadyRegisteredUserIds.Add(userId);
                         continue;
                     }
 
-                    // Check if session is full
-                    if (request.IsAttending && session.RegisteredPlayersCount >= session.MaxCapacity)
-                    {
-                        response.Failed++;
-                        response.FailedAdditions.Add(new ParticipantAddFailureDto
-                        {
-                            UserId = userId,
-                            Reason = "Session is at maximum capacity"
-                        });
-                        continue;
-                    }
-
-                    // Create attendance record
-                    var attendance = new SessionAttendance
-                    {
-                        SessionId = sessionId,
-                        UserId = userId,
-                        IsAttending = request.IsAttending,
-                        Notes = request.Notes,
-                        CheckInTime = request.IsAttending ? DateTime.UtcNow : null,
-                        CreatedOn = DateTime.UtcNow,
-                        LastUpdated = DateTime.UtcNow
-                    };
-
-                    await _attendanceRepository.AddAsync(attendance);
-
-                    // Update session count if attending
-                    if (request.IsAttending)
-                    {
-                        session.RegisteredPlayersCount++;
-                        if (session.RegisteredPlayersCount >= session.MaxCapacity)
-                        {
-                            session.Status = SessionStatus.Full;
-                        }
-                    }
+                    await SaveAttendanceAsync(sessionId, userId, request.IsAttending, request.Notes, "Admin attendance update");
 
                     response.SuccessfullyAdded++;
                     response.SuccessfullyAddedUserIds.Add(userId);
@@ -435,12 +244,6 @@ public class AttendanceService : IAttendanceService
                         Reason = ex.Message
                     });
                 }
-            }
-
-            // Update session if any participants were added
-            if (response.SuccessfullyAdded > 0)
-            {
-                await _sessionRepository.UpdateAsync(session);
             }
 
             // Invalidate cache
@@ -490,28 +293,14 @@ public class AttendanceService : IAttendanceService
                 {
                     // Get existing attendance record
                     var attendance = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
-                    if (attendance == null)
+                    if (attendance == null && !session.Registrations.Any(r => r.UserId == userId))
                     {
                         response.NotRegistered++;
                         response.NotRegisteredUserIds.Add(userId);
                         continue;
                     }
 
-                    // Track if user was attending for session count update
-                    var wasAttending = attendance.IsAttending;
-
-                    // Remove attendance record
-                    await _attendanceRepository.DeleteAsync(sessionId, userId);
-
-                    // Update session count if user was attending
-                    if (wasAttending)
-                    {
-                        session.RegisteredPlayersCount--;
-                        if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
-                        {
-                            session.Status = SessionStatus.Open;
-                        }
-                    }
+                    await SaveAttendanceAsync(sessionId, userId, false, attendance?.Notes, "Admin cancellation");
 
                     response.SuccessfullyRemoved++;
                     response.SuccessfullyRemovedUserIds.Add(userId);
@@ -526,12 +315,6 @@ public class AttendanceService : IAttendanceService
                         Reason = ex.Message
                     });
                 }
-            }
-
-            // Update session if any participants were removed
-            if (response.SuccessfullyRemoved > 0)
-            {
-                await _sessionRepository.UpdateAsync(session);
             }
 
             // Invalidate cache

@@ -7,6 +7,9 @@ public class SessionDetailDto
 {
     public Guid Id { get; set; }
     public DateTime SessionDate { get; set; }
+    public string StartTime { get; set; } = string.Empty;
+    public string EndTime { get; set; } = string.Empty;
+    public string? Location { get; set; }
     public int MaxCapacity { get; set; }
     public decimal DropInPrice { get; set; }
     public SessionStatus Status { get; set; }

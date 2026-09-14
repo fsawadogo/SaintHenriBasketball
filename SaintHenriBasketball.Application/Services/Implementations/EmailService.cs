@@ -11,7 +11,6 @@ using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using Microsoft.AspNetCore.Hosting;
-using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Templates;
 using SaintHenriBasketball.Application.DTOs.Session;
 
@@ -19,6 +18,7 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 
 public class EmailService : IEmailService
 {
+    private readonly AttendanceLinks _attendanceLinks;
     private readonly IResend _resend;
     private readonly string _fromAddress;
     private readonly ILogger<EmailService> _logger;
@@ -28,8 +28,10 @@ public class EmailService : IEmailService
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly IGenericRepository<EmailLog> _emailLogRepository;
     private const int MaxRetries = 3;
+    private readonly bool _suppressDelivery;
 
     public EmailService(
+        AttendanceLinks attendanceLinks,
         IConfiguration configuration,
         ILogger<EmailService> logger,
         IUserRepository userRepository,
@@ -39,7 +41,10 @@ public class EmailService : IEmailService
         IResend resend,
         IGenericRepository<EmailLog> emailLogRepository)
     {
+        _attendanceLinks = attendanceLinks;
         _logger = logger;
+        _suppressDelivery = webHostEnvironment.EnvironmentName == "Development"
+            && configuration.GetValue<bool>("LocalTesting:SuppressEmail");
         _userRepository = userRepository;
         _webHostEnvironment = webHostEnvironment;
         _sessionRepository = sessionRepository;
@@ -90,6 +95,11 @@ public class EmailService : IEmailService
     /// <summary>Unified retry loop for all email sends. Logs success/failure to EmailLog.</summary>
     private async Task SendWithRetryAsync(EmailMessage message, string to, string subject, EmailType emailType = EmailType.GeneralAnnouncement)
     {
+        if (_suppressDelivery)
+        {
+            _logger.LogInformation("Email delivery suppressed for local testing.");
+            return;
+        }
         for (var attempt = 0; attempt <= MaxRetries; attempt++)
         {
             try
@@ -252,6 +262,7 @@ public class EmailService : IEmailService
 
     public async Task SendPaymentReminderEmailAsync(ApplicationUser user, PaymentPlan paymentPlan, string? customMessage = null)
     {
+        if (!user.EmailNotificationsEnabled || !user.PaymentRemindersEnabled) return;
         try
         {
             var amount = GetPaymentAmount(paymentPlan);
@@ -420,41 +431,41 @@ public class EmailService : IEmailService
 
             var htmlContent = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2 style='color: #f97316;'>Drop-In Payment / Paiement à la carte</h2>
+                    <h2 style='color: {EmailTemplateHelper.ColorAccent};'>Drop-In Payment / Paiement à la carte</h2>
 
                     <p>Hello {userName},</p>
                     <p>Thank you for confirming your attendance for the session on <strong>{dateStr}</strong> from <strong>{startTime}</strong> to <strong>{endTime}</strong>.</p>
                     <p>Please complete your payment of <strong>${amount:F2}</strong>.</p>
 
-                    <h3 style='color: #f97316;'>Interac e-Transfer (Recommended)</h3>
+                    <h3 style='color: {EmailTemplateHelper.ColorAccent};'>Interac e-Transfer (Recommended)</h3>
                     <ol>
                         <li>Open your banking app</li>
                         <li>Send <strong>${amount:F2}</strong> to <strong>{interacEmail}</strong></li>
                         <li>In the message, include: <strong>{userName} - Drop-in {dateStr}</strong></li>
                     </ol>
 
-                    <p>Or pay by card: <a href='{paymentUrl}' style='color: #f97316;'>{paymentUrl}</a></p>
+                    <p>Or pay by card: <a href='{paymentUrl}' style='color: {EmailTemplateHelper.ColorAccent};'>{paymentUrl}</a></p>
 
-                    <hr style='border-color: #333; margin: 20px 0;'/>
+                    <hr style='border-color: #e0e6e2; margin: 20px 0;'/>
 
                     <p>Bonjour {userName},</p>
                     <p>Merci d'avoir confirmé votre présence pour la session du <strong>{dateStr}</strong> de <strong>{startTime}</strong> à <strong>{endTime}</strong>.</p>
                     <p>Veuillez compléter votre paiement de <strong>{amount:F2}$</strong>.</p>
 
-                    <h3 style='color: #f97316;'>Virement Interac (Recommandé)</h3>
+                    <h3 style='color: {EmailTemplateHelper.ColorAccent};'>Virement Interac (Recommandé)</h3>
                     <ol>
                         <li>Ouvrez votre application bancaire</li>
                         <li>Envoyez <strong>{amount:F2}$</strong> à <strong>{interacEmail}</strong></li>
                         <li>Dans le message, inscrivez : <strong>{userName} - Drop-in {dateStr}</strong></li>
                     </ol>
 
-                    <p>Ou payez par carte : <a href='{paymentUrl}' style='color: #f97316;'>{paymentUrl}</a></p>
+                    <p>Ou payez par carte : <a href='{paymentUrl}' style='color: {EmailTemplateHelper.ColorAccent};'>{paymentUrl}</a></p>
                 </div>";
 
             await SendEmailAsync(
                 userEmail,
                 "Drop-In Payment / Paiement à la carte - Saint Henri Basketball",
-                htmlContent);
+                EmailTemplateHelper.BuildEmailLayout("Drop-In Payment", "Paiement à la séance", htmlContent, language));
         }
         catch (Exception ex)
         {
@@ -555,25 +566,24 @@ public class EmailService : IEmailService
         }
     }
 
-    public async Task SendAttendanceReminderEmailAsync(Guid userId, string? customMessage = null)
+    public async Task SendAttendanceReminderEmailAsync(Guid userId, string? customMessage = null, Guid? sessionId = null)
     {
-        var nextSession = await _sessionRepository.GetNextSessionAsync()
+        var nextSession = (sessionId.HasValue ? await _sessionRepository.GetByIdAsync(sessionId.Value) : await _sessionRepository.GetNextSessionAsync())
                               ?? throw new InvalidOperationException("Aucune session à venir n'a été trouvée");
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new ArgumentException($"User not found for ID: {userId}");
 
+        if (!user.EmailNotificationsEnabled || !user.SessionRemindersEnabled) return;
+
         try
         {
+            var expires = SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(nextSession.SessionDate, nextSession.StartTime));
             var content = EmailTemplates.Attendance.GetAttendanceReminderEmail(
-                user.Id,
-                nextSession.Id,
-                nextSession.SessionDate,
-                $"{user.FirstName}",
-                nextSession.StartTime,
-                nextSession.EndTime,
-                nextSession.Location,
-                customMessage
-            );
+                user.Id, nextSession.Id, nextSession.SessionDate, user.FirstName,
+                nextSession.StartTime, nextSession.EndTime, nextSession.Location, customMessage,
+                user.PreferredLanguage,
+                _attendanceLinks.Create(nextSession.Id, user.Id, true, expires),
+                _attendanceLinks.Create(nextSession.Id, user.Id, false, expires));
 
             await SendEmailAsync(
                 user.Email,
@@ -795,6 +805,8 @@ public class EmailService : IEmailService
     #region General Methods
     public async Task SendGeneralAnnouncementEmailAsync(string? userEmail, string userName, string message)
     {
+        var recipient = await _userRepository.GetByEmailAsync(userEmail);
+        if (recipient != null && (!recipient.EmailNotificationsEnabled || !recipient.CommunityUpdatesEnabled)) return;
         try
         {
             var content = EmailTemplates.General.GetAnnouncementEmail(userName, message);
