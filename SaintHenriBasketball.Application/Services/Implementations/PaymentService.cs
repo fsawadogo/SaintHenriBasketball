@@ -366,11 +366,20 @@ public class PaymentService : IPaymentService
        var season = await _seasonRepository.GetByIdAsync(request.SeasonId);
        if (season == null) throw new NotFoundException($"Season with ID {request.SeasonId} not found");
        if (season.Price <= 0) throw new ValidationException("No payment is required for this season.");
-       if (request.PaymentMethod != 0) throw new ValidationException("Interac is currently the available season payment method.");
-       var interacReference = request.InteracReference?.Trim();
+       var card = request.PaymentMethod == 1;
+       if (request.PaymentMethod != 0 && !(card && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.SeasonCardPayments)))
+           throw new ValidationException("Interac is currently the available season payment method.");
+       var interacReference = card ? null : request.InteracReference?.Trim();
        if (interacReference?.Length > 80)
            throw new ValidationException(seasonReferenceMessage);
-       if (string.IsNullOrEmpty(interacReference))
+       if (card)
+       {
+           // Checked read-only first so no promo use is reserved and no credit is debited for a charge Stripe would refuse.
+           var quote = await GetQuoteAsync(userId, new PaymentQuoteRequestDto { Plan = PaymentPlan.Season, SeasonId = request.SeasonId, PromoCode = request.PromoCode });
+           if (PaymentPricing.IsBelowCardMinimum(quote.Total))
+               throw new ValidationException(PaymentPricing.BelowCardMinimumMessage);
+       }
+       else if (string.IsNullOrEmpty(interacReference))
        {
            var existing = await _paymentRepository.GetByUserAndSeasonAsync(userId, request.SeasonId);
            await EnsureNothingToTransferAsync(userId, PaymentPlan.Season, existing, season.Price, request.PromoCode, seasonReferenceMessage);
@@ -383,6 +392,15 @@ public class PaymentService : IPaymentService
        if (payment.Status != PaymentStatus.Pending) throw new ValidationException("This season payment cannot be submitted. Contact the club.");
        if (IsSettledByAdjustments(payment))
            return await UpdatePaymentStatusAsync(payment.Id, PaymentStatus.Completed);
+       if (card)
+       {
+           // Credit can change between the quote and the adjustment; never hand Stripe a sub-minimum charge.
+           if (PaymentPricing.IsBelowCardMinimum(payment.Amount))
+               throw new ValidationException(PaymentPricing.BelowCardMinimumMessage);
+           if (payment.Reference?.Contains("|INTERAC:") == true)
+               throw new ValidationException("Your Interac transfer is awaiting verification. Do not pay twice.");
+           return _mapper.Map<PaymentDto>(await _paymentRepository.GetByIdAsync(payment.Id));
+       }
        if (string.IsNullOrEmpty(interacReference)) throw new ValidationException(seasonReferenceMessage);
        return await ConfirmInteracPaymentAsync(payment.Id, interacReference);
    }

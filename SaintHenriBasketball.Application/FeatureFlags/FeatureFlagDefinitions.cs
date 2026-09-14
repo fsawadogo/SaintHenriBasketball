@@ -98,5 +98,8 @@ public static class FeatureFlagDefinitions
             "Admin queue for verifying submitted Interac e-Transfers against bank deposits.",
             "File d'administration pour vérifier les virements Interac soumis avec les dépôts bancaires.",
             IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonCardPayments,
+            "Season players can pay the season fee by card (Stripe Checkout) in the app.",
+            "Les joueurs de saison peuvent payer les frais de saison par carte (Stripe Checkout) dans l'application."),
     };
 }
