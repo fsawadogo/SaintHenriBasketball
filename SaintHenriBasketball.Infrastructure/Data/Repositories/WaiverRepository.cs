@@ -44,6 +44,12 @@ public class WaiverRepository : IWaiverRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.UserId == userId && a.WaiverVersion == version);
 
+    public async Task<IReadOnlyList<WaiverAcceptance>> GetAcceptancesAsync(int version) =>
+        await _context.WaiverAcceptances
+            .AsNoTracking()
+            .Where(a => a.WaiverVersion == version)
+            .ToListAsync();
+
     public async Task AddAcceptanceAsync(WaiverAcceptance acceptance)
     {
         await _context.WaiverAcceptances.AddAsync(acceptance);

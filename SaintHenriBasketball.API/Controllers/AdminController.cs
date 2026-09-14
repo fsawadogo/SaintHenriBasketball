@@ -22,39 +22,7 @@ public class AdminController : ControllerBase
         _logger = logger;
     }
 
-    #region Audit Log
-
-    [HttpGet("audit-log")]
-    public async Task<IActionResult> GetAuditLog(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] string? entityType = null,
-        [FromQuery] string? action = null,
-        [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null)
-    {
-        var query = _db.AuditLogs.AsQueryable();
-
-        if (!string.IsNullOrEmpty(entityType))
-            query = query.Where(a => a.EntityType == entityType);
-        if (!string.IsNullOrEmpty(action))
-            query = query.Where(a => a.Action.Contains(action));
-        if (from.HasValue)
-            query = query.Where(a => a.CreatedAt >= from.Value);
-        if (to.HasValue)
-            query = query.Where(a => a.CreatedAt <= to.Value);
-
-        var total = await query.CountAsync();
-        var items = await query
-            .OrderByDescending(a => a.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return Ok(new { items, total, page, pageSize });
-    }
-
-    #endregion
+    // The audit log is served by AuditLogController, behind the audit-log-viewer flag.
 
     #region User Notes
 
@@ -153,52 +121,7 @@ public class AdminController : ControllerBase
 
     #endregion
 
-    #region Session Templates (Recurring)
-
-    [HttpGet("session-templates")]
-    public async Task<IActionResult> GetSessionTemplates()
-    {
-        var templates = await _db.SessionTemplates.OrderBy(t => t.DayOfWeek).ToListAsync();
-        return Ok(templates);
-    }
-
-    [HttpPost("session-templates")]
-    public async Task<IActionResult> CreateSessionTemplate([FromBody] SessionTemplate template)
-    {
-        _db.SessionTemplates.Add(template);
-        await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetSessionTemplates), new { id = template.Id }, template);
-    }
-
-    [HttpPut("session-templates/{id}")]
-    public async Task<IActionResult> UpdateSessionTemplate(Guid id, [FromBody] SessionTemplate update)
-    {
-        var template = await _db.SessionTemplates.FindAsync(id);
-        if (template == null) return NotFound();
-
-        template.DayOfWeek = update.DayOfWeek;
-        template.StartTime = update.StartTime;
-        template.EndTime = update.EndTime;
-        template.Location = update.Location;
-        template.MaxCapacity = update.MaxCapacity;
-        template.DropInPrice = update.DropInPrice;
-        template.IsActive = update.IsActive;
-        await _db.SaveChangesAsync();
-
-        return Ok(template);
-    }
-
-    [HttpDelete("session-templates/{id}")]
-    public async Task<IActionResult> DeleteSessionTemplate(Guid id)
-    {
-        var template = await _db.SessionTemplates.FindAsync(id);
-        if (template == null) return NotFound();
-        _db.SessionTemplates.Remove(template);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    #endregion
+    // Session templates live in SessionTemplatesController (flag-gated, validated).
 
     #region Email Templates (Saved)
 

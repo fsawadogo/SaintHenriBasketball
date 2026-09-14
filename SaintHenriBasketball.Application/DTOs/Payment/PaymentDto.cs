@@ -16,4 +16,8 @@ public class PaymentDto
     public string? Reference { get; set; }
     public Guid? SessionId { get; set; }
     public DateTime? SessionDate { get; set; }
+    public decimal? OriginalAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal CreditApplied { get; set; }
+    public string? PromoCode { get; set; }
 }

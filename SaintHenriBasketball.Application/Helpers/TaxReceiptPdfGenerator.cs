@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Hosting;
 using PdfSharpCore.Drawing;
+using PdfSharpCore.Drawing.Layout;
 using PdfSharpCore.Pdf;
 using SaintHenriBasketball.Application.DTOs.TaxReceipts;
 
@@ -83,7 +84,8 @@ public class TaxReceiptPdfGenerator
             h2Font, XBrushes.Black, new XRect(50, yPos, page.Width - 100, 25), XStringFormats.TopRight);
 
         yPos += 50;
-        gfx.DrawString(
+        // XGraphics.DrawString never wraps; the formatter keeps the full disclaimer inside the margins.
+        new XTextFormatter(gfx).DrawString(
             l("This summary is provided for personal record-keeping. Saint-Henri Basketball is not a registered charity; this is not an official tax-deductible receipt.",
               "Ce sommaire est fourni à titre de référence personnelle. Saint-Henri Basketball n'est pas un organisme de bienfaisance enregistré; ceci n'est pas un reçu officiel de déduction fiscale."),
             smallFont, XBrushes.Gray, new XRect(50, yPos, page.Width - 100, 60), XStringFormats.TopLeft);

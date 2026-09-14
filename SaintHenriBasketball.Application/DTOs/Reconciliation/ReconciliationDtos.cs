@@ -24,6 +24,9 @@ public class BulkCompletePaymentsDto
 public class BulkCompletePaymentsResultDto
 {
     public int Completed { get; set; }
+    /// Payments no longer pending, or not Interac submissions, when the request arrived.
+    public int Skipped { get; set; }
+    public List<Guid> SkippedIds { get; set; } = new();
     public int Failed { get; set; }
     public List<Guid> FailedIds { get; set; } = new();
 }
