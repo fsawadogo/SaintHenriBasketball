@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
@@ -365,6 +367,7 @@ public class PaymentsController : ControllerBase
            var payment = await _paymentService.CreateDropInPaymentAsync(Guid.Parse(userId), request);
 
            // Invalidate caches
+           await _cacheService.RemoveAsync($"Payments:Detail:{payment.Id}");
            await _cacheService.RemoveAsync("Payments:All");
            await _cacheService.RemoveAsync("Payments:Pending");
            await _cacheService.RemoveAsync("Payments:Summary");
@@ -397,6 +400,7 @@ public class PaymentsController : ControllerBase
            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
            if (string.IsNullOrEmpty(userId)) return Unauthorized();
            var payment = await _paymentService.CreateSeasonPaymentAsync(Guid.Parse(userId), request);
+           await _cacheService.RemoveAsync($"Payments:Detail:{payment.Id}");
            await _cacheService.RemoveAsync("Payments:All");
            await _cacheService.RemoveAsync("Payments:Pending");
            await _cacheService.RemoveAsync("Payments:Summary");
@@ -408,8 +412,24 @@ public class PaymentsController : ControllerBase
    }
 
    /// <summary>
-   /// Create a Stripe Checkout Session for a drop-in payment
+   /// Price breakdown (promo discount, account credit, total) for the caller's drop-in or season payment. Read-only.
    /// </summary>
+   [HttpPost("quote")]
+   [ProducesResponseType(typeof(PaymentQuoteDto), StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<ActionResult<PaymentQuoteDto>> GetQuote([FromBody] PaymentQuoteRequestDto request)
+   {
+       var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+       if (string.IsNullOrEmpty(userId)) return Unauthorized();
+       try
+       {
+           return Ok(await _paymentService.GetQuoteAsync(Guid.Parse(userId), request));
+       }
+       catch (ValidationException ex) { return BadRequest(ex.Message); }
+       catch (NotFoundException ex) { return NotFound(ex.Message); }
+   }
+
    [HttpGet("options")]
    public IActionResult GetOptions([FromServices] IConfiguration configuration)
    {
@@ -439,8 +459,19 @@ public class PaymentsController : ControllerBase
 
            request.PaymentMethod = 1;
            request.InteracReference = null;
-           // Create pending payment record first
+           // Create pending payment record first (applies any promo code and account credit)
            var payment = await _paymentService.CreateDropInPaymentAsync(Guid.Parse(userId), request);
+           await _cacheService.RemoveAsync($"Payments:Detail:{payment.Id}");
+
+           // Fully covered by the discount and credit: already completed, nothing to charge.
+           if (payment.Status == PaymentStatus.Completed)
+           {
+               await _cacheService.RemoveAsync("Payments:All");
+               await _cacheService.RemoveAsync("Payments:Pending");
+               await _cacheService.RemoveAsync("Payments:Summary");
+               await _cacheService.RemoveAsync($"Payments:User:{userId}");
+               return Ok(new { checkoutUrl = (string?)null, completed = true });
+           }
 
            // Create Stripe Checkout Session
            var checkoutUrl = await _stripeService.CreateCheckoutSessionAsync(
@@ -451,7 +482,7 @@ public class PaymentsController : ControllerBase
            await _cacheService.RemoveAsync("Payments:Pending");
            await _cacheService.RemoveAsync($"Payments:User:{userId}");
 
-           return Ok(new { checkoutUrl });
+           return Ok(new { checkoutUrl, completed = false });
        }
        catch (ValidationException ex)
        {
@@ -464,6 +495,46 @@ public class PaymentsController : ControllerBase
        catch (Exception ex)
        {
            _logger.LogError(ex, "Error creating Stripe checkout session");
+           return StatusCode(500, "An unexpected error occurred while creating the checkout session");
+       }
+   }
+
+   /// <summary>
+   /// Start a Stripe Checkout for the caller's season fee (applies any promo code and account credit first)
+   /// </summary>
+   [HttpPost("season/checkout")]
+   [RequireFeature(FeatureFlagKeys.SeasonCardPayments)]
+   [ProducesResponseType(StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<IActionResult> CreateSeasonCheckoutSession([FromBody] CreateSeasonPaymentDto request)
+   {
+       var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+       if (string.IsNullOrEmpty(userId)) return Unauthorized();
+       try
+       {
+           request.PaymentMethod = 1;
+           request.InteracReference = null;
+           var payment = await _paymentService.CreateSeasonPaymentAsync(Guid.Parse(userId), request);
+           await _cacheService.RemoveAsync($"Payments:Detail:{payment.Id}");
+           await _cacheService.RemoveAsync("Payments:All");
+           await _cacheService.RemoveAsync("Payments:Pending");
+           await _cacheService.RemoveAsync("Payments:Summary");
+           await _cacheService.RemoveAsync($"Payments:User:{userId}");
+
+           // Fully covered by the discount and credit: already completed, nothing to charge.
+           if (payment.Status == PaymentStatus.Completed)
+               return Ok(new { checkoutUrl = (string?)null, completed = true });
+
+           var checkoutUrl = await _stripeService.CreateSeasonCheckoutSessionAsync(Guid.Parse(userId), request.SeasonId, payment.Id);
+           await _cacheService.RemoveAsync($"Payments:Detail:{payment.Id}");
+           return Ok(new { checkoutUrl, completed = false });
+       }
+       catch (ValidationException ex) { return BadRequest(ex.Message); }
+       catch (NotFoundException ex) { return NotFound(ex.Message); }
+       catch (Exception ex)
+       {
+           _logger.LogError(ex, "Error creating Stripe season checkout session");
            return StatusCode(500, "An unexpected error occurred while creating the checkout session");
        }
    }

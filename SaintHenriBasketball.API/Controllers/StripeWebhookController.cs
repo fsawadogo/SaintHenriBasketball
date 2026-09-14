@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Settings;
 using SaintHenriBasketball.Domain.Enums;
@@ -91,10 +92,9 @@ public class StripeWebhookController : ControllerBase
             }
 
             if (session.PaymentStatus != "paid") return;
-            if (payment.Status != PaymentStatus.Pending || session.Currency != "cad" ||
-                session.AmountTotal != (long)(payment.Amount * 100) ||
-                !session.Metadata.TryGetValue("userId", out var userId) || userId != payment.UserId.ToString() ||
-                !session.Metadata.TryGetValue("sessionId", out var sessionId) || sessionId != payment.SessionId?.ToString())
+            if (payment.Status != PaymentStatus.Pending ||
+                !StripeCheckoutMatch.Matches(session.Metadata, session.Currency, session.AmountTotal,
+                    payment.UserId, payment.SessionId, payment.SeasonId, payment.Amount))
                 throw new InvalidOperationException("Checkout payment does not match the payment record");
             await _paymentService.UpdatePaymentStatusAsync(paymentId, PaymentStatus.Completed);
 

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Filters;
@@ -74,7 +75,8 @@ public class ReferralsController : BaseApiController
     {
         try
         {
-            await _referralService.UpdateRedemptionStatusAsync(id, body.RewardStatus);
+            var adminName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue(ClaimTypes.Email) ?? "Admin";
+            await _referralService.UpdateRedemptionStatusAsync(id, body.RewardStatus, GetUserId(), adminName);
             return NoContent();
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }
