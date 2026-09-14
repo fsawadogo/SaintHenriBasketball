@@ -155,6 +155,10 @@ builder.Services.Configure<ResendClientOptions>(o =>
 });
 builder.Services.AddTransient<IResend, ResendClient>();
 
+// Brevo SMS (used when Sms:Provider = Brevo)
+builder.Services.AddHttpClient<SaintHenriBasketball.Application.Services.Implementations.BrevoSmsService>(client =>
+    client.Timeout = TimeSpan.FromSeconds(15));
+
 // Configure Stripe
 builder.Services.Configure<SaintHenriBasketball.Application.Settings.StripeSettings>(
     builder.Configuration.GetSection(SaintHenriBasketball.Application.Settings.StripeSettings.SectionName));

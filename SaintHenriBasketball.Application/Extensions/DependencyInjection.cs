@@ -45,16 +45,19 @@ public static class DependencyInjection
         services.AddScoped<IWaiverService, WaiverService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAccountCreditService, AccountCreditService>();
-        // `Sms:Provider` in configuration picks the impl. Defaults to log-only so
-        // development doesn't require Twilio credentials.
+        // `Sms:Provider` in configuration picks the impl (Twilio, Brevo, or log-only by default)
+        // so development doesn't require provider credentials. BrevoSmsService is registered
+        // as a typed HttpClient in the API's Program.cs.
         services.AddScoped<SmsService>();
         services.AddScoped<TwilioSmsService>();
         services.AddScoped<ISmsService>(sp =>
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-            return string.Equals(config["Sms:Provider"], "Twilio", StringComparison.OrdinalIgnoreCase)
-                ? sp.GetRequiredService<TwilioSmsService>()
-                : sp.GetRequiredService<SmsService>();
+            var provider = sp.GetRequiredService<IConfiguration>()["Sms:Provider"];
+            if (string.Equals(provider, "Twilio", StringComparison.OrdinalIgnoreCase))
+                return sp.GetRequiredService<TwilioSmsService>();
+            if (string.Equals(provider, "Brevo", StringComparison.OrdinalIgnoreCase))
+                return sp.GetRequiredService<BrevoSmsService>();
+            return sp.GetRequiredService<SmsService>();
         });
         services.AddScoped<ISmsReminderService, SmsReminderService>();
 

@@ -4,9 +4,9 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
 
-/// Log-only SMS implementation. Real Twilio wiring is left for deployment configuration —
-/// set `Sms:Provider = Twilio` and add `Sms:AccountSid`, `Sms:AuthToken`, `Sms:FromNumber`,
-/// then swap to a TwilioSmsService implementation. For now every "send" is logged so the flow
+/// Log-only SMS implementation, used unless `Sms:Provider` selects a real provider:
+/// `Twilio` (`Sms:AccountSid`, `Sms:AuthToken`, `Sms:FromNumber`) or `Brevo`
+/// (`Sms:Brevo:ApiKey`, `Sms:Brevo:Sender`). Every "send" is logged so the flow
 /// is exercisable in development without credentials.
 public class SmsService : ISmsService
 {

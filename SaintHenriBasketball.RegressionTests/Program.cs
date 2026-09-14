@@ -1,3 +1,4 @@
+using System.Net;
 using System.IdentityModel.Tokens.Jwt;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
@@ -169,6 +170,31 @@ var seasonPaymentResults = await Task.WhenAll(Enumerable.Range(0, 6).Select(asyn
 }));
 Assert(seasonPaymentResults.Count(r => r.Created) == 1 && seasonPaymentResults.Select(r => r.Payment.Id).Distinct().Count() == 1,
     "concurrent season payment submissions reuse one season payment");
+Assert(!SmsEncoding.RequiresUnicode("SHB reminder: your session is today at 10:00. See you at the gym."),
+    "English reminder fits the GSM-7 character set");
+Assert(SmsEncoding.RequiresUnicode("Rappel SHB: votre séance est aujourd'hui à 10:00. À tantôt au gymnase."),
+    "French reminder containing ô is sent as Unicode");
+Assert(BrevoSmsService.ToRecipient("(514) 555-0142") == "15145550142"
+    && BrevoSmsService.ToRecipient("+1 514 555 0142") == "15145550142"
+    && BrevoSmsService.ToRecipient("555-0142") == null,
+    "phone numbers normalise to Brevo recipient digits");
+var brevoConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+    ["Sms:Brevo:ApiKey"] = "regression-key", ["Sms:Brevo:Sender"] = "SHB" }).Build();
+var brevoAccepted = new StubSmsHandler(HttpStatusCode.Created, "{\"reference\":\"r\",\"messageId\":42,\"usedCredits\":1.5}");
+var brevo = new BrevoSmsService(new HttpClient(brevoAccepted), brevoConfig, NullLogger<BrevoSmsService>.Instance);
+Assert(await brevo.SendAsync("514-555-0142", "Rappel SHB: À tantôt"), "Brevo accepted send reports success");
+Assert(brevoAccepted.ApiKey == "regression-key"
+    && brevoAccepted.Body!.Contains("\"recipient\":\"15145550142\"")
+    && brevoAccepted.Body.Contains("\"type\":\"transactional\"")
+    && brevoAccepted.Body.Contains("\"unicodeEnabled\":true"),
+    "Brevo request carries the key, normalised recipient, transactional type, and Unicode flag");
+var brevoNoCredits = new BrevoSmsService(new HttpClient(new StubSmsHandler(HttpStatusCode.PaymentRequired, "{\"code\":\"not_enough_credits\"}")),
+    brevoConfig, NullLogger<BrevoSmsService>.Instance);
+Assert(!await brevoNoCredits.SendAsync("5145550142", "SHB test"), "Brevo rejection reports failure without throwing");
+var brevoUnconfigured = new BrevoSmsService(new HttpClient(new StubSmsHandler(HttpStatusCode.Created, "{}")),
+    new ConfigurationBuilder().Build(), NullLogger<BrevoSmsService>.Instance);
+Assert(!brevoUnconfigured.IsConfigured && !await brevoUnconfigured.SendAsync("5145550142", "SHB test"),
+    "unconfigured Brevo skips sending");
 await using (var db = Db()) {
     var flagService = new FeatureFlagService(
         new FeatureFlagRepository(db),
@@ -689,3 +715,16 @@ await using (var db = Db()) {
         "deleting a player removes their payments and credit ledger");
 }
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
+
+sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
+{
+    public string? ApiKey { get; private set; }
+    public string? Body { get; private set; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        ApiKey = request.Headers.TryGetValues("api-key", out var values) ? values.Single() : null;
+        Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        return new HttpResponseMessage(status) { Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json") };
+    }
+}
