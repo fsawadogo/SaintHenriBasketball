@@ -19,6 +19,7 @@ public class SessionService : ISessionService
     private readonly IMapper _mapper;
     private readonly ILogger<SessionService> _logger;
     private readonly ICacheService _cacheService;
+    private readonly IParticipationRepository _participation;
 
     // Cache keys
     private const string UpcomingSessionsCacheKey = "UpcomingSessions";
@@ -32,7 +33,7 @@ public class SessionService : ISessionService
         IWaitlistService waitlistService,
         IMapper mapper,
         ILogger<SessionService> logger,
-        ICacheService cacheService)
+        ICacheService cacheService, IParticipationRepository participation)
     {
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
@@ -41,6 +42,7 @@ public class SessionService : ISessionService
         _mapper = mapper;
         _logger = logger;
         _cacheService = cacheService;
+        _participation = participation;
     }
 
     public async Task<SessionDto> CreateSessionAsync(CreateSessionDto createSessionDto)
@@ -198,81 +200,23 @@ public class SessionService : ISessionService
 
     public async Task<SessionRegistrationResponseDto> RegisterForSessionAsync(Guid sessionId, Guid userId)
     {
-        var session = await _sessionRepository.GetByIdAsync(sessionId);
-        if (session == null)
-        {
-            throw new NotFoundException(nameof(Session), sessionId);
-        }
-
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-        {
-            throw new NotFoundException(nameof(ApplicationUser), userId);
-        }
-
-        if (session.Status != SessionStatus.Open)
-        {
-            throw new ValidationException("Session is not open for registration");
-        }
-
-        if (session.RegisteredPlayersCount >= session.MaxCapacity)
-        {
-            throw new ValidationException("Session is at full capacity");
-        }
-
-        if (await _registrationRepository.ExistsAsync(userId, sessionId))
-        {
-            throw new ValidationException("User is already registered for this session");
-        }
-
-        var registration = new SessionRegistration(userId, sessionId, user.PaymentPlan);
-        await _registrationRepository.AddAsync(registration);
-
-        session.RegisteredPlayersCount++;
-        await _sessionRepository.UpdateAsync(session);
-
-        _logger.LogInformation("User {UserId} registered for session {SessionId}", userId, sessionId);
-
-        // Invalidate affected caches
+        var registration = await _participation.ReserveAsync(sessionId, userId);
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
         await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
-
         return _mapper.Map<SessionRegistrationResponseDto>(registration);
     }
 
     public async Task UnregisterFromSessionAsync(Guid sessionId, Guid userId)
     {
-        var session = await _sessionRepository.GetByIdAsync(sessionId);
-        if (session == null)
-        {
-            throw new NotFoundException(nameof(Session), sessionId);
-        }
-
-        if (!await _registrationRepository.ExistsAsync(userId, sessionId))
-        {
-            throw new NotFoundException("Registration not found");
-        }
-
-        await _registrationRepository.DeleteAsync(userId, sessionId);
-
-        session.RegisteredPlayersCount--;
-        if (session.Status == SessionStatus.Full && session.RegisteredPlayersCount < session.MaxCapacity)
-        {
-            session.Status = SessionStatus.Open;
-        }
-
-        await _sessionRepository.UpdateAsync(session);
-        _logger.LogInformation("User {UserId} unregistered from session {SessionId}", userId, sessionId);
-
-        // Promote next person from waitlist if a slot opened
-        try { await _waitlistService.PromoteNextAsync(sessionId); }
-        catch (Exception ex) { _logger.LogWarning(ex, "Failed to promote from waitlist for session {SessionId}", sessionId); }
-
-        // Invalidate affected caches
+        await _participation.CancelAsync(sessionId, userId);
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
         await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
+        await _cacheService.RemoveAsync($"Attendance:User:{userId}");
+        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}");
+        try { await _waitlistService.PromoteNextAsync(sessionId); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Waitlist notification failed for {SessionId}", sessionId); }
     }
 
     public async Task<IReadOnlyList<SessionDto>> GetUserSessionsAsync(Guid userId)

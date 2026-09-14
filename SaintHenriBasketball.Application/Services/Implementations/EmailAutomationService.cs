@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -144,7 +144,7 @@ public class EmailAutomationService : IEmailAutomationService
             var session = await _sessionService.GetSessionAsync(sessionId);
 
             // Skip if session doesn't exist or is not open
-            if (session == null || session.Status != SessionStatus.Open)
+            if (session == null || (session.Status != SessionStatus.Open && session.Status != SessionStatus.Full))
             {
                 _logger.LogWarning("Cannot send reminders for session {SessionId}: Session not found or not open", sessionId);
                 return;
@@ -178,7 +178,7 @@ public class EmailAutomationService : IEmailAutomationService
 
                     await _emailService.SendAttendanceReminderEmailAsync(
                         attendee.UserId,
-                        $"Ne manquez pas la session de basket de ce week-end! Veuillez nous faire savoir si vous pouvez y assister."
+                        $"Ne manquez pas la session de basket de ce week-end! Veuillez nous faire savoir si vous pouvez y assister.", sessionId: sessionId
                     );
 
                     successCount++;
@@ -193,11 +193,11 @@ public class EmailAutomationService : IEmailAutomationService
                             $"Reminder: your session on {displayDate}.",
                             $"Rappel : votre séance le {displayDate}.",
                             lang),
-                        url: "/dashboard");
+                        url: $"/sessions/{sessionId}/book");
 
                     // SMS gated on per-user opt-in. Own try so a Twilio blip doesn't
                     // count the whole attendee as "failed" for email/in-app purposes.
-                    if (user is not null && user.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber))
+                    if (user is not null && user.SessionRemindersEnabled && user.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber))
                     {
                         try
                         {
@@ -500,7 +500,7 @@ public class EmailAutomationService : IEmailAutomationService
         {
             // Get session details
             var session = await _sessionService.GetSessionAsync(sessionId);
-            if (session == null || session.Status != SessionStatus.Open)
+            if (session == null || (session.Status != SessionStatus.Open && session.Status != SessionStatus.Full))
             {
                 _logger.LogWarning($"Cannot send capacity reminders for session {sessionId}: Session not found or not open", sessionId);
                 return;

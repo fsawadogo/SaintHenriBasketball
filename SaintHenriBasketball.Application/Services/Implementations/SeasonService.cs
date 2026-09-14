@@ -54,6 +54,7 @@ public class SeasonService : ISeasonService
             createSeasonDto.Price,
             createSeasonDto.Notes
         );
+        season.Name = createSeasonDto.Name.Trim();
 
         await _seasonRepository.AddAsync(season);
         

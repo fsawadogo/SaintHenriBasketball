@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -11,6 +11,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddScoped<SaintHenriBasketball.Application.Helpers.AttendanceLinks>();
         services.AddAutoMapper(cfg => { }, Assembly.GetExecutingAssembly());
 
         services.AddScoped<IUserService, UserService>();

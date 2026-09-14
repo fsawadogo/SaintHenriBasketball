@@ -12,6 +12,7 @@ public class SessionRecapDto
 
 public class CreateSessionRecapDto
 {
+    public bool PhotoConsentConfirmed { get; set; }
     public string PhotoUrl { get; set; } = string.Empty;
     public string? Caption { get; set; }
 }

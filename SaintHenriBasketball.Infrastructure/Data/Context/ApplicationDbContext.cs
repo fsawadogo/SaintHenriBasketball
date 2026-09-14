@@ -1,4 +1,4 @@
-﻿using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Context;
@@ -40,6 +40,11 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.SessionRemindersEnabled).HasDefaultValue(true);
+            entity.Property(e => e.PaymentRemindersEnabled).HasDefaultValue(true);
+            entity.Property(e => e.WaitlistAlertsEnabled).HasDefaultValue(true);
+            entity.Property(e => e.CommunityUpdatesEnabled).HasDefaultValue(true);
+
 
             // Required fields
             entity.Property(e => e.Email)
@@ -191,6 +196,8 @@ public class ApplicationDbContext : DbContext
                 // Index serves the auto-billing idempotency query
                 // (UserId + SessionId + Status filter to skip Refunded duplicates).
                 entity.HasIndex(p => new { p.SessionId, p.UserId, p.Status });
+                entity.HasOne(p => p.Season).WithMany().HasForeignKey(p => p.SeasonId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(p => new { p.SeasonId, p.UserId, p.Status });
             });
 
         modelBuilder.Entity<SessionAttendance>(entity =>

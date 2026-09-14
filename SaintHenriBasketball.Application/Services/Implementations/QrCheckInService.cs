@@ -19,27 +19,24 @@ public class QrCheckInService : IQrCheckInService
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromHours(24);
 
     private readonly IConfiguration _configuration;
+    private readonly IParticipationRepository _participation;
+    private readonly ICacheService _cache;
     private readonly ISessionRepository _sessionRepository;
-    private readonly ISessionRegistrationRepository _registrationRepository;
-    private readonly ISessionAttendanceRepository _attendanceRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<QrCheckInService> _logger;
 
     public QrCheckInService(
         IConfiguration configuration,
+        IParticipationRepository participation,
+        ICacheService cache,
         ISessionRepository sessionRepository,
-        ISessionRegistrationRepository registrationRepository,
-        ISessionAttendanceRepository attendanceRepository,
-        IUserRepository userRepository,
         IPaymentService paymentService,
         ILogger<QrCheckInService> logger)
     {
         _configuration = configuration;
+        _participation = participation;
+        _cache = cache;
         _sessionRepository = sessionRepository;
-        _registrationRepository = registrationRepository;
-        _attendanceRepository = attendanceRepository;
-        _userRepository = userRepository;
         _paymentService = paymentService;
         _logger = logger;
     }
@@ -67,24 +64,9 @@ public class QrCheckInService : IQrCheckInService
         var sessionId = ReadSessionId(token)
             ?? throw new ValidationException("Invalid or expired check-in token");
 
-        var isRegistered = await _registrationRepository.IsUserRegisteredAsync(userId, sessionId);
-        if (!isRegistered)
-        {
-            // Walk-ins should be able to scan and check in. Auto-register them so the
-            // attendance + auto-bill flows have something to attach to. Capacity check
-            // prevents over-filling a session that's already full.
-            var session = await _sessionRepository.GetByIdAsync(sessionId)
-                ?? throw new ValidationException("Session not found");
-            var registeredCount = await _registrationRepository.GetRegistrationCountForSessionAsync(sessionId);
-            if (registeredCount >= session.MaxCapacity)
-                throw new ValidationException("This session is full");
-
-            var user = await _userRepository.GetByIdAsync(userId)
-                ?? throw new ValidationException("User not found");
-
-            await _registrationRepository.AddAsync(new SessionRegistration(userId, sessionId, user.PaymentPlan));
-            _logger.LogInformation("QR check-in: walk-in registration created for user {UserId} session {SessionId}", userId, sessionId);
-        }
+        var attendance = await _participation.CheckInAsync(sessionId, userId);
+        foreach (var key in new[] { $"Attendance:User:{userId}", $"Attendance:Session:{sessionId}", $"Attendance:Session:{sessionId}:Summary", $"Attendance:Session:{sessionId}:Attendees", $"Session_{sessionId}", "AvailableSessions", "UpcomingSessions" })
+            await _cache.RemoveAsync(key);
 
         // Billing failure must never block attendance — the 11 AM cron retries idempotently.
         try
@@ -96,31 +78,8 @@ public class QrCheckInService : IQrCheckInService
             _logger.LogError(ex, "Auto-bill on QR check-in failed for user {UserId} session {SessionId}", userId, sessionId);
         }
 
-        var now = DateTime.UtcNow;
-        var existing = await _attendanceRepository.GetAttendanceAsync(sessionId, userId);
-        if (existing is null)
-        {
-            await _attendanceRepository.AddAsync(new SessionAttendance
-            {
-                Id = Guid.NewGuid(),
-                SessionId = sessionId,
-                UserId = userId,
-                IsAttending = true,
-                CheckInTime = now,
-                CreatedOn = now,
-                LastUpdated = now,
-            });
-        }
-        else if (!existing.IsAttending || existing.CheckInTime is null)
-        {
-            existing.IsAttending = true;
-            existing.CheckInTime = now;
-            existing.LastUpdated = now;
-            await _attendanceRepository.UpdateAsync(existing);
-        }
-
         _logger.LogInformation("QR check-in: user {UserId} → session {SessionId}", userId, sessionId);
-        return new QrCheckInResultDto { SessionId = sessionId, CheckedInAt = now };
+        return new QrCheckInResultDto { SessionId = sessionId, CheckedInAt = attendance.CheckInTime!.Value };
     }
 
     private string WriteToken(Guid sessionId, DateTime expiresAt)

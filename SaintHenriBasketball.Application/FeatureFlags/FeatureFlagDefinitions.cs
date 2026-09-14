@@ -86,5 +86,17 @@ public static class FeatureFlagDefinitions
         new FeatureFlagDefinition(FeatureFlagKeys.Gallery,
             "Public /gallery page mirroring the Instagram feed.",
             "Page publique /galerie miroir du fil Instagram."),
+
+        // Phase 8
+        new FeatureFlagDefinition(FeatureFlagKeys.SessionAttendees,
+            "Dashboard list of players who confirmed attendance (first name and last initial).",
+            "Liste au tableau de bord des joueurs ayant confirmé leur présence (prénom et initiale)."),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonPaymentReminders,
+            "Remind season players with unpaid fees before they confirm attendance.",
+            "Rappeler les frais de saison impayés avant la confirmation de présence."),
+        // Public so the admin payments page can read it through the public flag endpoint.
+        new FeatureFlagDefinition(FeatureFlagKeys.InteracReviewQueue,
+            "Admin queue for verifying submitted Interac e-Transfers against bank deposits.",
+            "File d'administration pour vérifier les virements Interac soumis avec les dépôts bancaires."),
     };
 }

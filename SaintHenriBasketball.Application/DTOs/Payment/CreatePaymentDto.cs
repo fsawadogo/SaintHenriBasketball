@@ -7,4 +7,5 @@ public class CreatePaymentDto
     public Guid UserId { get; set; }
     public decimal Amount { get; set; }
     public PaymentPlan Plan { get; set; }
+    public Guid? SeasonId { get; set; }
 }

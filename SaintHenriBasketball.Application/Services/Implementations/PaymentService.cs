@@ -13,6 +13,7 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 public class PaymentService : IPaymentService
 {
    private readonly IPaymentRepository _paymentRepository;
+   private readonly ISeasonRepository _seasonRepository;
    private readonly IUserRepository _userRepository;
    private readonly ISessionRepository _sessionRepository;
    private readonly ISessionRegistrationRepository _registrationRepository;
@@ -29,9 +30,11 @@ public class PaymentService : IPaymentService
        IMapper mapper,
        ILogger<PaymentService> logger,
        IEmailService emailService,
-       INotificationService notificationService)
+       INotificationService notificationService,
+       ISeasonRepository seasonRepository)
    {
        _paymentRepository = paymentRepository;
+       _seasonRepository = seasonRepository;
        _userRepository = userRepository;
        _sessionRepository = sessionRepository;
        _registrationRepository = registrationRepository;
@@ -47,9 +50,10 @@ public class PaymentService : IPaymentService
        if (user == null)
            throw new NotFoundException($"User with ID {createPaymentDto.UserId} not found");
 
-       var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan);
+       await ValidateSeasonAsync(createPaymentDto.Plan, createPaymentDto.SeasonId);
+       var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan) { SeasonId = createPaymentDto.SeasonId };
        
-       var reference = user.PaymentPlan == PaymentPlan.Season 
+       var reference = createPaymentDto.Plan == PaymentPlan.Season
            ? $"SEASON-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}"
            : $"DROPIN-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
        
@@ -143,7 +147,8 @@ public class PaymentService : IPaymentService
        if (user == null)
            throw new NotFoundException($"User with ID {createPaymentDto.UserId} not found");
 
-       var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan);
+       await ValidateSeasonAsync(createPaymentDto.Plan, createPaymentDto.SeasonId);
+       var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan) { SeasonId = createPaymentDto.SeasonId };
 
        try
        {
@@ -189,6 +194,10 @@ public class PaymentService : IPaymentService
        if (payment == null)
            throw new NotFoundException($"Payment with ID {id} not found");
 
+        await ValidateSeasonAsync(updatePaymentDto.Plan, updatePaymentDto.SeasonId);
+        if (payment.SessionId != null && updatePaymentDto.Plan == PaymentPlan.Season)
+            throw new ValidationException("A session payment cannot be converted into a season payment.");
+        payment.SeasonId = updatePaymentDto.SeasonId;
         var previousStatus = payment.Status;
         payment.Amount = updatePaymentDto.Amount;
         payment.Plan = updatePaymentDto.Plan;
@@ -252,36 +261,44 @@ public class PaymentService : IPaymentService
        if (session == null)
            throw new NotFoundException($"Session with ID {request.SessionId} not found");
 
-       var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
+       if (request.PaymentMethod is < 0 or > 2)
+           throw new ValidationException("Unsupported payment method");
+       if (!await _registrationRepository.IsUserRegisteredAsync(userId, request.SessionId))
+           throw new ValidationException("Reserve your place before paying");
+       if (session.Status == SessionStatus.Cancelled)
+           throw new ValidationException("This session is cancelled");
+       if (session.DropInPrice <= 0)
+           throw new ValidationException("No payment is required for this session");
+       if (request.PaymentMethod == 0 && (string.IsNullOrWhiteSpace(request.InteracReference) || request.InteracReference.Trim().Length > 80))
+           throw new ValidationException("Enter a bank confirmation number of up to 80 characters");
 
-       var payment = new Payment(userId, amount, PaymentPlan.DropIn);
-       var reference = $"DROPIN-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
-       payment.Reference = reference;
-
-       // Interac payments stay Pending until admin confirms; card payments are processed immediately
-       if (request.PaymentMethod == 0 && !string.IsNullOrEmpty(request.InteracReference))
-       {
-           payment.Reference = $"{reference}-{request.InteracReference}";
-       }
-
-       await _paymentRepository.AddAsync(payment);
-
-       _logger.LogInformation(
-           "Drop-in payment created for user {UserId}, session {SessionId}, method {Method}",
-           userId, request.SessionId, request.PaymentMethod);
-
-       try
-       {
-           await _emailService.SendPaymentCreatedConfirmationAsync(
-               user.Id, payment.Amount, payment.Reference);
-       }
-       catch (Exception emailEx)
-       {
-           _logger.LogWarning(emailEx,
-               "Failed to send drop-in payment confirmation email for user {UserId}", userId);
-       }
+       var (payment, created) = await _paymentRepository.GetOrCreateSessionPaymentAsync(userId, request.SessionId, session.DropInPrice);
+       if (payment.Status != PaymentStatus.Pending)
+           throw new ValidationException("This payment is not pending. Check your payment history.");
+       if (request.PaymentMethod == 0)
+           return await ConfirmInteracPaymentAsync(payment.Id, request.InteracReference!);
+       if (payment.Reference?.Contains("|INTERAC:") == true)
+           throw new ValidationException("Your Interac transfer is awaiting verification. Do not pay twice.");
 
        return _mapper.Map<PaymentDto>(payment);
+   }
+
+   public async Task<PaymentDto> CreateSeasonPaymentAsync(Guid userId, CreateSeasonPaymentDto request)
+   {
+       var user = await _userRepository.GetByIdAsync(userId);
+       if (user == null) throw new NotFoundException($"User with ID {userId} not found");
+       if (user.PaymentPlan != PaymentPlan.Season) throw new ValidationException("Choose the Season plan before paying season fees.");
+       var season = await _seasonRepository.GetByIdAsync(request.SeasonId);
+       if (season == null) throw new NotFoundException($"Season with ID {request.SeasonId} not found");
+       if (season.Price <= 0) throw new ValidationException("No payment is required for this season.");
+       if (request.PaymentMethod != 0) throw new ValidationException("Interac is currently the available season payment method.");
+       if (string.IsNullOrWhiteSpace(request.InteracReference) || request.InteracReference.Trim().Length > 80)
+           throw new ValidationException("Enter a bank confirmation number of up to 80 characters.");
+
+       var (payment, _) = await _paymentRepository.GetOrCreateSeasonPaymentAsync(userId, request.SeasonId, season.Price);
+       if (payment.Status == PaymentStatus.Completed) return _mapper.Map<PaymentDto>(payment);
+       if (payment.Status != PaymentStatus.Pending) throw new ValidationException("This season payment cannot be submitted. Contact the club.");
+       return await ConfirmInteracPaymentAsync(payment.Id, request.InteracReference);
    }
 
    public async Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference)
@@ -293,11 +310,21 @@ public class PaymentService : IPaymentService
        if (payment.Status != PaymentStatus.Pending)
            throw new ValidationException("Only pending payments can be confirmed");
 
-       payment.Reference = string.IsNullOrEmpty(payment.Reference)
-           ? reference
-           : $"{payment.Reference}-{reference}";
-       payment.Status = PaymentStatus.Pending; // stays pending until admin verifies
-       await _paymentRepository.UpdateAsync(payment);
+       reference = reference?.Trim() ?? "";
+       if (reference.Length == 0 || reference.Length > 80 || reference.Any(char.IsControl) || reference.Contains('|'))
+           throw new ValidationException("Enter a valid bank confirmation number of up to 80 characters");
+       if (payment.Reference?.StartsWith("cs_") == true)
+           throw new ValidationException("Card checkout has already started. Contact the club before sending an Interac transfer.");
+       if (payment.Reference?.Contains("|INTERAC:") == true)
+       {
+           if (payment.Reference.EndsWith("|INTERAC:" + reference, StringComparison.Ordinal))
+               return _mapper.Map<PaymentDto>(payment);
+           throw new ValidationException("A reference has already been submitted. Contact the club to correct it.");
+       }
+       var newReference = $"{payment.Reference}|INTERAC:{reference}";
+       if (!await _paymentRepository.TrySetPendingReferenceAsync(payment.Id, payment.Reference, newReference))
+           throw new ValidationException("The payment changed. Refresh your payment history before retrying.");
+       payment.Reference = newReference;
 
        _logger.LogInformation(
            "Interac reference {Reference} attached to payment {PaymentId}", reference, paymentId);
@@ -311,14 +338,10 @@ public class PaymentService : IPaymentService
        if (session == null)
            throw new NotFoundException($"Session with ID {sessionId} not found");
 
-       var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
+       var amount = session.DropInPrice;
 
        // Check if there's already a pending payment for this user+session
-       var userPayments = await _paymentRepository.GetPaymentsByUserAsync(userId);
-       var existingPayment = userPayments
-           .FirstOrDefault(p => p.Plan == PaymentPlan.DropIn
-               && p.Status == PaymentStatus.Pending
-               && p.Reference != null && p.Reference.Contains("DROPIN"));
+       var existingPayment = await _paymentRepository.GetByUserAndSessionAsync(userId, sessionId);
 
        return new DropInPaymentLinkDto
        {
@@ -396,15 +419,9 @@ public class PaymentService : IPaymentService
        if (!registrationConfirmed && !await _registrationRepository.IsUserRegisteredAsync(user.Id, session.Id))
            throw new InvalidOperationException($"User {user.Id} not registered for session {session.Id}");
 
-       var existing = await _paymentRepository.GetByUserAndSessionAsync(user.Id, session.Id);
-       if (existing is not null) return (existing.Id, false);
-
-       var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
-       var payment = new Payment(user.Id, amount, PaymentPlan.DropIn, session.Id)
-       {
-           Reference = $"DROPIN-{session.SessionDate:yyMMdd}-{Random.Shared.Next(1000, 9999)}",
-       };
-       await _paymentRepository.AddAsync(payment);
+       if (session.DropInPrice <= 0) return (Guid.Empty, false);
+       var (payment, created) = await _paymentRepository.GetOrCreateSessionPaymentAsync(user.Id, session.Id, session.DropInPrice);
+       if (!created) return (payment.Id, false);
 
        _logger.LogInformation("Auto-billed drop-in payment {PaymentId} for user {UserId} session {SessionId}",
            payment.Id, user.Id, session.Id);
@@ -420,4 +437,15 @@ public class PaymentService : IPaymentService
 
        return (payment.Id, true);
    }
+   private async Task ValidateSeasonAsync(PaymentPlan plan, Guid? seasonId)
+   {
+       if (plan == PaymentPlan.Season)
+       {
+           if (seasonId == null || await _seasonRepository.GetByIdAsync(seasonId.Value) == null)
+               throw new ValidationException("Select a valid season for a season payment.");
+       }
+       else if (seasonId != null)
+           throw new ValidationException("Drop-in payments cannot be linked to a season.");
+   }
+
 }

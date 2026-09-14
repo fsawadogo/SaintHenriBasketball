@@ -65,10 +65,51 @@ public class PaymentRepository : IPaymentRepository
             .ToListAsync();
     }
 
+    public async Task<(Payment Payment, bool Created)> GetOrCreateSessionPaymentAsync(Guid userId, Guid sessionId, decimal amount)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        // Serialize billing and user checkout for this session, across API instances.
+        await _context.Sessions.FromSqlInterpolated($"SELECT * FROM Sessions WITH (UPDLOCK, HOLDLOCK) WHERE Id = {sessionId}").SingleAsync();
+        var existing = await GetByUserAndSessionAsync(userId, sessionId);
+        if (existing != null) { await transaction.CommitAsync(); return (existing, false); }
+        var payment = new Payment(userId, amount, PaymentPlan.DropIn, sessionId) {
+            Reference = $"DROPIN-{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow
+        };
+        await AddAsync(payment);
+        await transaction.CommitAsync();
+        return (payment, true);
+    }
+
+    public async Task<(Payment Payment, bool Created)> GetOrCreateSeasonPaymentAsync(Guid userId, Guid seasonId, decimal amount)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await _context.Seasons.FromSqlInterpolated($"SELECT * FROM Seasons WITH (UPDLOCK, HOLDLOCK) WHERE Id = {seasonId}").SingleAsync();
+        var existing = await _context.Payments
+            .Where(p => p.UserId == userId && p.SeasonId == seasonId && p.Status != PaymentStatus.Refunded && p.Status != PaymentStatus.Failed)
+            .OrderByDescending(p => p.PaymentDate)
+            .FirstOrDefaultAsync();
+        if (existing != null) { await transaction.CommitAsync(); return (existing, false); }
+        var payment = new Payment(userId, amount, PaymentPlan.Season)
+        {
+            SeasonId = seasonId,
+            Reference = $"SEASON-{Guid.NewGuid():N}",
+            CreatedAt = DateTime.UtcNow
+        };
+        await AddAsync(payment);
+        await transaction.CommitAsync();
+        return (payment, true);
+    }
+
     public async Task AddAsync(Payment payment)
     {
         await _context.Payments.AddAsync(payment);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> TrySetPendingReferenceAsync(Guid id, string? expectedReference, string reference)
+    {
+        return await _context.Payments.Where(p => p.Id == id && p.Status == PaymentStatus.Pending && p.Reference == expectedReference)
+            .ExecuteUpdateAsync(update => update.SetProperty(p => p.Reference, reference)) == 1;
     }
 
     public async Task UpdateAsync(Payment payment)

@@ -29,7 +29,7 @@ public class NotificationPreferencesController : BaseApiController
         if (userId is null) return Unauthorized();
         var user = await _userRepository.GetByIdAsync(userId.Value);
         if (user is null) return NotFound();
-        return Ok(ToDto(user.EmailNotificationsEnabled, user.SmsOptIn, user.PhoneNumber, user.InAppNotificationsEnabled));
+        return Ok(ToDto(user));
     }
 
     [HttpPut("api/v{version:apiVersion}/users/me/notification-preferences")]
@@ -45,6 +45,11 @@ public class NotificationPreferencesController : BaseApiController
         user.SmsOptIn = body.SmsOptIn && !string.IsNullOrEmpty(user.PhoneNumber);
         user.EmailNotificationsEnabled = body.EmailEnabled;
         user.InAppNotificationsEnabled = body.InAppEnabled;
+        user.SessionRemindersEnabled = body.SessionRemindersEnabled;
+        user.PaymentRemindersEnabled = body.PaymentRemindersEnabled;
+        user.WaitlistAlertsEnabled = body.WaitlistAlertsEnabled;
+        user.CommunityUpdatesEnabled = body.CommunityUpdatesEnabled;
+
 
         try
         {
@@ -57,14 +62,19 @@ public class NotificationPreferencesController : BaseApiController
         }
 
         var refreshed = await _userRepository.GetByIdAsync(userId.Value);
-        return Ok(ToDto(refreshed!.EmailNotificationsEnabled, refreshed.SmsOptIn, refreshed.PhoneNumber, refreshed.InAppNotificationsEnabled));
+        return Ok(ToDto(refreshed!));
     }
 
-    private static NotificationPreferencesDto ToDto(bool email, bool sms, string? phone, bool inApp) => new()
+    private static NotificationPreferencesDto ToDto(SaintHenriBasketball.Domain.Entities.ApplicationUser user) => new()
     {
-        EmailEnabled = email,
-        SmsOptIn = sms,
-        PhoneNumber = phone,
-        InAppEnabled = inApp,
+        EmailEnabled = user.EmailNotificationsEnabled,
+        SmsOptIn = user.SmsOptIn,
+        PhoneNumber = user.PhoneNumber,
+        InAppEnabled = user.InAppNotificationsEnabled,
+        SessionRemindersEnabled = user.SessionRemindersEnabled,
+        PaymentRemindersEnabled = user.PaymentRemindersEnabled,
+        WaitlistAlertsEnabled = user.WaitlistAlertsEnabled,
+        CommunityUpdatesEnabled = user.CommunityUpdatesEnabled,
+
     };
 }

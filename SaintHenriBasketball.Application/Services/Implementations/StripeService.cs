@@ -46,7 +46,7 @@ public class StripeService : IStripeService
         if (payment == null)
             throw new NotFoundException($"Payment {paymentId} not found");
 
-        var amount = session.DropInPrice > 0 ? session.DropInPrice : 10m;
+        var amount = payment.Amount;
         var amountInCents = (long)(amount * 100);
 
         var sessionDate = session.SessionDate.ToString("MMM d, yyyy");
@@ -55,7 +55,6 @@ public class StripeService : IStripeService
 
         var options = new StripeCheckout.SessionCreateOptions
         {
-            PaymentMethodTypes = new List<string> { "card" },
             Mode = "payment",
             CustomerEmail = user.Email,
             LineItems = new List<StripeCheckout.SessionLineItemOptions>
@@ -86,11 +85,11 @@ public class StripeService : IStripeService
         };
 
         var service = new StripeCheckout.SessionService();
-        var checkoutSession = await service.CreateAsync(options);
+        var checkoutSession = await service.CreateAsync(options, new RequestOptions { IdempotencyKey = $"drop-in-{payment.Id}" });
 
         // Store the Stripe Checkout Session ID in the payment reference
-        payment.Reference = checkoutSession.Id;
-        await _paymentRepository.UpdateAsync(payment);
+        if (!await _paymentRepository.TrySetPendingReferenceAsync(payment.Id, payment.Reference, checkoutSession.Id))
+            throw new ValidationException("The payment changed. Review your payment history before continuing.");
 
         _logger.LogInformation(
             "Stripe Checkout Session {CheckoutSessionId} created for payment {PaymentId}, user {UserId}",

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 
@@ -11,9 +12,11 @@ using SaintHenriBasketball.Infrastructure.Data.Context;
 namespace SaintHenriBasketball.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910050021_AddEngagementPreferencesAndWaitlistOffers")]
+    partial class AddEngagementPreferencesAndWaitlistOffers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -356,9 +359,6 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.Property<string>("Reference")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("SeasonId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("SessionId")
                         .HasColumnType("uniqueidentifier");
 
@@ -371,8 +371,6 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("SeasonId", "UserId", "Status");
 
                     b.HasIndex("SessionId", "UserId", "Status");
 
@@ -949,11 +947,6 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
 
             modelBuilder.Entity("SaintHenriBasketball.Domain.Entities.Payment", b =>
                 {
-                    b.HasOne("SaintHenriBasketball.Domain.Entities.Season", "Season")
-                        .WithMany()
-                        .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("SaintHenriBasketball.Domain.Entities.Session", "Session")
                         .WithMany()
                         .HasForeignKey("SessionId")
@@ -964,8 +957,6 @@ namespace SaintHenriBasketball.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Season");
 
                     b.Navigation("Session");
 

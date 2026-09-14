@@ -8,6 +8,7 @@ public class PaymentDto
     public Guid UserId { get; set; }
     public decimal Amount { get; set; }
     public PaymentPlan Plan { get; set; }
+    public Guid? SeasonId { get; set; }
     public PaymentStatus Status { get; set; }
     public DateTime PaymentDate { get; set; }
     public required string UserName { get; set; }

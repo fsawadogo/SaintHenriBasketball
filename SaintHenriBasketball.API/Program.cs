@@ -165,7 +165,8 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Add Quartz.NET job scheduling
-builder.Services.AddQuartzJobs();
+builder.Services.AddQuartzJobs(startScheduler: !(builder.Environment.IsDevelopment()
+    && builder.Configuration.GetValue<bool>("LocalTesting:DisableScheduledJobs")));
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -187,7 +188,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        context.Database.Migrate();
+        if (builder.Environment.IsDevelopment()
+            && builder.Configuration.GetValue<bool>("LocalTesting:UseModelSchema"))
+        {
+            context.Database.EnsureCreated();
+        }
+        else
+        {
+            context.Database.Migrate();
+        }
     }
     catch (Exception ex)
     {

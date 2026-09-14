@@ -86,6 +86,7 @@ public class PaymentsController : ControllerBase
         if (cachedPayment != null)
         {
             _logger.LogInformation("Payment {PaymentId} retrieved from cache", id);
+            if (cachedPayment.UserId.ToString() != User.FindFirstValue(ClaimTypes.NameIdentifier) && !User.IsInRole("Admin")) return Forbid();
             return Ok(cachedPayment);
         }
 
@@ -93,6 +94,7 @@ public class PaymentsController : ControllerBase
         {
             var payment = await _paymentService.GetPaymentAsync(id);
 
+            if (payment.UserId.ToString() != User.FindFirstValue(ClaimTypes.NameIdentifier) && !User.IsInRole("Admin")) return Forbid();
             await _cacheService.SetAsync(cacheKey, payment, TimeSpan.FromMinutes(20));
 
             return Ok(payment);
@@ -107,6 +109,7 @@ public class PaymentsController : ControllerBase
    [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
    public async Task<ActionResult<IEnumerable<PaymentDto>>> GetUserPayments(Guid userId)
    {
+        if (userId.ToString() != User.FindFirstValue(ClaimTypes.NameIdentifier) && !User.IsInRole("Admin")) return Forbid();
         // Check cache first
         string cacheKey = $"Payments:User:{userId}";
         var cachedPayments = await _cacheService.GetAsync<IEnumerable<PaymentDto>>(cacheKey);
@@ -382,9 +385,44 @@ public class PaymentsController : ControllerBase
        }
    }
 
+   [HttpPost("season")]
+   [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status201Created)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   public async Task<ActionResult<PaymentDto>> CreateSeasonPayment([FromBody] CreateSeasonPaymentDto request)
+   {
+       try
+       {
+           var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+           if (string.IsNullOrEmpty(userId)) return Unauthorized();
+           var payment = await _paymentService.CreateSeasonPaymentAsync(Guid.Parse(userId), request);
+           await _cacheService.RemoveAsync("Payments:All");
+           await _cacheService.RemoveAsync("Payments:Pending");
+           await _cacheService.RemoveAsync("Payments:Summary");
+           await _cacheService.RemoveAsync($"Payments:User:{userId}");
+           return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
+       }
+       catch (ValidationException ex) { return BadRequest(ex.Message); }
+       catch (NotFoundException ex) { return NotFound(ex.Message); }
+   }
+
    /// <summary>
    /// Create a Stripe Checkout Session for a drop-in payment
    /// </summary>
+   [HttpGet("options")]
+   public IActionResult GetOptions([FromServices] IConfiguration configuration)
+   {
+       var key = configuration["Stripe:SecretKey"];
+       return Ok(new {
+           interacEmail = configuration["Payments:InteracEmail"] ?? "pay@sainthenribasketball.com",
+           cardEnabled = !string.IsNullOrWhiteSpace(key) && (key.StartsWith("sk_") || key.StartsWith("rk_")),
+           testMode = configuration.GetValue<bool>("LocalTesting:SuppressEmail"),
+           interacMode = "manual",
+           interacAutodeposit = configuration.GetValue("Payments:InteracAutodeposit", true),
+           interacReceivingBank = "Tangerine",
+           interacRecipientName = configuration["Payments:InteracRecipientName"]
+       });
+   }
+
    [HttpPost("drop-in/checkout")]
    [ProducesResponseType(StatusCodes.Status200OK)]
    [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -397,6 +435,8 @@ public class PaymentsController : ControllerBase
            if (string.IsNullOrEmpty(userId))
                return Unauthorized();
 
+           request.PaymentMethod = 1;
+           request.InteracReference = null;
            // Create pending payment record first
            var payment = await _paymentService.CreateDropInPaymentAsync(Guid.Parse(userId), request);
 
@@ -460,6 +500,9 @@ public class PaymentsController : ControllerBase
    {
        try
        {
+           var existing = await _paymentService.GetPaymentAsync(id);
+           if (existing.UserId.ToString() != User.FindFirstValue(ClaimTypes.NameIdentifier) && !User.IsInRole("Admin"))
+               return Forbid();
            var payment = await _paymentService.ConfirmInteracPaymentAsync(id, request.Reference);
 
            // Invalidate caches

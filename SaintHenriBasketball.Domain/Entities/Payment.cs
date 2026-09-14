@@ -19,6 +19,9 @@ public class Payment
     public Guid? SessionId { get; set; }
     public Session? Session { get; set; }
 
+    public Guid? SeasonId { get; set; }
+    public Season? Season { get; set; }
+
     private Payment() { } // For EF Core
 
     public Payment(Guid userId, decimal amount, PaymentPlan plan)

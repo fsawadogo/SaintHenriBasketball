@@ -44,7 +44,7 @@ public class StripeWebhookController : ControllerBase
                 Request.Headers["Stripe-Signature"],
                 _stripeSettings.WebhookSecret);
 
-            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
+            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted || stripeEvent.Type == "checkout.session.async_payment_succeeded")
             {
                 var session = stripeEvent.Data.Object as StripeCheckout.Session;
                 if (session == null)
@@ -90,6 +90,12 @@ public class StripeWebhookController : ControllerBase
                 return;
             }
 
+            if (session.PaymentStatus != "paid") return;
+            if (payment.Status != PaymentStatus.Pending || session.Currency != "cad" ||
+                session.AmountTotal != (long)(payment.Amount * 100) ||
+                !session.Metadata.TryGetValue("userId", out var userId) || userId != payment.UserId.ToString() ||
+                !session.Metadata.TryGetValue("sessionId", out var sessionId) || sessionId != payment.SessionId?.ToString())
+                throw new InvalidOperationException("Checkout payment does not match the payment record");
             await _paymentService.UpdatePaymentStatusAsync(paymentId, PaymentStatus.Completed);
 
             // Invalidate caches
@@ -105,6 +111,7 @@ public class StripeWebhookController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling checkout.session.completed for payment {PaymentId}", paymentId);
+            throw;
         }
     }
 }

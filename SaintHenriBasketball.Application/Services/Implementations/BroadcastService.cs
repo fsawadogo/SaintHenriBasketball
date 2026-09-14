@@ -101,7 +101,7 @@ public class BroadcastService : IBroadcastService
         // emails (receipts, password reset, payment confirmation) bypass this and
         // continue to send — standard CASL/CAN-SPAM convention.
         var all = (await _userRepository.GetAllUsersAsync())
-            .Where(u => u.EmailConfirmed && !string.IsNullOrEmpty(u.Email) && u.EmailNotificationsEnabled)
+            .Where(u => u.EmailConfirmed && !string.IsNullOrEmpty(u.Email) && u.EmailNotificationsEnabled && u.CommunityUpdatesEnabled)
             .ToList();
 
         return audience switch

@@ -5,26 +5,23 @@ namespace SaintHenriBasketball.Application.Helpers;
 
 public static class EmailTemplateHelper
 {
-    // Midnight Court email color tokens
-    private const string ColorDark = "#0a0e1a";
-    private const string ColorSurface = "#111520";
-    private const string ColorAccent = "#f97316";
-    private const string ColorText = "#1a1a2e";
-    private const string ColorTextLight = "#6b7280";
-    private const string ColorBg = "#f0f0f0";
+    // Email-safe literals matching the app theme tokens.
+    private const string ColorDark = "#20382c";
+    private const string ColorSurface = "#192820";
+    private const string ColorGold = "#ecc382";
+    public const string ColorAccent = "#2e4b3c";
+    private const string ColorText = "#15281e";
+    private const string ColorTextLight = "#637369";
+    private const string ColorBg = "#f7f9f8";
     private const string ColorCard = "#ffffff";
-    private const string ColorBorder = "#e5e7eb";
-    private const string ColorInfoBg = "#f8f9fa";
+    private const string ColorBorder = "#e0e6e2";
+    private const string ColorInfoBg = "#f2f6f2";
     private const string ColorSuccess = "#22c55e";
     private const string ColorWarning = "#eab308";
     private const string ColorDanger = "#ef4444";
-    private const string LogoUrl = "https://sainthenribasketball.com/logo.png";
+    private const string LogoUrl = "https://sainthenribasketball.com/brand/club-mark-192.png";
     private const string WhatsAppGroupUrl = "https://chat.whatsapp.com/JGAbUroUK9B6feJ6uDlwwD";
     private const string InstagramProfileUrl = "https://www.instagram.com/sainthenribasketball";
-    // Stable hosted brand marks (Wikimedia Commons CDN — reliable for email rendering).
-    private const string WhatsAppIconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/240px-WhatsApp.svg.png";
-    private const string InstagramIconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png";
-
     private static readonly CultureInfo FrenchCulture = new("fr-CA");
     private static readonly CultureInfo EnglishCulture = new("en-CA");
 
@@ -61,8 +58,8 @@ public static class EmailTemplateHelper
         var title = LSubject(titleEn, titleFr, language);
         var lang = language == EmailLanguage.English ? "en" : "fr";
         var signature = L("Team SHB", "Équipe SHB", language);
-        var whatsappAria = L("WhatsApp group", "Groupe WhatsApp", language);
-        var instagramAria = L("Instagram profile", "Profil Instagram", language);
+        var whatsappAria = LSubject("WhatsApp group", "Groupe WhatsApp", language);
+        var instagramAria = LSubject("Instagram profile", "Profil Instagram", language);
         var signoff = L("See you on the court,", "À bientôt sur le terrain,", language);
 
         return $@"<!DOCTYPE html>
@@ -80,13 +77,14 @@ public static class EmailTemplateHelper
                     <!-- Header -->
                     <tr>
                         <td style='background-color:{ColorDark};border-radius:12px 12px 0 0;padding:24px 32px;text-align:center;'>
-                            <img src='{LogoUrl}' alt='Saint-Henri Basketball' width='48' height='48' style='display:inline-block;margin-bottom:12px;border-radius:8px;' />
+                            <img src='{LogoUrl}' alt='Saint-Henri Basketball' width='72' height='72' style='display:inline-block;margin-bottom:12px;border-radius:8px;' />
+                            <p style='margin:0 0 16px;color:{ColorGold};font-size:14px;font-weight:700;letter-spacing:1px;'>SAINT-HENRI BASKETBALL</p>
                             <h1 style='margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;'>{title}</h1>
                         </td>
                     </tr>
-                    <!-- Orange accent line -->
+                    <!-- Gold accent line -->
                     <tr>
-                        <td style='background-color:{ColorAccent};height:3px;font-size:0;line-height:0;'>&nbsp;</td>
+                        <td style='background-color:{ColorGold};height:3px;font-size:0;line-height:0;'>&nbsp;</td>
                     </tr>
                     <!-- Content -->
                     <tr>
@@ -106,13 +104,9 @@ public static class EmailTemplateHelper
                                             <p style='margin:0;color:{ColorTextLight};font-size:13px;'>{signoff}</p>
                                             <p style='margin:4px 0 0;font-weight:600;color:{ColorText};font-size:14px;'>{signature}</p>
                                         </td>
-                                        <td style='vertical-align:middle;text-align:right;white-space:nowrap;width:96px;'>
-                                            <a href='{InstagramProfileUrl}' aria-label='{instagramAria}' title='{instagramAria}' style='display:inline-block;text-decoration:none;line-height:0;margin-right:8px;'>
-                                                <img src='{InstagramIconUrl}' alt='{instagramAria}' width='36' height='36' style='display:inline-block;border:0;vertical-align:middle;' />
-                                            </a>
-                                            <a href='{WhatsAppGroupUrl}' aria-label='{whatsappAria}' title='{whatsappAria}' style='display:inline-block;text-decoration:none;line-height:0;'>
-                                                <img src='{WhatsAppIconUrl}' alt='{whatsappAria}' width='36' height='36' style='display:inline-block;border:0;vertical-align:middle;' />
-                                            </a>
+                                        <td style='vertical-align:middle;text-align:right;width:110px;'>
+                                            <a href='{InstagramProfileUrl}' aria-label='{instagramAria}' style='display:block;padding:8px 0;color:{ColorAccent};font-size:12px;text-decoration:underline;'>Instagram</a>
+                                            <a href='{WhatsAppGroupUrl}' aria-label='{whatsappAria}' style='display:block;padding:8px 0;color:{ColorAccent};font-size:12px;text-decoration:underline;'>WhatsApp</a>
                                         </td>
                                     </tr>
                                 </table>
@@ -122,9 +116,9 @@ public static class EmailTemplateHelper
                     <!-- Footer -->
                     <tr>
                         <td style='background-color:{ColorDark};border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;'>
-                            <p style='margin:0 0 4px;color:#9ca3af;font-size:12px;'>Saint-Henri Basketball</p>
-                            <p style='margin:0 0 4px;color:#6b7280;font-size:11px;'>717 Saint-Ferdinand Street, Montreal, QC H4C 3L7</p>
-                            <p style='margin:0;color:#6b7280;font-size:11px;'>(438) 935-8129 &middot; info@sainthenribasketball.com</p>
+                            <p style='margin:0 0 4px;color:#ecc382;font-size:12px;'>Saint-Henri Basketball</p>
+                            <p style='margin:0 0 4px;color:#c5d9c8;font-size:11px;'>717 Saint-Ferdinand Street, Montreal, QC H4C 3L7</p>
+                            <p style='margin:0;color:#c5d9c8;font-size:11px;'>(438) 935-8129 &middot; info@sainthenribasketball.com</p>
                         </td>
                     </tr>
                 </table>
@@ -135,7 +129,7 @@ public static class EmailTemplateHelper
 </html>";
     }
 
-    /// <summary>Builds an orange CTA button.</summary>
+    /// <summary>Builds a forest-green CTA button.</summary>
     public static string BuildButton(string textEn, string textFr, string url, EmailLanguage language = EmailLanguage.French)
     {
         var text = language switch
@@ -181,7 +175,7 @@ public static class EmailTemplateHelper
             "success" => ("#f0fdf4", "#bbf7d0", "#166534"),
             "warning" => ("#fffbeb", "#fde68a", "#92400e"),
             "danger" => ("#fef2f2", "#fecaca", "#991b1b"),
-            _ => ("#eff6ff", "#bfdbfe", "#1e40af") // info
+            _ => (ColorInfoBg, ColorBorder, ColorDark) // info
         };
 
         return $@"<div style='background-color:{bgColor};border:1px solid {borderColor};border-radius:8px;padding:12px 16px;margin:16px 0;'>
@@ -189,10 +183,10 @@ public static class EmailTemplateHelper
         </div>";
     }
 
-    /// <summary>Builds an orange accent horizontal divider.</summary>
+    /// <summary>Builds a gold accent horizontal divider.</summary>
     public static string BuildDivider()
     {
-        return $@"<div style='border:none;border-top:2px solid {ColorAccent};margin:24px 0;opacity:0.3;'></div>";
+        return $@"<div style='border:none;border-top:2px solid {ColorGold};margin:24px 0;opacity:0.3;'></div>";
     }
 
     /// <summary>Greeting line: "Hello/Bonjour {name},"</summary>

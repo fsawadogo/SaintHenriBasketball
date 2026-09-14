@@ -35,15 +35,15 @@ public class PersonalStatsService : IPersonalStatsService
         _ = await _userRepository.GetByIdAsync(userId)
             ?? throw new NotFoundException($"User {userId} not found");
 
-        var attendanceTask = _attendanceRepository.GetUserAttendanceHistoryAsync(userId);
-        var registrationsTask = _registrationRepository.GetByUserIdAsync(userId);
-        await Task.WhenAll(attendanceTask, registrationsTask);
+        var attendanceRows = await _attendanceRepository.GetUserAttendanceHistoryAsync(userId);
+        var registrationRows = await _registrationRepository.GetByUserIdAsync(userId);
 
-        var attendedPast = attendanceTask.Result
-            .Where(a => a.IsAttending && a.Session is not null && a.Session.SessionDate <= DateTime.UtcNow)
+
+        var attendedPast = attendanceRows
+            .Where(a => a.CheckInTime != null && a.IsAttending && a.Session is not null && a.Session.SessionDate <= DateTime.UtcNow)
             .OrderBy(a => a.Session!.SessionDate)
             .ToList();
-        var registeredPast = registrationsTask.Result
+        var registeredPast = registrationRows
             .Where(r => r.Session is not null && r.Session.SessionDate <= DateTime.UtcNow)
             .ToList();
 
@@ -63,16 +63,16 @@ public class PersonalStatsService : IPersonalStatsService
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new NotFoundException($"User {userId} not found");
 
-        var attendanceTask = _attendanceRepository.GetUserAttendanceHistoryAsync(userId);
-        var registrationsTask = _registrationRepository.GetByUserIdAsync(userId);
-        var paymentsTask = _paymentRepository.GetPaymentsByUserAsync(userId);
-        await Task.WhenAll(attendanceTask, registrationsTask, paymentsTask);
+        var attendanceRows = await _attendanceRepository.GetUserAttendanceHistoryAsync(userId);
+        var registrationRows = await _registrationRepository.GetByUserIdAsync(userId);
+        var paymentRows = await _paymentRepository.GetPaymentsByUserAsync(userId);
 
-        var attendedPast = attendanceTask.Result
-            .Where(a => a.IsAttending && a.Session is not null && a.Session.SessionDate <= DateTime.UtcNow)
+
+        var attendedPast = attendanceRows
+            .Where(a => a.CheckInTime != null && a.IsAttending && a.Session is not null && a.Session.SessionDate <= DateTime.UtcNow)
             .OrderBy(a => a.Session!.SessionDate)
             .ToList();
-        var registeredPast = registrationsTask.Result
+        var registeredPast = registrationRows
             .Where(r => r.Session is not null && r.Session.SessionDate <= DateTime.UtcNow)
             .ToList();
 
@@ -80,7 +80,7 @@ public class PersonalStatsService : IPersonalStatsService
         var totalRegistered = registeredPast.Count;
         var rate = totalRegistered == 0 ? 0d : (double)totalAttended / totalRegistered;
 
-        var totalSpent = paymentsTask.Result
+        var totalSpent = paymentRows
             .Where(p => p.Status == PaymentStatus.Completed)
             .Sum(p => p.Amount);
 

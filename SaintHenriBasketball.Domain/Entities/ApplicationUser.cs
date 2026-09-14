@@ -1,4 +1,4 @@
-﻿using SaintHenriBasketball.Domain.Enums;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Domain.Entities;
 
@@ -29,6 +29,10 @@ public class ApplicationUser
     public string? PhoneNumber { get; set; }
     public bool SmsOptIn { get; set; }
     public bool SmsAnnouncementDismissed { get; set; }
+    public bool SessionRemindersEnabled { get; set; } = true;
+    public bool PaymentRemindersEnabled { get; set; } = true;
+    public bool WaitlistAlertsEnabled { get; set; } = true;
+    public bool CommunityUpdatesEnabled { get; set; } = true;
     public bool EmailNotificationsEnabled { get; set; } = true;
     public bool InAppNotificationsEnabled { get; set; } = true;
 

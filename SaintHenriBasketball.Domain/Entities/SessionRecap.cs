@@ -5,6 +5,7 @@ public class SessionRecap
     public Guid Id { get; private set; }
     public Guid SessionId { get; private set; }
     public string PhotoUrl { get; set; } = string.Empty;
+    public DateTime? PhotoConsentRecordedAt { get; set; }
     public string? Caption { get; set; }
     public Guid CreatedBy { get; private set; }
     public DateTime CreatedOn { get; private set; }

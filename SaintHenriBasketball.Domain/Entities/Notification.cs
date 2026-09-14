@@ -3,6 +3,7 @@ namespace SaintHenriBasketball.Domain.Entities;
 public enum NotificationType
 {
     Generic = 0,
+    WaitlistOffer = 5,
     PaymentCompleted = 1,
     SessionCancelled = 2,
     AdminBroadcast = 3,

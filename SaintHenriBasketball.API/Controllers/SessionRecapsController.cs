@@ -46,6 +46,9 @@ public class SessionRecapsController : BaseApiController
         var adminId = GetUserId();
         if (adminId is null) return Unauthorized();
 
+        if (!body.PhotoConsentConfirmed) return BadRequest("Confirm permission from the people pictured before sharing a photo.");
+        if (string.IsNullOrWhiteSpace(body.Caption) || body.Caption.Length > 500) return BadRequest("Add a recap between 1 and 500 characters.");
+
         try
         {
             var recap = await _recapService.CreateAsync(sessionId, body.PhotoUrl, body.Caption, adminId.Value);

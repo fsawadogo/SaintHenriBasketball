@@ -52,8 +52,7 @@ public class SessionRepository : ISessionRepository
             .Include(s => s.Registrations)
             .Where(s =>
                 s.SessionDate.Date >= today &&
-                s.Status == SessionStatus.Open &&
-                s.RegisteredPlayersCount < s.MaxCapacity)
+                (s.Status == SessionStatus.Open || s.Status == SessionStatus.Full))
             .OrderBy(s => s.SessionDate)
             .ToListAsync();
     }
