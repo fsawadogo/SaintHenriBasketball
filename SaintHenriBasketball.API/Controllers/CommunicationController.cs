@@ -11,6 +11,7 @@ using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using SaintHenriBasketball.Infrastructure.Jobs;
 using Templates = SaintHenriBasketball.Application.Templates;
+using SaintHenriBasketball.API.Extensions;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -26,6 +27,7 @@ public class CommunicationController : ControllerBase
     private readonly ILogger<CommunicationController> _logger;
     private readonly ApplicationDbContext _dbContext;
     private readonly ISchedulerFactory _schedulerFactory;
+    private readonly IAuditLogService _auditLogService;
 
     public CommunicationController(
         IEmailService emailService,
@@ -33,7 +35,8 @@ public class CommunicationController : ControllerBase
         ISeasonService seasonService,
         ILogger<CommunicationController> logger,
         ApplicationDbContext dbContext,
-        ISchedulerFactory schedulerFactory)
+        ISchedulerFactory schedulerFactory,
+        IAuditLogService auditLogService)
     {
         _emailService = emailService;
         _userService = userService;
@@ -41,6 +44,7 @@ public class CommunicationController : ControllerBase
         _logger = logger;
         _dbContext = dbContext;
         _schedulerFactory = schedulerFactory;
+        _auditLogService = auditLogService;
     }
 
     #region Email History
@@ -192,8 +196,11 @@ public class CommunicationController : ControllerBase
         var delay = request.ScheduledAt - DateTime.UtcNow;
         var scheduler = await _schedulerFactory.GetScheduler();
 
+        var recipients = await FilterRecipientsAsync(request.Emails, EmailAudience.Community);
+        if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
+
         var job = JobBuilder.Create<ScheduledEmailJob>()
-            .UsingJobData("to", string.Join(",", request.Emails))
+            .UsingJobData("to", string.Join(",", recipients.Allowed))
             .UsingJobData("subject", request.Subject)
             .UsingJobData("body", request.Message)
             .Build();
@@ -203,6 +210,9 @@ public class CommunicationController : ControllerBase
             .Build();
 
         await scheduler.ScheduleJob(job, trigger);
+        await _auditLogService.LogAsync("EmailScheduled", "Communication", null,
+            $"{recipients.Allowed.Count} recipient(s) at {request.ScheduledAt:u}; {recipients.Skipped} skipped (opted out or inactive)",
+            User.AuditUserId(), User.AuditUserName());
 
         return Ok(new { jobId = job.Key.Name, scheduledAt = request.ScheduledAt });
     }
@@ -219,13 +229,16 @@ public class CommunicationController : ControllerBase
     {
         try
         {
+            var recipients = await FilterRecipientsAsync(request.Emails, EmailAudience.PaymentReminders);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendPaymentRemindersAsync(
-                request.Emails,
+                recipients.Allowed,
                 request.Language,
                 request.CustomMessage,
                 request.CustomMessageFr);
 
-            return HandleEmailResult(result, "payment reminder");
+            await AuditSendAsync("payment reminder", result, recipients.Skipped);
+            return HandleEmailResult(result, "payment reminder", recipients.Skipped);
         }
         catch (Exception ex)
         {
@@ -244,13 +257,16 @@ public class CommunicationController : ControllerBase
     {
         try
         {
+            var recipients = await FilterRecipientsAsync(request.Emails, EmailAudience.SessionReminders);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendAttendanceRemindersAsync(
-                request.Emails,
+                recipients.Allowed,
                 request.Language,
                 request.CustomMessage,
                 request.CustomMessageFr);
 
-            return HandleEmailResult(result, "attendance reminder");
+            await AuditSendAsync("attendance reminder", result, recipients.Skipped);
+            return HandleEmailResult(result, "attendance reminder", recipients.Skipped);
         }
         catch (Exception ex)
         {
@@ -269,13 +285,16 @@ public class CommunicationController : ControllerBase
     {
         try
         {
+            var recipients = await FilterRecipientsAsync(request.Emails, EmailAudience.Community);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendSeasonRegistrationRemindersAsync(
-                request.Emails,
+                recipients.Allowed,
                 request.Language,
                 request.CustomMessage,
                 request.CustomMessageFr);
 
-            return HandleEmailResult(result, "season registration reminder");
+            await AuditSendAsync("season registration reminder", result, recipients.Skipped);
+            return HandleEmailResult(result, "season registration reminder", recipients.Skipped);
         }
         catch (Exception ex)
         {
@@ -299,13 +318,16 @@ public class CommunicationController : ControllerBase
 
         try
         {
+            var recipients = await FilterRecipientsAsync(request.Emails, EmailAudience.Community);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendGeneralAnnouncementsAsync(
-                request.Emails,
+                recipients.Allowed,
                 request.Language,
                 request.CustomMessage,
                 request.CustomMessageFr);
 
-            return HandleEmailResult(result, "announcement");
+            await AuditSendAsync("announcement", result, recipients.Skipped);
+            return HandleEmailResult(result, "announcement", recipients.Skipped);
         }
         catch (Exception ex)
         {
@@ -338,10 +360,13 @@ public class CommunicationController : ControllerBase
             if (!validEmails.Any())
                 return BadRequest("At least one valid email address is required");
 
+            var recipients = await FilterRecipientsAsync(validEmails, EmailAudience.Community);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendTargetedEmailsAsync(
-                emailType, validEmails, request.Language, request.CustomMessage, request.CustomMessageFr);
+                emailType, recipients.Allowed.Select(e => e!).ToList(), request.Language, request.CustomMessage, request.CustomMessageFr);
 
-            return HandleEmailResult(result, label);
+            await AuditSendAsync(label, result, recipients.Skipped);
+            return HandleEmailResult(result, label, recipients.Skipped);
         }
         catch (Exception ex)
         {
@@ -417,14 +442,24 @@ public class CommunicationController : ControllerBase
                 return BadRequest("At least one email address is required");
             }
 
+            var audience = request.EmailType switch
+            {
+                Domain.Enums.EmailType.PaymentReminder => EmailAudience.PaymentReminders,
+                Domain.Enums.EmailType.AttendanceReminder => EmailAudience.SessionReminders,
+                _ => EmailAudience.Community,
+            };
+            var recipients = await FilterRecipientsAsync(request.Emails, audience);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendTargetedEmailsAsync(
                 request.EmailType,
-                request.Emails,
+                recipients.Allowed.Select(e => e!).ToList(),
                 request.Language,
                 request.CustomMessage,
                 request.CustomMessageFr);
 
-            return HandleEmailResult(result, request.EmailType.ToString().ToLower());
+            var label = request.EmailType.ToString().ToLower();
+            await AuditSendAsync(label, result, recipients.Skipped);
+            return HandleEmailResult(result, label, recipients.Skipped);
         }
         catch (Exception ex)
         {
@@ -464,9 +499,11 @@ public class CommunicationController : ControllerBase
             var englishMessage = request?.CustomMessage ?? CreateSeasonStartMessageEn(season);
             var frenchMessage = request?.CustomMessageFr ?? CreateSeasonStartMessageFr(season);
 
-            // Send announcement to all users
+            // Send announcement to every active player who still wants club updates
+            var recipients = await FilterRecipientsAsync(userEmails, EmailAudience.Community);
+            if (recipients.Allowed.Count == 0) return BadRequest(NoRecipientsMessage);
             var result = await _emailService.SendGeneralAnnouncementsAsync(
-                userEmails,
+                recipients.Allowed,
                 request?.Language ?? Domain.Enums.EmailLanguage.English,
                 englishMessage,
                 frenchMessage);
@@ -476,7 +513,8 @@ public class CommunicationController : ControllerBase
                 result.SuccessCount,
                 result.FailureCount);
 
-            return HandleEmailResult(result, "season start announcement");
+            await AuditSendAsync("season start announcement", result, recipients.Skipped);
+            return HandleEmailResult(result, "season start announcement", recipients.Skipped);
         }
         catch (NotFoundException ex)
         {
@@ -570,13 +608,53 @@ public class CommunicationController : ControllerBase
 </div>";
     }
     
-    private IActionResult HandleEmailResult(EmailSendResult result, string emailType)
+    private const string NoRecipientsMessage = "Everyone selected has turned off these emails or no longer has an active account.";
+
+    private enum EmailAudience { Community, PaymentReminders, SessionReminders }
+
+    private sealed record RecipientFilter(List<string?> Allowed, int Skipped);
+
+    /// <summary>
+    /// Keeps only active club accounts that still want this kind of email (CASL): club updates need
+    /// community updates on, reminders need the matching reminder setting. Unknown addresses are skipped.
+    /// </summary>
+    private async Task<RecipientFilter> FilterRecipientsAsync(IEnumerable<string?> emails, EmailAudience audience)
     {
+        var requested = emails
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Select(e => e!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var lowered = requested.Select(e => e.ToLowerInvariant()).ToList();
+        var accounts = await _dbContext.Users.AsNoTracking()
+            .Where(u => u.Email != null && lowered.Contains(u.Email.ToLower()))
+            .Select(u => new { Email = u.Email!, u.IsDeactivated, u.EmailNotificationsEnabled, u.CommunityUpdatesEnabled, u.PaymentRemindersEnabled, u.SessionRemindersEnabled })
+            .ToListAsync();
+        var allowed = accounts
+            .Where(u => !u.IsDeactivated && u.EmailNotificationsEnabled && audience switch
+            {
+                EmailAudience.PaymentReminders => u.PaymentRemindersEnabled,
+                EmailAudience.SessionReminders => u.SessionRemindersEnabled,
+                _ => u.CommunityUpdatesEnabled,
+            })
+            .Select(u => (string?)u.Email)
+            .ToList();
+        return new RecipientFilter(allowed, requested.Count - allowed.Count);
+    }
+
+    private Task AuditSendAsync(string emailType, EmailSendResult result, int skipped) =>
+        _auditLogService.LogAsync("EmailSent", "Communication", null,
+            $"{emailType}: {result.SuccessCount} sent, {result.FailureCount} failed, {skipped} skipped (opted out or inactive)",
+            User.AuditUserId(), User.AuditUserName());
+
+    private IActionResult HandleEmailResult(EmailSendResult result, string emailType, int skipped = 0)
+    {
+        var skippedNote = skipped > 0 ? $" {skipped} skipped because they turned off these emails or are inactive." : "";
         var response = new EmailSendResponseDto
         {
             Message = result.AllSucceeded 
-                ? $"Successfully sent {emailType} emails to {result.SuccessCount} recipients"
-                : $"Some {emailType} emails failed to send",
+                ? $"Sent {emailType} emails to {result.SuccessCount} recipients." + skippedNote
+                : $"Some {emailType} emails failed to send." + skippedNote,
             SuccessCount = result.SuccessCount,
             FailureCount = result.FailureCount,
             FailedEmails = result.FailedEmails

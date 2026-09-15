@@ -90,6 +90,14 @@ public class AccountLifecycleService : IAccountLifecycleService
         await _users.UpdateAsync(user);
     }
 
+    public async Task ResetTwoFactorAsync(Guid userId)
+    {
+        var user = await _users.GetByIdAsync(userId) ?? throw new NotFoundException("User not found");
+        user.TwoFactorEnabled = false;
+        user.TwoFactorSecret = null;
+        await _users.UpdateAsync(user);
+    }
+
     /// A deactivated player's places go back to the session (and its waitlist).
     private async Task ReleaseUpcomingReservationsAsync(Guid userId)
     {

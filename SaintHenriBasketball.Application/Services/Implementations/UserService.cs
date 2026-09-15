@@ -148,10 +148,12 @@ public class UserService : IUserService
         }
 
         var requires2Fa = await RequiresTwoFactorAsync(user);
+        var requires2FaSetup = !requires2Fa && await RequiresTwoFactorSetupAsync(user);
 
         return new UserResponseDto
         {
-            Token = GenerateJwtToken(user, twoFactorPending: requires2Fa),
+            Token = GenerateJwtToken(user, twoFactorPending: requires2Fa, twoFactorEnrollment: requires2FaSetup),
+            Requires2FaSetup = requires2FaSetup,
             Username = user.Username,
             Email = user.Email,
             FirstName = user.FirstName,
@@ -218,10 +220,12 @@ public class UserService : IUserService
 
         // Google sign-in gets the same second step as a password sign-in.
         var requires2Fa = await RequiresTwoFactorAsync(user);
+        var requires2FaSetup = !requires2Fa && await RequiresTwoFactorSetupAsync(user);
 
         return new UserResponseDto
         {
-            Token = GenerateJwtToken(user, twoFactorPending: requires2Fa),
+            Token = GenerateJwtToken(user, twoFactorPending: requires2Fa, twoFactorEnrollment: requires2FaSetup),
+            Requires2FaSetup = requires2FaSetup,
             Username = user.Username,
             Email = user.Email,
             FirstName = user.FirstName,
@@ -234,6 +238,9 @@ public class UserService : IUserService
 
     private async Task<bool> RequiresTwoFactorAsync(ApplicationUser user) =>
         user.IsAdmin && user.TwoFactorEnabled && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Admin2fa);
+
+    private async Task<bool> RequiresTwoFactorSetupAsync(ApplicationUser user) =>
+        user.IsAdmin && !user.TwoFactorEnabled && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Admin2fa);
 
     public async Task<UserDto> GetUserAsync(Guid userId)
     {
@@ -483,7 +490,7 @@ public class UserService : IUserService
             throw;
         }
     }
-    private string GenerateJwtToken(ApplicationUser user, bool twoFactorPending = false)
+    private string GenerateJwtToken(ApplicationUser user, bool twoFactorPending = false, bool twoFactorEnrollment = false)
     {
         if (user is not { Email: not null, Username: not null })
         {
@@ -508,8 +515,11 @@ public class UserService : IUserService
         // except the 2FA verify/setup endpoints until the user exchanges it.
         if (twoFactorPending)
             claims.Add(new Claim("2fa_pending", "true"));
+        // Admins who must set up 2FA first get a short session that only allows setup (see TwoFactorPendingMiddleware).
+        if (twoFactorEnrollment)
+            claims.Add(new Claim("2fa_enroll", "true"));
 
-        var durationInDays = twoFactorPending
+        var durationInDays = twoFactorPending || twoFactorEnrollment
             ? (1.0 / 96.0) // 15 minutes
             : Convert.ToDouble(_configuration["JwtSettings:DurationInDays"] ?? throw new InvalidOperationException("JWT duration is not configured"));
 

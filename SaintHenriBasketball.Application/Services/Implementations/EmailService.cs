@@ -19,6 +19,7 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 public class EmailService : IEmailService
 {
     private readonly AttendanceLinks _attendanceLinks;
+    private readonly UnsubscribeLinks _unsubscribeLinks;
     private readonly IResend _resend;
     private readonly string _fromAddress;
     private readonly ILogger<EmailService> _logger;
@@ -39,7 +40,8 @@ public class EmailService : IEmailService
         IWebHostEnvironment webHostEnvironment,
         ISessionRepository sessionRepository,
         IResend resend,
-        IGenericRepository<EmailLog> emailLogRepository)
+        IGenericRepository<EmailLog> emailLogRepository,
+        UnsubscribeLinks unsubscribeLinks)
     {
         _attendanceLinks = attendanceLinks;
         _logger = logger;
@@ -51,6 +53,7 @@ public class EmailService : IEmailService
         _paymentRepository = paymentRepository;
         _resend = resend;
         _emailLogRepository = emailLogRepository;
+        _unsubscribeLinks = unsubscribeLinks;
 
         var fromEmail = configuration["Resend:FromEmail"]
             ?? throw new ArgumentNullException(nameof(configuration), "Resend From Email is not configured");
@@ -975,6 +978,10 @@ public class EmailService : IEmailService
 
                     _ => throw new ArgumentException($"Unsupported email type: {emailType}")
                 };
+
+                // Club updates carry the same unsubscribe link as broadcasts; reminders about a player's own bookings don't.
+                if (emailType is EmailType.GeneralAnnouncement or EmailType.ScheduleChange or EmailType.FacilityUpdate or EmailType.SeasonRegistrationReminder)
+                    content = BroadcastService.AppendUnsubscribeFooter(content, _unsubscribeLinks.CreateUrl(user.Id), user.PreferredLanguage);
 
                 string subject = emailType switch
                 {

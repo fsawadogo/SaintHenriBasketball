@@ -134,6 +134,7 @@ public class UsersController(
     /// </summary>
     [HttpGet("me")]
     [Authorize]
+    [AllowTwoFactorEnrollment]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
@@ -542,6 +543,28 @@ public class UsersController(
                     _logger.LogWarning("Failed to send the admin access email to {UserId}", userId);
             }
 
+            return NoContent();
+        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    /// <summary>
+    /// Turn off another admin's two-factor authentication after they lose their device (Admin only). Audited.
+    /// </summary>
+    [HttpPost("{userId}/reset-2fa")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetTwoFactor(Guid userId)
+    {
+        if (User.AuditUserId() == userId)
+            return BadRequest("You can't reset your own two-factor authentication. Turn it off from your profile with a current code, or ask another admin.");
+        try
+        {
+            await accountLifecycle.ResetTwoFactorAsync(userId);
+            await ForgetUserAsync(userId);
+            await auditLogService.LogAsync("TwoFactorReset", "User", userId, "Two-factor authentication reset by an admin", User.AuditUserId(), User.AuditUserName());
             return NoContent();
         }
         catch (NotFoundException ex) { return NotFound(ex.Message); }

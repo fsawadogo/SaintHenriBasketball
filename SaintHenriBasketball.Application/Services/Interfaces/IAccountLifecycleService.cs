@@ -13,4 +13,7 @@ public interface IAccountLifecycleService
 
     /// Grants or removes admin access. Callers enforce who may do this (not yourself, not the last admin).
     Task SetAdminAsync(Guid userId, bool isAdmin);
+
+    /// Turns off a player's two-factor authentication so they can set it up again (lost phone).
+    Task ResetTwoFactorAsync(Guid userId);
 }
