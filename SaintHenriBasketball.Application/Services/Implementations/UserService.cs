@@ -67,7 +67,7 @@ public class UserService : IUserService
             && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Referrals))
         {
             referralCode = await _referralRepository.GetCodeByValueAsync(registerDto.ReferralCode.Trim().ToUpperInvariant());
-            if (referralCode is null || (referralCode.MaxUses is int maxUses && referralCode.TimesUsed >= maxUses))
+            if (referralCode is null || !referralCode.IsActive || (referralCode.MaxUses is int maxUses && referralCode.TimesUsed >= maxUses))
                 throw new ValidationException(InvalidReferralCodeMessage);
         }
 
