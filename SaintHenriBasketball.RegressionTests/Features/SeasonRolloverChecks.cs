@@ -39,6 +39,11 @@ internal static class SeasonRolloverChecks
             try { await using var context = db(); await action(Rollover(context)); return null; }
             catch (Exception ex) { return ex; }
         }
+        async Task SetStatusAsync(Guid seasonId, SeasonStatus status)
+        {
+            await using var context = db();
+            await context.Seasons.Where(s => s.Id == seasonId).ExecuteUpdateAsync(u => u.SetProperty(s => s.Status, status));
+        }
         static DateTime SaturdayOnOrAfter(DateTime date) { var d = date.Date; while (d.DayOfWeek != DayOfWeek.Saturday) d = d.AddDays(1); return d; }
 
         // ---- Source season with sessions, plus a season and a session in the way of the next one ----
@@ -147,8 +152,18 @@ internal static class SeasonRolloverChecks
             await context.SaveChangesAsync();
         }
 
-        SeasonRenewalInviteResultDto first;
-        await using (var context = db()) first = await Rollover(context).SendRenewalInvitesAsync(draft.SeasonId, new SeasonRenewalInviteRequestDto { SourceSeasonId = source.Id }, null, "Regression");
+        var closedRefused = await FailureAsync(s => s.SendRenewalInvitesAsync(draft.SeasonId, new SeasonRenewalInviteRequestDto { SourceSeasonId = source.Id }, null, "Regression"));
+        assert(closedRefused is ValidationException { Message: SeasonRolloverService.NewSeasonClosedMessage } && email.Sent.Count == 0,
+            "renewal invites are refused while the new season is still closed");
+        // Open the draft only around the invite checks: other checks treat the Open season as the current one.
+        await SetStatusAsync(draft.SeasonId, SeasonStatus.Open);
+        var concurrent = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
+        {
+            await using var context = db();
+            return await Rollover(context).SendRenewalInvitesAsync(draft.SeasonId, new SeasonRenewalInviteRequestDto { SourceSeasonId = source.Id }, null, "Regression");
+        }));
+        assert(concurrent.Count(r => r.AlreadySent) == 1, "two simultaneous invite requests for the same season send only once");
+        var first = concurrent.Single(r => !r.AlreadySent);
         string? ReasonFor(SeasonRenewalInviteResultDto result, ApplicationUser user) => result.SkippedPlayers.SingleOrDefault(p => p.UserId == user.Id)?.Reason;
         assert(first is { RecipientRule: SeasonRolloverService.RuleCompletedPayments, Candidates: 7, Sent: 2, Skipped: 4, Failed: 1, AlreadySent: false }
             && ReasonFor(first, deactivated) == SeasonRolloverService.SkipDeactivated && ReasonFor(first, noCommunity) == SeasonRolloverService.SkipCommunityUpdatesOff
@@ -177,6 +192,7 @@ internal static class SeasonRolloverChecks
         var sameSeason = await FailureAsync(s => s.SendRenewalInvitesAsync(draft.SeasonId, new SeasonRenewalInviteRequestDto { SourceSeasonId = draft.SeasonId }, null, "Regression"));
         var unknownNew = await FailureAsync(s => s.SendRenewalInvitesAsync(Guid.NewGuid(), new SeasonRenewalInviteRequestDto { SourceSeasonId = source.Id }, null, "Regression"));
         assert(sameSeason is ValidationException && unknownNew is NotFoundException, "renewal invites need a different, existing source season");
+        await SetStatusAsync(draft.SeasonId, SeasonStatus.Closed);
 
         // ---- Invitations: a season with no linked payments falls back to Season-plan players ----
         var legacyStart = SaturdayOnOrAfter(new DateTime(2044, 9, 1));
@@ -200,7 +216,9 @@ internal static class SeasonRolloverChecks
             legacyPreview = await Rollover(context).PreviewAsync(legacy.Id, null);
             legacyDraft = await Rollover(context).CreateDraftAsync(legacy.Id, null, null, "Regression");
         }
+        await SetStatusAsync(legacyDraft.SeasonId, SeasonStatus.Open);
         await using (var context = db()) fallback = await Rollover(context).SendRenewalInvitesAsync(legacyDraft.SeasonId, new SeasonRenewalInviteRequestDto { SourceSeasonId = legacy.Id }, null, "Regression");
+        await SetStatusAsync(legacyDraft.SeasonId, SeasonStatus.Closed);
         assert(legacyPreview.ProposedSeason.StartDate == SaturdayOnOrAfter(legacy.EndDate.AddDays(1)) && legacyPreview.ProposedSeason.EndDate == legacyPreview.ProposedSeason.StartDate.AddDays(90)
             && legacyPreview.ProposedSeason.Name == $"Fall 2045 {tag}"
             && legacyPreview.SessionPlan is { StartTime: "10:00", EndTime: "12:00", BasedOnSessionId: null },

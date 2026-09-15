@@ -180,6 +180,13 @@ public class SeasonRolloverService : ISeasonRolloverService
         };
     }
 
+    public const string NewSeasonClosedMessage = "Open the new season before inviting players to renew (close the current season first).";
+
+    // One invite run per new season at a time within this process, so a double click or a retry waits for the
+    // first run and then finds its audit entry instead of sending again. It does not coordinate several API
+    // instances; across instances the audit lookup is the only protection. One small semaphore per season is kept.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, SemaphoreSlim> InviteGates = new();
+
     public async Task<SeasonRenewalInviteResultDto> SendRenewalInvitesAsync(Guid newSeasonId, SeasonRenewalInviteRequestDto request, Guid? adminId, string adminName)
     {
         if (request is null || request.SourceSeasonId == Guid.Empty)
@@ -189,6 +196,18 @@ public class SeasonRolloverService : ISeasonRolloverService
 
         var newSeason = await GetSeasonAsync(newSeasonId);
         var source = await GetSeasonAsync(request.SourceSeasonId);
+        // Players can't register or pay for a closed season, so an invitation would lead nowhere.
+        if (newSeason.Status == SeasonStatus.Closed)
+            throw new ValidationException(NewSeasonClosedMessage);
+
+        var gate = InviteGates.GetOrAdd(newSeason.Id, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+        try { return await SendInvitesAsync(newSeason, source, request, adminId, adminName); }
+        finally { gate.Release(); }
+    }
+
+    private async Task<SeasonRenewalInviteResultDto> SendInvitesAsync(Season newSeason, Season source, SeasonRenewalInviteRequestDto request, Guid? adminId, string adminName)
+    {
         var result = new SeasonRenewalInviteResultDto { SeasonId = newSeason.Id, SourceSeasonId = source.Id };
 
         var previous = (await _auditLogs.GetByEntityAsync(AuditEntityType, newSeason.Id))

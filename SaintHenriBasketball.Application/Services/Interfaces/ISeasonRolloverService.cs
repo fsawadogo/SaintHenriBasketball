@@ -14,5 +14,6 @@ public interface ISeasonRolloverService
     Task<SeasonRolloverDraftResultDto> CreateDraftAsync(Guid sourceSeasonId, SeasonRolloverRequestDto? request, Guid? adminId, string adminName);
 
     /// Emails the source season's players an invitation to renew for the new season, once unless resend is set.
+    /// Throws ValidationException while the new season is Closed: open it (closing the current season) first.
     Task<SeasonRenewalInviteResultDto> SendRenewalInvitesAsync(Guid newSeasonId, SeasonRenewalInviteRequestDto request, Guid? adminId, string adminName);
 }
