@@ -89,6 +89,9 @@ public class SessionsController : BaseApiController
         try
         {
             var session = await _sessionService.GetSessionAsync(id);
+            // Who registered (emails, admin and 2FA status) is admin-only; players get counts and the privacy-safe players list.
+            if (!User.IsInRole("Admin"))
+                session.RegisteredPlayers = Enumerable.Empty<SaintHenriBasketball.Application.DTOs.Users.UserDto>();
             return Ok(session);
         }
         catch (NotFoundException ex)

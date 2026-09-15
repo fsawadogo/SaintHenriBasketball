@@ -131,6 +131,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!))
         };
+        options.Events = new JwtBearerEvents
+        {
+            // A signed token stays valid until it expires, so re-check the account: deactivation and
+            // admin removal take effect within a minute instead of at expiry.
+            OnTokenValidated = async context =>
+            {
+                var principal = context.Principal;
+                var raw = principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (principal is null || !Guid.TryParse(raw, out var userId))
+                {
+                    context.Fail("Invalid token");
+                    return;
+                }
+                var services = context.HttpContext.RequestServices;
+                var snapshot = await SaintHenriBasketball.API.Filters.AuthUserCache.GetAsync(
+                    services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
+                    services.GetRequiredService<SaintHenriBasketball.Domain.Interfaces.Repositories.IUserRepository>(),
+                    userId);
+                var reason = SaintHenriBasketball.Application.Helpers.TokenUserCheck.Evaluate(snapshot, principal.IsInRole("Admin"));
+                if (reason != null) context.Fail(reason);
+            }
+        };
     });
 
 // Add memory caching

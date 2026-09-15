@@ -7,6 +7,7 @@ using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.DTOs.Users;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Enums;
@@ -187,53 +188,58 @@ public class PaymentsController : ControllerBase
    [HttpPut("{id}")]
    [Authorize(Roles = "Admin")]
    [ProducesResponseType(StatusCodes.Status204NoContent)]
+   [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
    [ProducesResponseType(StatusCodes.Status404NotFound)]
    public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentDto updatePaymentDto)
    {
        try
        {
+           var before = await _paymentService.GetPaymentAsync(id);
            var payment = await _paymentService.UpdatePaymentAsync(id, updatePaymentDto);
-           
-           // Invalidate all relevant caches
-           await _cacheService.RemoveAsync($"Payments:Detail:{id}");
-           await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
-           await _cacheService.RemoveAsync("Payments:All");
-           await _cacheService.RemoveAsync("Payments:Pending");
-           await _cacheService.RemoveAsync("Payments:Summary");
-           
+           await InvalidatePaymentCachesAsync(id, payment.UserId);
+           await _auditLogService.LogAsync("Updated", "Payment", id, DescribeChange(before, payment), User.AuditUserId(), User.AuditUserName());
            return NoContent();
        }
-       catch (NotFoundException ex)
-       {
-           _logger.LogError(ex, ex.Message);
-           return NotFound(ex.Message);
-       }
+       catch (ValidationException ex) { return BadRequest(ex.Message); }
+       catch (NotFoundException ex) { return NotFound(ex.Message); }
    }
-   
+
    [HttpPut("{id}/status")]
    [Authorize(Roles = "Admin")]
    [ProducesResponseType(StatusCodes.Status204NoContent)]
+   [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
    [ProducesResponseType(StatusCodes.Status404NotFound)]
    public async Task<IActionResult> UpdatePaymentStatus(Guid id, [FromBody] UpdatePaymentStatusDto updateDto)
    {
        try
        {
-            var payment = await _paymentService.UpdatePaymentStatusAsync(id, updateDto.Status);
-
-            // Invalidate all relevant caches
-            await _cacheService.RemoveAsync($"Payments:Detail:{id}");
-            await _cacheService.RemoveAsync($"Payments:User:{payment.UserId}");
-            await _cacheService.RemoveAsync("Payments:All");
-            await _cacheService.RemoveAsync("Payments:Pending");
-            await _cacheService.RemoveAsync("Payments:Summary");
-
-            return NoContent();
+           var before = await _paymentService.GetPaymentAsync(id);
+           var payment = await _paymentService.UpdatePaymentStatusAsync(id, updateDto.Status);
+           await InvalidatePaymentCachesAsync(id, payment.UserId);
+           await _auditLogService.LogAsync("StatusChanged", "Payment", id, DescribeChange(before, payment), User.AuditUserId(), User.AuditUserName());
+           return NoContent();
        }
-       catch (NotFoundException ex)
-       {
-           _logger.LogError(ex, ex.Message);
-           return NotFound(ex.Message);
-       }
+       catch (ValidationException ex) { return BadRequest(ex.Message); }
+       catch (NotFoundException ex) { return NotFound(ex.Message); }
+   }
+
+   private async Task InvalidatePaymentCachesAsync(Guid paymentId, Guid userId)
+   {
+       await _cacheService.RemoveAsync($"Payments:Detail:{paymentId}");
+       await _cacheService.RemoveAsync($"Payments:User:{userId}");
+       await _cacheService.RemoveAsync("Payments:All");
+       await _cacheService.RemoveAsync("Payments:Pending");
+       await _cacheService.RemoveAsync("Payments:Summary");
+   }
+
+   private static string DescribeChange(PaymentDto before, PaymentDto after)
+   {
+       var changes = new List<string>();
+       if (before.Status != after.Status) changes.Add($"Status: {before.Status} -> {after.Status}");
+       if (before.Amount != after.Amount) changes.Add($"Amount: {before.Amount:0.00} -> {after.Amount:0.00}");
+       if (before.Plan != after.Plan) changes.Add($"Plan: {before.Plan} -> {after.Plan}");
+       if (before.SeasonId != after.SeasonId) changes.Add("Season changed");
+       return changes.Count == 0 ? "No change" : string.Join("; ", changes);
    }
 
    [HttpGet("summary")]

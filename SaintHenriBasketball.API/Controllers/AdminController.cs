@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SaintHenriBasketball.API.Extensions;
+using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using System.Security.Claims;
@@ -15,11 +17,13 @@ public class AdminController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ILogger<AdminController> _logger;
+    private readonly IUserService _userService;
 
-    public AdminController(ApplicationDbContext db, ILogger<AdminController> logger)
+    public AdminController(ApplicationDbContext db, ILogger<AdminController> logger, IUserService userService)
     {
         _db = db;
         _logger = logger;
+        _userService = userService;
     }
 
     // The audit log is served by AuditLogController, behind the audit-log-viewer flag.
@@ -59,13 +63,18 @@ public class AdminController : ControllerBase
 
     #region Bulk User Import
 
+    public const int MaxImportRows = 500;
+
     [HttpPost("users/import")]
     public async Task<IActionResult> ImportUsers([FromBody] List<ImportUserDto> users)
     {
-        var results = new { created = 0, skipped = 0, errors = new List<string>() };
+        if (users.Count > MaxImportRows)
+            return BadRequest($"Import at most {MaxImportRows} players at a time.");
+
         var created = 0;
         var skipped = 0;
         var errors = new List<string>();
+        var invited = new List<string>();
 
         foreach (var dto in users)
         {
@@ -91,7 +100,8 @@ public class AdminController : ControllerBase
                 var user = new ApplicationUser(
                     username: username,
                     email: dto.Email,
-                    passwordHash: BCrypt.Net.BCrypt.HashPassword("Temp1234!"),
+                    // Unguessable until the player sets their own password from the invite email.
+                    passwordHash: BCrypt.Net.BCrypt.HashPassword(Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))),
                     firstName: dto.FirstName,
                     lastName: dto.LastName ?? "",
                     paymentPlan: dto.PaymentPlan ?? Domain.Enums.PaymentPlan.DropIn
@@ -101,6 +111,7 @@ public class AdminController : ControllerBase
 
                 _db.Users.Add(user);
                 created++;
+                invited.Add(dto.Email);
             }
             catch (Exception ex)
             {
@@ -110,9 +121,23 @@ public class AdminController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        foreach (var email in invited)
+        {
+            try
+            {
+                await _userService.SendSetPasswordInviteAsync(email, TimeSpan.FromDays(7));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not send the set-password invite to an imported player");
+                errors.Add($"Imported {email}, but the set-password email could not be sent. Send a password reset from their profile.");
+            }
+        }
+
         _db.AuditLogs.Add(new AuditLog(
             "BulkImport", "User", null,
-            $"Imported {created} users, skipped {skipped}, {errors.Count} errors"
+            $"Imported {created} users, skipped {skipped}, {errors.Count} errors",
+            User.AuditUserId(), User.AuditUserName()
         ));
         await _db.SaveChangesAsync();
 
@@ -228,6 +253,8 @@ public class AdminController : ControllerBase
             memberSince = user.CreatedOn,
             paymentPlan = user.PaymentPlan.ToString(),
             isAdmin = user.IsAdmin,
+            isDeactivated = user.IsDeactivated,
+            isAnonymized = user.AnonymizedOn != null,
             adminNotes = user.AdminNotes,
         });
     }

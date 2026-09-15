@@ -32,6 +32,10 @@ public class TwoFactorService : ITwoFactorService
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new NotFoundException($"User {userId} not found");
 
+        // Replacing a working authenticator must go through `disable`, which asks for a current code.
+        if (user.TwoFactorEnabled)
+            throw new ValidationException("Two-factor authentication is already on. Turn it off with a current code before setting it up again.");
+
         var secretBytes = KeyGeneration.GenerateRandomKey(20);
         var base32 = Base32Encoding.ToString(secretBytes);
 

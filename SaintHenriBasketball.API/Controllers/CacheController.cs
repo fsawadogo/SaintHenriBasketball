@@ -12,6 +12,7 @@ namespace SaintHenriBasketball.API.Controllers;
 public class CacheController : Controller
 {
     [HttpGet("metrics")]
+    [Authorize(Roles = "Admin")]
     public IActionResult GetCacheMetrics([FromServices] ICacheService cacheService)
     {
         if (cacheService is MemoryCacheService memoryCacheService)

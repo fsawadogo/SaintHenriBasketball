@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.TwoFactor;
 using SaintHenriBasketball.Application.Exceptions;
@@ -8,25 +9,29 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
 
+// Only `verify` accepts a 2FA-pending (password-only) token. Setup, confirm and disable need a fully
+// verified session, so a leaked password can't replace or remove an admin's authenticator.
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/v{version:apiVersion}/auth/2fa")]
 [Authorize]
 [RequireFeature(FeatureFlagKeys.Admin2fa)]
-[SkipTwoFactorPendingCheck]
 public class TwoFactorController : BaseApiController
 {
     private readonly ITwoFactorService _twoFactorService;
     private readonly IUserService _userService;
+    private readonly IAuditLogService _auditLogService;
 
-    public TwoFactorController(ITwoFactorService twoFactorService, IUserService userService)
+    public TwoFactorController(ITwoFactorService twoFactorService, IUserService userService, IAuditLogService auditLogService)
     {
         _twoFactorService = twoFactorService;
         _userService = userService;
+        _auditLogService = auditLogService;
     }
 
     [HttpPost("setup")]
     [ProducesResponseType(typeof(TwoFactorSetupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TwoFactorSetupDto>> BeginSetup()
     {
         var userId = GetUserId();
@@ -36,6 +41,7 @@ public class TwoFactorController : BaseApiController
             var setup = await _twoFactorService.BeginSetupAsync(userId.Value);
             return Ok(setup);
         }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
         catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
 
@@ -49,6 +55,7 @@ public class TwoFactorController : BaseApiController
         try
         {
             await _twoFactorService.ConfirmSetupAsync(userId.Value, body.Code);
+            await _auditLogService.LogAsync("TwoFactorEnabled", "User", userId, "Two-factor authentication turned on", userId, User.AuditUserName());
             return NoContent();
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }
@@ -56,6 +63,7 @@ public class TwoFactorController : BaseApiController
     }
 
     [HttpPost("verify")]
+    [SkipTwoFactorPendingCheck]
     [ProducesResponseType(typeof(TwoFactorVerifyResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TwoFactorVerifyResultDto>> Verify([FromBody] TwoFactorCodeDto body)
@@ -80,6 +88,7 @@ public class TwoFactorController : BaseApiController
         try
         {
             await _twoFactorService.DisableAsync(userId.Value, body.Code);
+            await _auditLogService.LogAsync("TwoFactorDisabled", "User", userId, "Two-factor authentication turned off", userId, User.AuditUserName());
             return NoContent();
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }

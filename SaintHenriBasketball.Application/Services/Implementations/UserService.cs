@@ -29,6 +29,7 @@ public class UserService : IUserService
     private readonly IReferralRepository _referralRepository;
 
     public const string InvalidReferralCodeMessage = "Referral code not found or no longer valid.";
+    public const string DeactivatedAccountMessage = "This account is deactivated. Contact the club if you think this is a mistake.";
 
     public UserService(
         IConfiguration configuration,
@@ -141,9 +142,12 @@ public class UserService : IUserService
             throw new ValidationException("Please confirm your email before logging in");
         }
 
-        var requires2Fa = user.IsAdmin
-                          && user.TwoFactorEnabled
-                          && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Admin2fa);
+        if (user.IsDeactivated)
+        {
+            throw new ValidationException(DeactivatedAccountMessage);
+        }
+
+        var requires2Fa = await RequiresTwoFactorAsync(user);
 
         return new UserResponseDto
         {
@@ -207,18 +211,29 @@ public class UserService : IUserService
 
             await _userRepository.AddAsync(user);
         }
+        else if (user.IsDeactivated)
+        {
+            throw new ValidationException(DeactivatedAccountMessage);
+        }
+
+        // Google sign-in gets the same second step as a password sign-in.
+        var requires2Fa = await RequiresTwoFactorAsync(user);
 
         return new UserResponseDto
         {
-            Token = GenerateJwtToken(user),
+            Token = GenerateJwtToken(user, twoFactorPending: requires2Fa),
             Username = user.Username,
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsAdmin = user.IsAdmin,
-            PaymentPlan = user.PaymentPlan
+            PaymentPlan = user.PaymentPlan,
+            Requires2Fa = requires2Fa,
         };
     }
+
+    private async Task<bool> RequiresTwoFactorAsync(ApplicationUser user) =>
+        user.IsAdmin && user.TwoFactorEnabled && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Admin2fa);
 
     public async Task<UserDto> GetUserAsync(Guid userId)
     {
@@ -281,17 +296,6 @@ public class UserService : IUserService
         return _mapper.Map<IEnumerable<UserDto>>(users);
     }
 
-    public async Task DeleteUserAsync(Guid userId)
-    {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-        {
-            throw new NotFoundException("User not found");
-        }
-
-        await _userRepository.DeleteAsync(user);
-    }
-
     public async Task ConfirmEmailAsync(string? email, string token)
     {
         var user = await _userRepository.GetByEmailAsync(email);
@@ -316,21 +320,26 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
     }
 
-    public async Task ForgotPasswordAsync(string? email)
+    public Task ForgotPasswordAsync(string? email) => SendPasswordLinkAsync(email, TimeSpan.FromHours(1));
+
+    /// A longer-lived set-your-password link for accounts an admin created or imported.
+    public Task SendSetPasswordInviteAsync(string email, TimeSpan validFor) => SendPasswordLinkAsync(email, validFor);
+
+    private async Task SendPasswordLinkAsync(string? email, TimeSpan validFor)
     {
         var user = await _userRepository.GetByEmailAsync(email);
-        if (user == null)
+        // Don't reveal whether the account exists, and never reopen a deactivated account by email.
+        if (user == null || user.IsDeactivated)
         {
-            // Don't reveal user existence
             return;
         }
 
-        user.PasswordResetToken = Guid.NewGuid().ToString("N");
-        user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+        user.PasswordResetToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        user.PasswordResetTokenExpiry = DateTime.UtcNow.Add(validFor);
 
         await _userRepository.UpdateAsync(user);
 
-        var resetLink = $"{_configuration["AppUrl"]}/reset-password?token={user.PasswordResetToken}&email={user.Email}";
+        var resetLink = $"{_configuration["AppUrl"]}/reset-password?token={user.PasswordResetToken}&email={Uri.EscapeDataString(user.Email!)}";
         await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
     }
 

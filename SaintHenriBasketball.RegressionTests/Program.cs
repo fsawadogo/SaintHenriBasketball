@@ -550,12 +550,45 @@ await using (var db = Db()) {
 
 await using (var db = Db()) await PaymentsFor(db).UpdatePaymentStatusAsync(partialPaymentId, PaymentStatus.Failed);
 await using (var db = Db()) await PaymentsFor(db).UpdatePaymentStatusAsync(partialPaymentId, PaymentStatus.Failed);
-await using (var db = Db()) await PaymentsFor(db).UpdatePaymentStatusAsync(partialPaymentId, PaymentStatus.Refunded);
+async Task<bool> StatusRefusedAsync(Guid paymentId, PaymentStatus status)
+{
+    try { await using var db = Db(); await PaymentsFor(db).UpdatePaymentStatusAsync(paymentId, status); return false; }
+    catch (ValidationException) { return true; }
+}
+var refundAfterFailRefused = await StatusRefusedAsync(partialPaymentId, PaymentStatus.Refunded);
+var completeAfterFailRefused = await StatusRefusedAsync(partialPaymentId, PaymentStatus.Completed);
 await using (var db = Db()) {
     var releases = await db.AccountCredits.AsNoTracking().Where(c => c.PaymentId == partialPaymentId && c.Kind == AccountCreditKind.Released).ToListAsync();
     Assert(releases.Count == 1 && releases[0].Amount == 4m && await new AccountCreditRepository(db).GetBalanceAsync(partialPlayer.Id) == 9m,
-        "credit from a failed payment is released exactly once, even when it is later refunded");
+        "credit from a failed payment is released exactly once");
+    Assert(refundAfterFailRefused && completeAfterFailRefused && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == partialPaymentId)).Status == PaymentStatus.Failed,
+        "a failed payment can't be marked completed or refunded, so released credit can't be spent twice");
 }
+await using (var db = Db()) await PaymentsFor(db).UpdatePaymentStatusAsync(partialPaymentId, PaymentStatus.Pending);
+await using (var db = Db()) {
+    var reopened = await db.Payments.AsNoTracking().SingleAsync(p => p.Id == partialPaymentId);
+    Assert(reopened is { Status: PaymentStatus.Pending, Amount: 10m, CreditApplied: 0m } && await new AccountCreditRepository(db).GetBalanceAsync(partialPlayer.Id) == 9m,
+        "reopening a failed payment restores the full charge instead of reusing released credit");
+}
+Assert(PaymentStatusRules.CanTransition(PaymentStatus.Pending, PaymentStatus.Completed) && PaymentStatusRules.CanTransition(PaymentStatus.Completed, PaymentStatus.Refunded)
+    && !PaymentStatusRules.CanTransition(PaymentStatus.Refunded, PaymentStatus.Completed) && !PaymentStatusRules.CanTransition(PaymentStatus.Completed, PaymentStatus.Pending)
+    && !PaymentStatusRules.CanTransition(PaymentStatus.Refunded, PaymentStatus.Pending),
+    "payment status only moves forward: pending to completed or failed, completed to refunded");
+Guid coveredPaymentId;
+await using (var db = Db()) coveredPaymentId = (await db.Payments.AsNoTracking().SingleAsync(p => p.UserId == cappedPlayer.Id)).Id;
+var completedEditRefused = false;
+var negativeAmountRefused = false;
+try { await using var db = Db(); await PaymentsFor(db).UpdatePaymentAsync(coveredPaymentId, new UpdatePaymentDto { Amount = 5m, Plan = PaymentPlan.DropIn, Status = PaymentStatus.Completed }); }
+catch (ValidationException) { completedEditRefused = true; }
+try { await using var db = Db(); await PaymentsFor(db).UpdatePaymentAsync(partialPaymentId, new UpdatePaymentDto { Amount = -1m, Plan = PaymentPlan.DropIn, Status = PaymentStatus.Pending }); }
+catch (ValidationException) { negativeAmountRefused = true; }
+await using (var db = Db())
+    Assert(completedEditRefused && negativeAmountRefused && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == coveredPaymentId)).Amount == 0m,
+        "a completed payment's amount is locked and amounts can't be negative");
+Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true), true) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false), false) == null
+    && TokenUserCheck.Evaluate(null, false) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false), false) != null
+    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false), true) != null,
+    "tokens stop working for missing, deactivated or demoted accounts");
 
 RegisterUserDto Signup(string name, string? code) => new() {
     Username = name, Email = $"{name}@example.test", Password = "Regression!2026", FirstName = "Signup", LastName = name, PaymentPlan = PaymentPlan.DropIn, ReferralCode = code };
@@ -708,12 +741,35 @@ Assert(!StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("season
     && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("sessionId", matchSession)), "cad", 1000, matchUser, null, matchSession, 10m),
     "Stripe checkout matching rejects a wrong amount, season, owner or currency, and a session id presented as a season");
 
+AccountLifecycleService LifecycleFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
+    new SessionRegistrationRepository(db), new ParticipationRepository(db), NullLogger<AccountLifecycleService>.Instance);
 await using (var db = Db()) {
+    var hardDeleteRefused = false;
     db.Users.Remove(await db.Users.SingleAsync(u => u.Id == partialPlayer.Id));
-    await db.SaveChangesAsync();
-    Assert(!await db.AccountCredits.AnyAsync(c => c.UserId == partialPlayer.Id) && !await db.Payments.AnyAsync(p => p.UserId == partialPlayer.Id),
-        "deleting a player removes their payments and credit ledger");
+    try { await db.SaveChangesAsync(); }
+    catch (DbUpdateException) { hardDeleteRefused = true; }
+    Assert(hardDeleteRefused, "a player with payments can't be hard-deleted");
 }
+await using (var db = Db()) await LifecycleFor(db).DeactivateAsync(partialPlayer.Id, anonymize: true);
+var anonymizedReactivateRefused = false;
+try { await using var db = Db(); await LifecycleFor(db).ReactivateAsync(partialPlayer.Id); }
+catch (ValidationException) { anonymizedReactivateRefused = true; }
+await using (var db = Db()) {
+    var closed = await db.Users.AsNoTracking().SingleAsync(u => u.Id == partialPlayer.Id);
+    Assert(closed.IsDeactivated && closed.AnonymizedOn != null && closed.Email!.EndsWith("@deleted.invalid") && closed.FirstName == "Former" && closed.EmergencyContactName == null
+        && await db.Payments.AnyAsync(p => p.UserId == partialPlayer.Id) && await db.AccountCredits.AnyAsync(c => c.UserId == partialPlayer.Id) && anonymizedReactivateRefused,
+        "closing an account erases personal details but keeps payments and the credit ledger");
+}
+await using (var db = Db()) await LifecycleFor(db).DeactivateAsync(spenderPlayer.Id, anonymize: false);
+await using (var db = Db()) {
+    var deactivated = await db.Users.AsNoTracking().SingleAsync(u => u.Id == spenderPlayer.Id);
+    Assert(deactivated.IsDeactivated && deactivated.AnonymizedOn == null && deactivated.Email == spenderPlayer.Email
+        && !await db.SessionRegistrations.AnyAsync(r => r.UserId == spenderPlayer.Id && r.Session.SessionDate >= DateTime.UtcNow.Date),
+        "deactivating keeps personal details and releases upcoming reservations");
+}
+await using (var db = Db()) await LifecycleFor(db).ReactivateAsync(spenderPlayer.Id);
+await using (var db = Db())
+    Assert(!(await db.Users.AsNoTracking().SingleAsync(u => u.Id == spenderPlayer.Id)).IsDeactivated, "a deactivated player can be reactivated");
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler

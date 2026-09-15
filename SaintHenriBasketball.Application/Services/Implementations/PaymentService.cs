@@ -65,6 +65,8 @@ public class PaymentService : IPaymentService
        if (user == null)
            throw new NotFoundException($"User with ID {createPaymentDto.UserId} not found");
 
+       if (createPaymentDto.Amount < 0)
+           throw new ValidationException(PaymentStatusRules.NegativeAmountMessage);
        await ValidateSeasonAsync(createPaymentDto.Plan, createPaymentDto.SeasonId);
        var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan) { SeasonId = createPaymentDto.SeasonId };
 
@@ -112,6 +114,9 @@ public class PaymentService : IPaymentService
            throw new NotFoundException($"Payment with ID {id} not found");
 
        var previousStatus = payment.Status;
+       if (!PaymentStatusRules.CanTransition(previousStatus, status))
+           throw new ValidationException(PaymentStatusRules.TransitionMessage(previousStatus, status));
+       ReopenFailedPayment(payment, previousStatus, status);
        payment.Status = status;
        // PaymentDate is when the club received the money; receipts and revenue reports group by it.
        if (status == PaymentStatus.Completed && previousStatus != PaymentStatus.Completed)
@@ -157,6 +162,8 @@ public class PaymentService : IPaymentService
        if (user == null)
            throw new NotFoundException($"User with ID {createPaymentDto.UserId} not found");
 
+       if (createPaymentDto.Amount < 0)
+           throw new ValidationException(PaymentStatusRules.NegativeAmountMessage);
        await ValidateSeasonAsync(createPaymentDto.Plan, createPaymentDto.SeasonId);
        var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan) { SeasonId = createPaymentDto.SeasonId };
 
@@ -207,13 +214,24 @@ public class PaymentService : IPaymentService
         await ValidateSeasonAsync(updatePaymentDto.Plan, updatePaymentDto.SeasonId);
         if (payment.SessionId != null && updatePaymentDto.Plan == PaymentPlan.Season)
             throw new ValidationException("A session payment cannot be converted into a season payment.");
-        payment.SeasonId = updatePaymentDto.SeasonId;
         var previousStatus = payment.Status;
+        if (!PaymentStatusRules.CanTransition(previousStatus, updatePaymentDto.Status))
+            throw new ValidationException(PaymentStatusRules.TransitionMessage(previousStatus, updatePaymentDto.Status));
+        if (updatePaymentDto.Amount < 0)
+            throw new ValidationException(PaymentStatusRules.NegativeAmountMessage);
+        // Money already received, failed or given back is a record; only an open charge can be corrected.
+        var changesCharge = payment.Amount != updatePaymentDto.Amount
+            || payment.Plan != updatePaymentDto.Plan
+            || payment.SeasonId != updatePaymentDto.SeasonId;
+        if (changesCharge && previousStatus != PaymentStatus.Pending)
+            throw new ValidationException(PaymentStatusRules.AmountLockedMessage);
+        payment.SeasonId = updatePaymentDto.SeasonId;
         // The admin edits the charged amount; keep Amount = OriginalAmount - DiscountAmount - CreditApplied true.
         if (payment.OriginalAmount != null && payment.Amount != updatePaymentDto.Amount)
             payment.OriginalAmount = updatePaymentDto.Amount + payment.DiscountAmount + payment.CreditApplied;
         payment.Amount = updatePaymentDto.Amount;
         payment.Plan = updatePaymentDto.Plan;
+        ReopenFailedPayment(payment, previousStatus, updatePaymentDto.Status);
         payment.Status = updatePaymentDto.Status;
         if (payment.Status == PaymentStatus.Completed && previousStatus != PaymentStatus.Completed)
             payment.PaymentDate = DateTime.UtcNow;
@@ -222,6 +240,14 @@ public class PaymentService : IPaymentService
         await OnStatusSavedAsync(payment, previousStatus);
 
         return _mapper.Map<PaymentDto>(payment);
+   }
+
+   /// Reopening a failed payment: its account credit was already given back, so the full charge returns.
+   private static void ReopenFailedPayment(Payment payment, PaymentStatus from, PaymentStatus to)
+   {
+       if (from != PaymentStatus.Failed || to != PaymentStatus.Pending || payment.CreditApplied <= 0) return;
+       payment.Amount += payment.CreditApplied;
+       payment.CreditApplied = 0;
    }
 
    /// <summary>

@@ -8,13 +8,22 @@ using SaintHenriBasketball.Application.Exceptions;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 using SaintHenriBasketball.Domain.Enums;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
+using SaintHenriBasketball.API.Extensions;
+using SaintHenriBasketball.API.Filters;
 
 namespace SaintHenriBasketball.API.Controllers;
 
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-public class UsersController(IUserService userService, ILogger<UsersController> logger, ICacheService cacheService)
+public class UsersController(
+    IUserService userService,
+    ILogger<UsersController> logger,
+    ICacheService cacheService,
+    IAccountLifecycleService accountLifecycle,
+    IAuditLogService auditLogService,
+    IMemoryCache memoryCache)
     : ControllerBase
 {
     private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -291,40 +300,90 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
     }
 
     /// <summary>
-    /// Delete a user (Admin only)
+    /// Deactivate a player (Admin only). Payments and history are kept; <paramref name="anonymize"/> also
+    /// erases their personal details.
     /// </summary>
     [HttpDelete("{userId}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteUser(Guid userId)
+    public async Task<IActionResult> DeleteUser(Guid userId, [FromQuery] bool anonymize = false)
     {
         try
         {
-            await _userService.DeleteUserAsync(userId);
-            _logger.LogInformation("User deleted successfully: {UserId}", userId);
+            if (User.AuditUserId() == userId)
+                return BadRequest("You can't deactivate your own account from the admin area.");
 
-            // Invalidate cache
-            await cacheService.RemoveAsync($"Users:Current:{userId}");
-            await cacheService.RemoveAsync($"Users:Detail:{userId}");
-            await cacheService.RemoveAsync("Users:All");
+            var target = await _userService.GetUserAsync(userId);
+            if (target.IsAdmin && !target.IsDeactivated && await accountLifecycle.CountActiveAdminsAsync() <= 1)
+                return BadRequest("This is the club's last active admin. Make someone else an admin first.");
 
+            await accountLifecycle.DeactivateAsync(userId, anonymize);
+            await ForgetUserAsync(userId);
+            await auditLogService.LogAsync(anonymize ? "DeactivatedAndAnonymized" : "Deactivated", "User", userId,
+                $"{target.FirstName} {target.LastName}".Trim(), User.AuditUserId(), User.AuditUserName());
             return NoContent();
         }
-        catch (NotFoundException ex)
-        {
-            _logger.LogWarning("User deletion failed - user not found: {UserId}", userId);
-            return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error deleting user {UserId}", userId);
-            return StatusCode(500, "An unexpected error occurred during user deletion");
-        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
     }
 
-    
+    /// <summary>
+    /// Let a deactivated player sign in again (Admin only).
+    /// </summary>
+    [HttpPost("{userId}/reactivate")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReactivateUser(Guid userId)
+    {
+        try
+        {
+            await accountLifecycle.ReactivateAsync(userId);
+            await ForgetUserAsync(userId);
+            await auditLogService.LogAsync("Reactivated", "User", userId, null, User.AuditUserId(), User.AuditUserName());
+            return NoContent();
+        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+    }
+
+    /// <summary>
+    /// Erase my personal details and close my account (Quebec Law 25). Payment records are kept.
+    /// </summary>
+    [HttpDelete("me")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteMyAccount()
+    {
+        var userId = User.AuditUserId();
+        if (userId is null) return Unauthorized();
+        try
+        {
+            var me = await _userService.GetUserAsync(userId.Value);
+            if (me.IsAdmin && await accountLifecycle.CountActiveAdminsAsync() <= 1)
+                return BadRequest("You're the club's last active admin. Make someone else an admin before closing your account.");
+
+            await accountLifecycle.DeactivateAsync(userId.Value, anonymize: true);
+            await ForgetUserAsync(userId.Value);
+            // The audit entry keeps only the account id: the player asked for their details to be erased.
+            await auditLogService.LogAsync("AccountClosedByPlayer", "User", userId, null, userId, "Player");
+            return NoContent();
+        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    private async Task ForgetUserAsync(Guid userId)
+    {
+        AuthUserCache.Forget(memoryCache, userId);
+        await cacheService.RemoveAsync($"Users:Current:{userId}");
+        await cacheService.RemoveAsync($"Users:Detail:{userId}");
+        await cacheService.RemoveAsync("Users:All");
+    }
+
     #endregion
 
     #region Account Management
@@ -594,13 +653,10 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
     /// <summary>
     /// Generates a secure temporary password
     /// </summary>
-    private string GenerateTemporaryPassword(int length = 12)
+    private static string GenerateTemporaryPassword(int length = 24)
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
-        var random = new Random();
-
-        return new string(Enumerable.Repeat(chars, length)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
+        return System.Security.Cryptography.RandomNumberGenerator.GetString(chars, length);
     }
 
     #endregion

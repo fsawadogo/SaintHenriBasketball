@@ -14,4 +14,6 @@ public class UserDto
     public DateTime CreatedOn { get; set; }
     public EmailLanguage PreferredLanguage { get; set; }
     public bool TwoFactorEnabled { get; set; }
+    public bool IsDeactivated { get; set; }
+    public DateTime? DeactivatedOn { get; set; }
 }

@@ -15,4 +15,5 @@ public interface IUserRepository
     Task UpdateAsync(ApplicationUser user);
     Task DeleteAsync(ApplicationUser user);
     Task<ApplicationUser?> GetByCalendarFeedTokenAsync(string token);
+    Task<int> CountActiveAdminsAsync();
 }
