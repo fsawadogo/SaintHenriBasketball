@@ -811,6 +811,22 @@ await using (var db = Db()) {
         && spenderCredit == 4m && await new AccountCreditRepository(db).GetBalanceAsync(voidPlayer.Id) == 4m,
         "voiding a cancelled session's pending payment returns its credit exactly once");
 }
+var notReceivedPayment = new Payment(winner, 15m, PaymentPlan.DropIn) { Reference = "QA-NOTRECEIVED|INTERAC:BANK-404" };
+var plainPendingPayment = new Payment(winner, 16m, PaymentPlan.DropIn) { Reference = "QA-PLAIN" };
+await using (var db = Db()) { db.Payments.AddRange(notReceivedPayment, plainPendingPayment); await db.SaveChangesAsync(); }
+SaintHenriBasketball.Application.DTOs.Reconciliation.BulkMarkNotReceivedResultDto firstMark, secondMark;
+await using (var db = Db())
+    firstMark = await new ReconciliationService(new PaymentRepository(db), PaymentsFor(db), new AuditLogRepository(db), NullLogger<ReconciliationService>.Instance)
+        .BulkMarkNotReceivedAsync(new[] { notReceivedPayment.Id, plainPendingPayment.Id }, "Not in Tangerine after 10 days", winner, "Regression");
+await using (var db = Db())
+    secondMark = await new ReconciliationService(new PaymentRepository(db), PaymentsFor(db), new AuditLogRepository(db), NullLogger<ReconciliationService>.Instance)
+        .BulkMarkNotReceivedAsync(new[] { notReceivedPayment.Id }, null, winner, "Regression");
+await using (var db = Db())
+    Assert(firstMark is { MarkedNotReceived: 1, Skipped: 1, Errors: 0 } && secondMark is { MarkedNotReceived: 0, Skipped: 1 }
+        && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == notReceivedPayment.Id)).Status == PaymentStatus.Failed
+        && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == plainPendingPayment.Id)).Status == PaymentStatus.Pending
+        && await db.AuditLogs.CountAsync(a => a.EntityId == notReceivedPayment.Id && a.Action == "Payment.InteracNotReceived" && a.Details!.Contains("Tangerine")) == 1,
+        "an Interac transfer marked not received fails once, is audited with the note, and other payments are skipped");
 AccountLifecycleService LifecycleFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
     new SessionRegistrationRepository(db), new ParticipationRepository(db), NullLogger<AccountLifecycleService>.Instance);
 await using (var db = Db()) {
