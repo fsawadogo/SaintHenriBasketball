@@ -122,4 +122,36 @@ public class SessionRepository : ISessionRepository
     public Task<int> CountSessionsBetweenAsync(DateTime from, DateTime to) =>
         _context.Sessions.CountAsync(s => s.SessionDate >= from && s.SessionDate <= to);
 
+    public async Task<SessionDeletionImpact?> GetDeletionImpactAsync(Guid sessionId)
+    {
+        if (!await _context.Sessions.AnyAsync(s => s.Id == sessionId)) return null;
+        return new SessionDeletionImpact(
+            await _context.SessionRegistrations.CountAsync(r => r.SessionId == sessionId),
+            await _context.SessionAttendances.CountAsync(a => a.SessionId == sessionId),
+            await _context.Waitlists.CountAsync(w => w.SessionId == sessionId),
+            await _context.SessionFeedbacks.CountAsync(f => f.SessionId == sessionId),
+            await _context.SessionRecaps.CountAsync(r => r.SessionId == sessionId),
+            await _context.Payments.CountAsync(p => p.SessionId == sessionId));
+    }
+
+    public async Task<bool> DeleteWithDependentsAsync(Guid sessionId)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        // Checkout locks the session row too, so no payment can attach between this check and the delete.
+        var locked = await _context.Sessions
+            .FromSqlInterpolated($"SELECT * FROM Sessions WITH (UPDLOCK, HOLDLOCK) WHERE Id = {sessionId}")
+            .AsNoTracking()
+            .ToListAsync();
+        if (locked.Count == 0 || await _context.Payments.AnyAsync(p => p.SessionId == sessionId)) return false;
+
+        await _context.SessionFeedbacks.Where(f => f.SessionId == sessionId).ExecuteDeleteAsync();
+        await _context.SessionRecaps.Where(r => r.SessionId == sessionId).ExecuteDeleteAsync();
+        await _context.Waitlists.Where(w => w.SessionId == sessionId).ExecuteDeleteAsync();
+        await _context.SessionAttendances.Where(a => a.SessionId == sessionId).ExecuteDeleteAsync();
+        await _context.SessionRegistrations.Where(r => r.SessionId == sessionId).ExecuteDeleteAsync();
+        await _context.Sessions.Where(s => s.Id == sessionId).ExecuteDeleteAsync();
+        await transaction.CommitAsync();
+        return true;
+    }
+
 }

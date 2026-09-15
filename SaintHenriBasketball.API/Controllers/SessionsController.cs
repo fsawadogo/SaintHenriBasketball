@@ -21,6 +21,7 @@ public class SessionsController : BaseApiController
     private readonly ILogger<SessionsController> _logger;
     private readonly ISessionCancellationService _cancellationService;
     private readonly IAuditLogService _auditLogService;
+    private readonly ISessionDeletionService _deletionService;
 
     public const int MaxBulkCancel = 100;
 
@@ -28,8 +29,10 @@ public class SessionsController : BaseApiController
         ISessionService sessionService,
         ILogger<SessionsController> logger,
         ISessionCancellationService cancellationService,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        ISessionDeletionService deletionService)
     {
+        _deletionService = deletionService;
         _sessionService = sessionService;
         _logger = logger;
         _cancellationService = cancellationService;
@@ -267,6 +270,42 @@ public class SessionsController : BaseApiController
     public async Task<ActionResult<SessionCancellationPreviewDto>> GetCancelPreview(Guid id)
     {
         try { return Ok(await _cancellationService.PreviewAsync(id)); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    /// <summary>
+    /// What deleting a session would remove. Sessions with payments can't be deleted (Admin only)
+    /// </summary>
+    [HttpGet("{id}/delete-preview")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SessionDeletionPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionDeletionPreviewDto>> GetDeletePreview(Guid id)
+    {
+        try { return Ok(await _deletionService.PreviewAsync(id)); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    /// <summary>
+    /// Permanently delete a session created by mistake. Refused when it has payments: cancel it instead (Admin only)
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SessionDeletionPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionDeletionPreviewDto>> DeleteSession(Guid id)
+    {
+        try
+        {
+            var removed = await _deletionService.DeleteAsync(id);
+            await _auditLogService.LogAsync("Deleted", "Session", id,
+                $"Removed {removed.Registrations} registration(s), {removed.AttendanceAnswers} attendance answer(s), " +
+                $"{removed.Waitlisted} waitlist spot(s), {removed.Feedback} feedback, {removed.Recaps} recap(s)",
+                User.AuditUserId(), User.AuditUserName());
+            return Ok(removed);
+        }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
         catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
 

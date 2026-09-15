@@ -931,6 +931,39 @@ await using (var db = Db())
         && inactive.Items.All(i => i.EngagementTier == EngagementTiers.Inactive) && unknownTierRefused,
         "player directory sorts and filters by engagement computed from recent attendance");
 }
+
+// Deleting a session: payments block it; otherwise its registrations and attendance go with it.
+var deletableSession = new Session(DateTime.UtcNow.Date.AddDays(20), 1, 10, "10:00", "12:00", "Delete me court");
+var paidSession = new Session(DateTime.UtcNow.Date.AddDays(21), 1, 10, "10:00", "12:00", "Paid court");
+await using (var db = Db())
+{
+    db.Sessions.AddRange(deletableSession, paidSession);
+    db.SessionRegistrations.Add(new SessionRegistration(directoryAlpha.Id, deletableSession.Id, PaymentPlan.Season));
+    db.SessionAttendances.Add(new SessionAttendance { Id = Guid.NewGuid(), SessionId = deletableSession.Id, UserId = directoryAlpha.Id, IsAttending = true, CreatedOn = DateTime.UtcNow, LastUpdated = DateTime.UtcNow });
+    db.Payments.Add(new Payment(directoryAlpha.Id, 10m, PaymentPlan.DropIn, paidSession.Id) { Reference = "DELETE-BLOCKED", CreatedAt = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+}
+await using (var db = Db())
+{
+    var deletionCache = new RecordingCache();
+    var deletion = new SessionDeletionService(new SessionRepository(db), deletionCache);
+    var deletablePreview = await deletion.PreviewAsync(deletableSession.Id);
+    var paidPreview = await deletion.PreviewAsync(paidSession.Id);
+    var paidRefused = false;
+    try { await deletion.DeleteAsync(paidSession.Id); }
+    catch (ValidationException) { paidRefused = true; }
+    var removed = await deletion.DeleteAsync(deletableSession.Id);
+    var goneAfterwards = false;
+    try { await deletion.PreviewAsync(deletableSession.Id); }
+    catch (NotFoundException) { goneAfterwards = true; }
+    Assert(deletablePreview.CanDelete && deletablePreview.Registrations == 1 && deletablePreview.AttendanceAnswers == 1
+        && !paidPreview.CanDelete && paidPreview.Payments == 1 && paidRefused && removed.Registrations == 1 && goneAfterwards
+        && !await db.SessionRegistrations.AnyAsync(r => r.SessionId == deletableSession.Id)
+        && !await db.SessionAttendances.AnyAsync(a => a.SessionId == deletableSession.Id)
+        && await db.Sessions.AnyAsync(s => s.Id == paidSession.Id)
+        && deletionCache.Removed.Contains($"Attendance:Session:{deletableSession.Id}:Attendees"),
+        "deleting a session removes its registrations and attendance, and a session with payments can't be deleted");
+}
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
