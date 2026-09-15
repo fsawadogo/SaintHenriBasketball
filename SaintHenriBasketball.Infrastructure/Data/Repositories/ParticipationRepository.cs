@@ -183,10 +183,21 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         var session = await SessionAsync(sessionId);
         if (await db.SessionRegistrations.AnyAsync(r => r.SessionId == sessionId && r.UserId == userId))
             throw new ValidationException("You already have a place in this session.");
-        var existing = await db.Waitlists.Include(w => w.User).FirstOrDefaultAsync(w => w.SessionId == sessionId && w.UserId == userId
-            && (w.Status == WaitlistStatus.Waiting || w.Status == WaitlistStatus.Offered));
-        if (existing != null) { await tx.CommitAsync(); return existing; }
+        // One row per player and session (unique index): reuse it rather than inserting a second one.
+        var existing = await db.Waitlists.Include(w => w.User).FirstOrDefaultAsync(w => w.SessionId == sessionId && w.UserId == userId);
+        if (existing is { Status: WaitlistStatus.Waiting or WaitlistStatus.Offered }) { await tx.CommitAsync(); return existing; }
         var position = (await db.Waitlists.Where(w => w.SessionId == sessionId).MaxAsync(w => (int?)w.Position) ?? 0) + 1;
+        if (existing != null)
+        {
+            // A player who left, let an offer expire, or gave up a place joins again at the back of the line.
+            existing.Status = WaitlistStatus.Waiting;
+            existing.Position = position;
+            existing.RegistrationDate = DateTime.UtcNow;
+            existing.OfferExpiresAt = null;
+            existing.Notes = notes;
+            await db.SaveChangesAsync(); await tx.CommitAsync();
+            return existing;
+        }
         var entry = new Waitlist(userId, sessionId, position) { Notes = notes };
         db.Waitlists.Add(entry); await db.SaveChangesAsync(); await tx.CommitAsync();
         return entry;
