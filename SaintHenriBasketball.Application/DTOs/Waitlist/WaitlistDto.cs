@@ -16,6 +16,9 @@ public class WaitlistDto
     public DateTime? OfferExpiresAt { get; set; }
 }
 
+/// Result of offering a place to one specific entry (admin).
+public sealed record WaitlistOfferOutcome(Guid EntryId, Guid SessionId, bool HadOpenSpot, DateTime OfferExpiresAt);
+
 public class JoinWaitlistDto
 {
     public Guid SessionId { get; set; }

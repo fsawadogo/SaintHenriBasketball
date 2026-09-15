@@ -35,8 +35,20 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         return session;
     }
 
-    private Task<int> OccupiedAsync(Guid id) => db.SessionRegistrations.Where(r => r.SessionId == id).Select(r => r.UserId)
-        .Union(db.SessionAttendances.Where(a => a.SessionId == id && a.IsAttending).Select(a => a.UserId)).CountAsync();
+    /// How long a waitlist offer stays open (capped at the session start).
+    public static readonly TimeSpan OfferWindow = TimeSpan.FromHours(2);
+
+    /// Players occupying a place: a reservation or an attending RSVP, counted once per player.
+    internal static IQueryable<Guid> OccupantIds(ApplicationDbContext context, Guid id) => context.SessionRegistrations.Where(r => r.SessionId == id).Select(r => r.UserId)
+        .Union(context.SessionAttendances.Where(a => a.SessionId == id && a.IsAttending).Select(a => a.UserId));
+
+    private Task<int> OccupiedAsync(Guid id) => OccupantIds(db, id).CountAsync();
+
+    private static void MakeOffer(Waitlist entry, DateTime sessionStartUtc)
+    {
+        entry.Status = WaitlistStatus.Offered;
+        entry.OfferExpiresAt = new[] { DateTime.UtcNow.Add(OfferWindow), sessionStartUtc }.Min();
+    }
 
     private async Task ExpireAsync(Guid sessionId)
     {
@@ -192,10 +204,96 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         if (await OccupiedAsync(sessionId) + held >= session.MaxCapacity) { await tx.CommitAsync(); return null; }
         var next = await db.Waitlists.Include(w => w.User).Where(w => w.SessionId == sessionId && w.Status == WaitlistStatus.Waiting
             && !db.SessionRegistrations.Any(r => r.SessionId == sessionId && r.UserId == w.UserId)).OrderBy(w => w.Position).ThenBy(w => w.RegistrationDate).FirstOrDefaultAsync();
-        if (next != null) { next.Status = WaitlistStatus.Offered; next.OfferExpiresAt = new[] { DateTime.UtcNow.AddHours(2), start }.Min(); await db.SaveChangesAsync(); }
+        if (next != null) { MakeOffer(next, start); await db.SaveChangesAsync(); }
         await tx.CommitAsync(); return next;
     }
 
     public async Task<IReadOnlyList<Guid>> GetWaitlistSessionIdsAsync() => await db.Waitlists
         .Where(w => w.Status == WaitlistStatus.Waiting || w.Status == WaitlistStatus.Offered).Select(w => w.SessionId).Distinct().ToListAsync();
+
+    // ---- Admin waitlist management (waitlist-admin). Same session-row lock as every other waitlist change. ----
+
+    private async Task<Guid> EntrySessionIdAsync(Guid entryId) =>
+        await db.Waitlists.Where(w => w.Id == entryId).Select(w => (Guid?)w.SessionId).SingleOrDefaultAsync()
+        ?? throw new NotFoundException("Waitlist entry not found");
+
+    private async Task<Waitlist> LockedEntryAsync(Guid entryId) =>
+        await db.Waitlists.Include(w => w.User).SingleOrDefaultAsync(w => w.Id == entryId)
+        ?? throw new NotFoundException("Waitlist entry not found");
+
+    private static bool OnWaitlist(Waitlist entry) => entry.Status is WaitlistStatus.Waiting or WaitlistStatus.Offered;
+
+    /// Gives the waiting (and offered) entries positions 1..N in line order, optionally moving one entry to a
+    /// 1-based target first. Entries that left the line get position 0, so a new join lands at N + 1.
+    private async Task<int> RenumberAsync(Guid sessionId, Guid? moveEntryId = null, int target = 0)
+    {
+        var rows = await db.Waitlists.Where(w => w.SessionId == sessionId).ToListAsync();
+        var line = rows.Where(OnWaitlist).OrderBy(w => w.Position).ThenBy(w => w.RegistrationDate).ThenBy(w => w.Id).ToList();
+        var placed = 0;
+        if (moveEntryId != null)
+        {
+            var moving = line.Single(w => w.Id == moveEntryId);
+            line.Remove(moving);
+            placed = Math.Clamp(target, 1, line.Count + 1);
+            line.Insert(placed - 1, moving);
+        }
+        for (var i = 0; i < line.Count; i++) line[i].Position = i + 1;
+        foreach (var gone in rows.Where(w => !OnWaitlist(w))) gone.Position = 0;
+        await db.SaveChangesAsync();
+        return placed;
+    }
+
+    public async Task<(Waitlist Entry, bool HadOpenSpot)> OfferEntryAsync(Guid entryId)
+    {
+        var sessionId = await EntrySessionIdAsync(entryId);
+        await using var tx = await LockAsync(sessionId);
+        var session = await db.Sessions.SingleOrDefaultAsync(s => s.Id == sessionId) ?? throw new NotFoundException("Session not found");
+        await ExpireAsync(sessionId);
+        var entry = await LockedEntryAsync(entryId);
+        if (entry.Status == WaitlistStatus.Offered)
+            throw new ValidationException("This player already has an outstanding offer.");
+        if (entry.Status != WaitlistStatus.Waiting)
+            throw new ValidationException($"Only waiting players can receive an offer. This entry is {entry.Status}.");
+        if (session.Status is SessionStatus.Cancelled or SessionStatus.Completed)
+            throw new ValidationException("This session is no longer open.");
+        var start = SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(session.SessionDate, session.StartTime));
+        if (start <= DateTime.UtcNow)
+            throw new ValidationException("Offers close when the session starts.");
+        if (await db.SessionRegistrations.AnyAsync(r => r.SessionId == sessionId && r.UserId == entry.UserId))
+            throw new ValidationException("This player already has a place in this session.");
+        var held = await db.Waitlists.CountAsync(w => w.SessionId == sessionId && w.Status == WaitlistStatus.Offered);
+        var hadOpenSpot = await OccupiedAsync(sessionId) + held < session.MaxCapacity;
+        MakeOffer(entry, start);
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+        return (entry, hadOpenSpot);
+    }
+
+    public async Task<Waitlist> RemoveWaitlistEntryAsync(Guid entryId)
+    {
+        var sessionId = await EntrySessionIdAsync(entryId);
+        await using var tx = await LockAsync(sessionId);
+        await ExpireAsync(sessionId);
+        var entry = await LockedEntryAsync(entryId);
+        if (!OnWaitlist(entry))
+            throw new ValidationException($"This entry is no longer on the waitlist ({entry.Status}).");
+        db.Waitlists.Remove(entry);
+        await db.SaveChangesAsync();
+        await RenumberAsync(sessionId);
+        await tx.CommitAsync();
+        return entry;
+    }
+
+    public async Task<(Guid SessionId, int Position)> MoveWaitlistEntryAsync(Guid entryId, int position)
+    {
+        var sessionId = await EntrySessionIdAsync(entryId);
+        await using var tx = await LockAsync(sessionId);
+        await ExpireAsync(sessionId);
+        var entry = await LockedEntryAsync(entryId);
+        if (!OnWaitlist(entry))
+            throw new ValidationException($"This entry is no longer on the waitlist ({entry.Status}).");
+        var placed = await RenumberAsync(sessionId, entryId, position);
+        await tx.CommitAsync();
+        return (sessionId, placed);
+    }
 }
