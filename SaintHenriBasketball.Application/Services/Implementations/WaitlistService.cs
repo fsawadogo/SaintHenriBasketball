@@ -144,7 +144,19 @@ public class WaitlistService : IWaitlistService
         var next = await _participation.OfferNextAsync(sessionId);
 
         if (next == null) return;
+        await NotifyOfferAsync(sessionId, next);
+    }
 
+    public async Task<WaitlistOfferOutcome> OfferEntryAsync(Guid entryId)
+    {
+        var (entry, hadOpenSpot) = await _participation.OfferEntryAsync(entryId);
+        await NotifyOfferAsync(entry.SessionId, entry);
+        _logger.LogInformation("Admin offered waitlist entry {EntryId} for session {SessionId} (open spot: {HadOpenSpot})", entry.Id, entry.SessionId, hadOpenSpot);
+        return new WaitlistOfferOutcome(entry.Id, entry.SessionId, hadOpenSpot, DateTime.SpecifyKind(entry.OfferExpiresAt!.Value, DateTimeKind.Utc));
+    }
+
+    private async Task NotifyOfferAsync(Guid sessionId, Waitlist next)
+    {
         var url = $"{(_configuration["AppUrl"] ?? "https://sainthenribasketball.com").TrimEnd('/')}/sessions/{sessionId}/book";
 
         var deadline = Application.Helpers.SessionTimeHelper.ToLocal(next.OfferExpiresAt!.Value).ToString("yyyy-MM-dd HH:mm");
