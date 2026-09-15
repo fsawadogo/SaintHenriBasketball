@@ -59,6 +59,7 @@ public class FeatureFlagsController : BaseApiController
     /// an authenticated admin also receives admin-only flags so admin screens can gate on them.
     [HttpGet("api/v{version:apiVersion}/feature-flags/public")]
     [AllowAnonymous]
+    [SaintHenriBasketball.API.Filters.AllowTwoFactorEnrollment]
     [ProducesResponseType(typeof(IReadOnlyDictionary<string, bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyDictionary<string, bool>>> GetPublic()
     {

@@ -15,4 +15,12 @@ public class AccountCreditEntryDto
     public AccountCreditKind Kind { get; set; }
     public DateTime CreatedAt { get; set; }
     public Guid? PaymentId { get; set; }
+    public string? Note { get; set; }
+}
+
+/// An admin's manual change to a player's credit balance. Positive adds credit, negative removes it.
+public class AdjustAccountCreditDto
+{
+    public decimal Amount { get; set; }
+    public string? Note { get; set; }
 }

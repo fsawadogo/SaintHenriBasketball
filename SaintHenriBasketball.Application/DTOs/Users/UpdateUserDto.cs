@@ -8,7 +8,9 @@ public class UpdateUserDto
     public required string? Email { get; set; }
     public required string? FirstName { get; set; }
     public required string? LastName { get; set; }
-    public PaymentPlan PaymentPlan { get; set; }
+    /// Left unchanged when omitted.
+    public PaymentPlan? PaymentPlan { get; set; }
     
+    /// Ignored: admin access changes go through PUT Users/{id}/admin.
     public bool IsAdmin { get; set; }
 }

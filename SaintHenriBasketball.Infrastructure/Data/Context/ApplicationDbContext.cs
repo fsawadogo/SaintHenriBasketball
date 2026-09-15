@@ -206,6 +206,7 @@ public class ApplicationDbContext : DbContext
                 entity.Property(p => p.CreditApplied).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
                 // Restrict: a used promo code must be deactivated, not deleted, so the discount stays explainable.
                 entity.HasOne(p => p.PromoCode).WithMany().HasForeignKey(p => p.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
+                entity.Property(p => p.RefundReason).HasMaxLength(500);
             });
 
         modelBuilder.Entity<AccountCredit>(entity =>
@@ -214,6 +215,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").IsRequired();
             entity.Property(e => e.Kind).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.Note).HasMaxLength(300);
 
             // The credit ledger is a financial record, like payments: players are deactivated, never deleted.
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);

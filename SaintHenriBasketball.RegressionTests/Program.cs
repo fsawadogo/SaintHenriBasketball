@@ -741,6 +741,76 @@ Assert(!StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("season
     && !StripeCheckoutMatch.Matches(CheckoutMeta(("userId", matchUser), ("sessionId", matchSession)), "cad", 1000, matchUser, null, matchSession, 10m),
     "Stripe checkout matching rejects a wrong amount, season, owner or currency, and a session id presented as a season");
 
+PaymentRefundService RefundsFor(ApplicationDbContext db) => new(new PaymentRepository(db), new AccountCreditRepository(db), null!, PaymentsFor(db), NullLogger<PaymentRefundService>.Instance);
+async Task<string?> TryRefundAsync(Guid paymentId, RefundMethod method, string? reason)
+{
+    try { await using var db = Db(); await RefundsFor(db).RefundAsync(paymentId, new RefundPaymentDto { Method = method, Reason = reason }); return null; }
+    catch (ValidationException ex) { return ex.Message; }
+}
+Guid cardMinPaymentId;
+await using (var db = Db()) cardMinPaymentId = (await db.Payments.AsNoTracking().SingleAsync(p => p.UserId == cardMinPlayer.Id)).Id;
+var pendingRefund = await TryRefundAsync(cardMinPaymentId, RefundMethod.AccountCredit, "Too early");
+await using (var db = Db()) await PaymentsFor(db).UpdatePaymentStatusAsync(cardMinPaymentId, PaymentStatus.Completed);
+var reasonMissing = await TryRefundAsync(cardMinPaymentId, RefundMethod.AccountCredit, "   ");
+var notCard = await TryRefundAsync(cardMinPaymentId, RefundMethod.Card, "Card refund");
+var firstRefund = await TryRefundAsync(cardMinPaymentId, RefundMethod.AccountCredit, "Session moved");
+var repeatRefund = await TryRefundAsync(cardMinPaymentId, RefundMethod.AccountCredit, "Session moved");
+Assert(pendingRefund == PaymentRefundService.NotCompletedMessage && reasonMissing == PaymentRefundService.ReasonRequiredMessage
+    && notCard == PaymentRefundService.NotCardPaymentMessage && firstRefund == null && repeatRefund == null,
+    "a refund needs a completed payment, a reason and a card payment for card refunds; repeating it is harmless");
+await using (var db = Db()) {
+    var refundedPayment = await db.Payments.AsNoTracking().SingleAsync(p => p.Id == cardMinPaymentId);
+    var ledger = await db.AccountCredits.AsNoTracking().Where(c => c.PaymentId == cardMinPaymentId).ToListAsync();
+    Assert(refundedPayment is { Status: PaymentStatus.Refunded, RefundMethod: RefundMethod.AccountCredit, RefundReason: "Session moved" } && refundedPayment.RefundedOn != null
+        && ledger.Count(c => c.Kind == AccountCreditKind.Refund) == 1 && ledger.Single(c => c.Kind == AccountCreditKind.Refund).Amount == 0.3m
+        && ledger.Single(c => c.Kind == AccountCreditKind.Released).Amount == 0.2m
+        && await new AccountCreditRepository(db).GetBalanceAsync(cardMinPlayer.Id) == 0.5m,
+        "refunding as credit returns the amount paid once and releases the credit the payment used");
+}
+AccountCreditService CreditAdminFor(ApplicationDbContext db) => new(new AccountCreditRepository(db), new UserRepository(db, NullLogger<UserRepository>.Instance));
+async Task<string?> TryAdjustAsync(Guid userId, decimal amount, string? note)
+{
+    try { await using var db = Db(); await CreditAdminFor(db).AdjustAsync(userId, amount, note, winner); return null; }
+    catch (ValidationException ex) { return ex.Message; }
+}
+var zeroAdjust = await TryAdjustAsync(cardMinPlayer.Id, 0m, "Nothing");
+var noteMissing = await TryAdjustAsync(cardMinPlayer.Id, 5m, " ");
+var tooLarge = await TryAdjustAsync(cardMinPlayer.Id, 600m, "Too much");
+var belowZero = await TryAdjustAsync(cardMinPlayer.Id, -5m, "Correction");
+var removeAll = await TryAdjustAsync(cardMinPlayer.Id, -0.5m, "Correction");
+var goodwill = await TryAdjustAsync(cardMinPlayer.Id, 2m, "Goodwill for the rain delay");
+await using (var db = Db()) {
+    var manual = await db.AccountCredits.AsNoTracking().Where(c => c.UserId == cardMinPlayer.Id && c.Kind == AccountCreditKind.ManualAdjustment).ToListAsync();
+    Assert(zeroAdjust != null && noteMissing != null && tooLarge != null && belowZero != null && removeAll == null && goodwill == null
+        && manual.Count == 2 && manual.All(c => c.CreatedByUserId == winner && !string.IsNullOrEmpty(c.Note))
+        && await new AccountCreditRepository(db).GetBalanceAsync(cardMinPlayer.Id) == 2m,
+        "admin credit adjustments need a note, stay within limits, never go below zero and record who made them");
+}
+var voidPlayer = CreditPlayer("credit_void");
+await using (var db = Db()) {
+    db.Users.Add(voidPlayer);
+    db.AccountCredits.Add(new AccountCredit(voidPlayer.Id, 4m, AccountCreditKind.ReferralReward, Guid.NewGuid()));
+    await db.SaveChangesAsync();
+    await new ParticipationRepository(db).ReserveAsync(creditSession2.Id, voidPlayer.Id);
+}
+Assert(await TryPayAsync(voidPlayer.Id, creditSession2.Id, null) == null, "a player with partial credit starts a card payment for a session that will be cancelled");
+Guid spenderPaymentId;
+decimal spenderCredit;
+await using (var db = Db()) {
+    var spent = await db.Payments.AsNoTracking().SingleAsync(p => p.UserId == voidPlayer.Id);
+    spenderPaymentId = spent.Id;
+    spenderCredit = spent.CreditApplied;
+}
+bool voidedOnce, voidedTwice;
+await using (var db = Db()) voidedOnce = await PaymentsFor(db).VoidForCancelledSessionAsync(spenderPaymentId);
+await using (var db = Db()) voidedTwice = await PaymentsFor(db).VoidForCancelledSessionAsync(spenderPaymentId);
+await using (var db = Db()) {
+    var voided = await db.Payments.AsNoTracking().SingleAsync(p => p.Id == spenderPaymentId);
+    var releases = await db.AccountCredits.AsNoTracking().Where(c => c.PaymentId == spenderPaymentId && c.Kind == AccountCreditKind.Released).ToListAsync();
+    Assert(voidedOnce && !voidedTwice && voided.Status == PaymentStatus.Failed && releases.Count == 1 && releases[0].Amount == spenderCredit
+        && spenderCredit == 4m && await new AccountCreditRepository(db).GetBalanceAsync(voidPlayer.Id) == 4m,
+        "voiding a cancelled session's pending payment returns its credit exactly once");
+}
 AccountLifecycleService LifecycleFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
     new SessionRegistrationRepository(db), new ParticipationRepository(db), NullLogger<AccountLifecycleService>.Instance);
 await using (var db = Db()) {

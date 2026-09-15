@@ -129,17 +129,28 @@ public class BroadcastService : IBroadcastService
             .Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(paragraph => EmailTemplateHelper.P(WebUtility.HtmlEncode(paragraph).Replace("\n", "<br/>")));
 
-        var footer =
-            "<p style='margin:24px 0 0;font-size:12px;line-height:1.5;color:#637369;'>" +
-            EmailTemplateHelper.L(
-                "You're receiving this because community updates are turned on in your SHB account.",
-                "Vous recevez ce message parce que les nouvelles du club sont activées dans votre compte SHB.",
-                language) +
-            $" <a href='{WebUtility.HtmlEncode(unsubscribeUrl)}' style='color:{EmailTemplateHelper.ColorAccent};'>" +
-            EmailTemplateHelper.L("Unsubscribe", "Se désabonner", language) +
-            "</a></p>";
+        var footer = UnsubscribeFooterHtml(unsubscribeUrl, language);
 
         return EmailTemplateHelper.BuildEmailLayout(subject, subject, string.Concat(paragraphs) + footer, language);
+    }
+
+    /// The unsubscribe line CASL requires on club updates (broadcasts and admin announcements).
+    public static string UnsubscribeFooterHtml(string unsubscribeUrl, EmailLanguage language) =>
+        "<p style='margin:24px 0 0;font-size:12px;line-height:1.5;color:#637369;'>" +
+        EmailTemplateHelper.L(
+            "You're receiving this because community updates are turned on in your SHB account.",
+            "Vous recevez ce message parce que les nouvelles du club sont activées dans votre compte SHB.",
+            language) +
+        $" <a href='{WebUtility.HtmlEncode(unsubscribeUrl)}' style='color:{EmailTemplateHelper.ColorAccent};'>" +
+        EmailTemplateHelper.L("Unsubscribe", "Se désabonner", language) +
+        "</a></p>";
+
+    /// Adds the unsubscribe line to an existing email, inside the body when the email has one.
+    public static string AppendUnsubscribeFooter(string html, string unsubscribeUrl, EmailLanguage language)
+    {
+        var footer = UnsubscribeFooterHtml(unsubscribeUrl, language);
+        var bodyEnd = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        return bodyEnd < 0 ? html + footer : html.Insert(bodyEnd, footer);
     }
 
     private async Task WriteAuditAsync(SendBroadcastRequestDto request, SendBroadcastResultDto result, Guid? adminId, string adminName)

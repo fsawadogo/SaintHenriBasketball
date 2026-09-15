@@ -9,8 +9,9 @@ using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
 
-// Only `verify` accepts a 2FA-pending (password-only) token. Setup, confirm and disable need a fully
-// verified session, so a leaked password can't replace or remove an admin's authenticator.
+// Only `verify` accepts a 2FA-pending (password-only) token. Setup and confirm also accept a required-setup
+// token (an admin without 2FA while admin-2fa is on); they refuse to replace an authenticator that is on.
+// Disable needs a fully verified session and a current code.
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/v{version:apiVersion}/auth/2fa")]
@@ -30,6 +31,7 @@ public class TwoFactorController : BaseApiController
     }
 
     [HttpPost("setup")]
+    [AllowTwoFactorEnrollment]
     [ProducesResponseType(typeof(TwoFactorSetupDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TwoFactorSetupDto>> BeginSetup()
@@ -45,7 +47,12 @@ public class TwoFactorController : BaseApiController
         catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
 
+    /// <summary>
+    /// Confirms the authenticator. For a required-setup session, the response carries a full session token.
+    /// </summary>
     [HttpPost("confirm")]
+    [AllowTwoFactorEnrollment]
+    [ProducesResponseType(typeof(TwoFactorVerifyResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Confirm([FromBody] TwoFactorCodeDto body)
@@ -56,6 +63,8 @@ public class TwoFactorController : BaseApiController
         {
             await _twoFactorService.ConfirmSetupAsync(userId.Value, body.Code);
             await _auditLogService.LogAsync("TwoFactorEnabled", "User", userId, "Two-factor authentication turned on", userId, User.AuditUserName());
+            if (User.HasClaim("2fa_enroll", "true"))
+                return Ok(new TwoFactorVerifyResultDto { Token = await _userService.IssueTokenAsync(userId.Value) });
             return NoContent();
         }
         catch (ValidationException ex) { return BadRequest(ex.Message); }
