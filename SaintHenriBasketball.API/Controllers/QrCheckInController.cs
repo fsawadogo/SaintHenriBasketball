@@ -15,10 +15,28 @@ namespace SaintHenriBasketball.API.Controllers;
 public class QrCheckInController : BaseApiController
 {
     private readonly IQrCheckInService _qrService;
+    private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _environment;
 
-    public QrCheckInController(IQrCheckInService qrService)
+    public QrCheckInController(IQrCheckInService qrService, IConfiguration configuration, IWebHostEnvironment environment)
     {
         _qrService = qrService;
+        _configuration = configuration;
+        _environment = environment;
+    }
+
+    /// The printed QR code must open the club's own site. A caller-supplied URL is used only when it is
+    /// that site, or a localhost preview during development.
+    private string CheckInBaseUrl(string? frontendUrl)
+    {
+        var appUrl = _configuration["AppUrl"]?.TrimEnd('/');
+        if (Uri.TryCreate(frontendUrl, UriKind.Absolute, out var requested) && requested.Scheme is "http" or "https")
+        {
+            var origin = requested.GetLeftPart(UriPartial.Authority);
+            if (appUrl != null && string.Equals(origin, appUrl, StringComparison.OrdinalIgnoreCase)) return origin;
+            if (_environment.IsDevelopment() && requested.IsLoopback) return origin;
+        }
+        return appUrl ?? $"{Request.Scheme}://{Request.Host}";
     }
 
     [HttpGet("api/v{version:apiVersion}/sessions/{sessionId:guid}/qr-token")]
@@ -28,8 +46,7 @@ public class QrCheckInController : BaseApiController
     {
         try
         {
-            var baseUrl = !string.IsNullOrEmpty(frontendUrl) ? frontendUrl : $"{Request.Scheme}://{Request.Host}";
-            var token = await _qrService.GenerateTokenAsync(sessionId, baseUrl);
+            var token = await _qrService.GenerateTokenAsync(sessionId, CheckInBaseUrl(frontendUrl));
             return Ok(token);
         }
         catch (NotFoundException ex) { return NotFound(ex.Message); }

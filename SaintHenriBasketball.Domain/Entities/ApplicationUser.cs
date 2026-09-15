@@ -35,6 +35,11 @@ public class ApplicationUser
     public bool CommunityUpdatesEnabled { get; set; } = true;
     public bool EmailNotificationsEnabled { get; set; } = true;
     public bool InAppNotificationsEnabled { get; set; } = true;
+    /// Deactivated accounts can't sign in; their payments and history are kept.
+    public bool IsDeactivated { get; set; }
+    public DateTime? DeactivatedOn { get; set; }
+    /// Set when the player's personal details were erased at their request (Quebec Law 25).
+    public DateTime? AnonymizedOn { get; set; }
 
     private ApplicationUser() { } // For EF Core
 

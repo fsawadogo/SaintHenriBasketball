@@ -17,6 +17,9 @@ public class UserRepository : IUserRepository
         _logger = logger;
     }
 
+    public Task<int> CountActiveAdminsAsync() =>
+        _context.Users.CountAsync(u => u.IsAdmin && !u.IsDeactivated);
+
     public async Task<ApplicationUser> GetByIdAsync(Guid id)
     {
         return (await _context.Users

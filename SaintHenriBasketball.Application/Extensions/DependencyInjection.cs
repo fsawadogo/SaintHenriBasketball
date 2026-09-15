@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IWaiverService, WaiverService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAccountCreditService, AccountCreditService>();
+        services.AddScoped<IAccountLifecycleService, AccountLifecycleService>();
         // `Sms:Provider` in configuration picks the impl (Twilio, Brevo, or log-only by default)
         // so development doesn't require provider credentials. BrevoSmsService is registered
         // as a typed HttpClient in the API's Program.cs.

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.Attendance;
 using SaintHenriBasketball.Application.Exceptions;
@@ -21,6 +22,7 @@ public class AttendanceController : BaseApiController
     private readonly ISessionService _sessionService;
     private readonly IUserService _userService;
     private readonly ILogger<AttendanceController> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public AttendanceController(
         SaintHenriBasketball.Application.Helpers.AttendanceLinks links,
@@ -28,7 +30,8 @@ public class AttendanceController : BaseApiController
         IEmailService emailService,
         ISessionService sessionService,
         IUserService userService,
-        ILogger<AttendanceController> logger)
+        ILogger<AttendanceController> logger,
+        IAuditLogService auditLogService)
     {
         _links = links;
         _attendanceService = attendanceService;
@@ -36,6 +39,7 @@ public class AttendanceController : BaseApiController
         _sessionService = sessionService;
         _userService = userService;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     /// <summary>
@@ -155,6 +159,15 @@ public class AttendanceController : BaseApiController
         try
         {
             var summary = await _attendanceService.GetSessionAttendanceSummaryAsync(sessionId);
+            // Players see who is coming, not each other's notes.
+            if (!User.IsInRole("Admin"))
+            {
+                foreach (var attendance in summary.Attendances ?? new List<AttendanceResponseDto>())
+                {
+                    attendance.Notes = null;
+                    attendance.UpdateReason = null;
+                }
+            }
             return Ok(summary);
         }
         catch (NotFoundException ex)
@@ -167,6 +180,7 @@ public class AttendanceController : BaseApiController
     /// Get list of registered users for a session
     /// </summary>
     [HttpGet("sessions/{sessionId}/users")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(IEnumerable<AttendanceUserDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<AttendanceUserDto>>> GetSessionAttendees(Guid sessionId)
@@ -276,18 +290,9 @@ public class AttendanceController : BaseApiController
     {
         try
         {
-            // Check if user is authenticated
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("User must be authenticated to add participants");
-            }
-
-            // TODO: Add admin role check here when role-based authorization is implemented
-            // For now, we'll allow any authenticated user to add participants
-            // This should be changed to require admin role in production
-
             var response = await _attendanceService.AddParticipantsToSessionAsync(sessionId, request);
+            await _auditLogService.LogAsync("ParticipantsAdded", "Session", sessionId,
+                $"{request.UserIds?.Count() ?? 0} player(s) added", User.AuditUserId(), User.AuditUserName());
             return Ok(response);
         }
         catch (ValidationException ex)
@@ -311,6 +316,7 @@ public class AttendanceController : BaseApiController
     /// Remove multiple participants from a session (Admin only)
     /// </summary>
     [HttpPost("sessions/{sessionId}/remove-participants")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(RemoveParticipantsResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -321,18 +327,9 @@ public class AttendanceController : BaseApiController
     {
         try
         {
-            // Check if user is authenticated
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("User must be authenticated to remove participants");
-            }
-
-            // TODO: Add admin role check here when role-based authorization is implemented
-            // For now, we'll allow any authenticated user to remove participants
-            // This should be changed to require admin role in production
-
             var response = await _attendanceService.RemoveParticipantsFromSessionAsync(sessionId, request);
+            await _auditLogService.LogAsync("ParticipantsRemoved", "Session", sessionId,
+                $"{request.UserIds?.Count() ?? 0} player(s) removed", User.AuditUserId(), User.AuditUserName());
             return Ok(response);
         }
         catch (ValidationException ex)

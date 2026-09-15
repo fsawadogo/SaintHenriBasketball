@@ -184,10 +184,11 @@ public class ApplicationDbContext : DbContext
                 entity.Property(e => e.PaymentDate)
                     .IsRequired();
 
+                // Payments are financial records: a player with payments is deactivated, never deleted.
                 entity.HasOne(p => p.User)
                     .WithMany()
                     .HasForeignKey(p => p.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(p => p.Session)
                     .WithMany()
@@ -214,8 +215,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Kind).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
 
-            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
-            // NO ACTION: Users already cascade to both Payments and AccountCredits.
+            // The credit ledger is a financial record, like payments: players are deactivated, never deleted.
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Payment>().WithMany().HasForeignKey(e => e.PaymentId).OnDelete(DeleteBehavior.NoAction);
 
             entity.HasIndex(e => e.UserId);
