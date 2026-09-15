@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.DTOs.AuditLog;
 using System.Net;
 using System.IdentityModel.Tokens.Jwt;
 using AutoMapper;
@@ -963,6 +964,37 @@ await using (var db = Db())
         && await db.Sessions.AnyAsync(s => s.Id == paidSession.Id)
         && deletionCache.Removed.Contains($"Attendance:Session:{deletableSession.Id}:Attendees"),
         "deleting a session removes its registrations and attendance, and a session with payments can't be deleted");
+}
+
+// Audit: automatic entries for admin changes, and a searchable log with totals.
+var recapRouteId = Guid.NewGuid();
+var describedRecap = AdminAuditPolicy.Describe("SessionRecaps", "Delete",
+    new[] { new KeyValuePair<string, string?>("version", "1"), new("sessionId", session.Id.ToString()), new("recapId", recapRouteId.ToString()) },
+    "delete", "/api/v1/admin/sessions/x/recaps/y");
+Assert(AdminAuditPolicy.RequiresAdmin(new string?[] { null, "Admin" }) && AdminAuditPolicy.RequiresAdmin(new string?[] { "Player, Admin" })
+    && !AdminAuditPolicy.RequiresAdmin(new string?[] { null, "Player" })
+    && AdminAuditPolicy.ShouldAudit("delete", true, 204) && !AdminAuditPolicy.ShouldAudit("GET", true, 200)
+    && !AdminAuditPolicy.ShouldAudit("POST", true, 400) && !AdminAuditPolicy.ShouldAudit("POST", false, 200)
+    && describedRecap.EntityId == recapRouteId && describedRecap.EntityType == "SessionRecaps" && describedRecap.Details == "DELETE /api/v1/admin/sessions/x/recaps/y",
+    "only successful admin-only changes are audited automatically, recorded against the last id in the route");
+var auditActor = Guid.NewGuid();
+await using (var db = Db())
+{
+    var audit = new AuditLogService(new AuditLogRepository(db));
+    await audit.LogAsync("Created", "RegressionAudit", null, "first", auditActor, "Audit Admin");
+    await audit.LogAsync("Deleted", "RegressionAudit", null, "second", auditActor, "Audit Admin");
+    await audit.LogAsync("Created", "RegressionAuditOther", null, "third", null, "System");
+    var byType = await audit.SearchAsync(new AuditLogQuery { EntityType = "RegressionAudit", PageSize = 1 });
+    var byActorAndAction = await audit.SearchAsync(new AuditLogQuery { UserId = auditActor, Action = "delet" });
+    var laterOnly = await audit.SearchAsync(new AuditLogQuery { EntityType = "RegressionAudit", From = DateTime.UtcNow.AddMinutes(5) });
+    var auditFilters = await audit.GetFiltersAsync();
+    var reversedAuditRange = false;
+    try { await audit.SearchAsync(new AuditLogQuery { From = DateTime.UtcNow, To = DateTime.UtcNow.AddDays(-1) }); }
+    catch (ValidationException) { reversedAuditRange = true; }
+    Assert(byType.Total == 2 && byType.Items.Count == 1 && byActorAndAction.Total == 1 && byActorAndAction.Items[0].Details == "second"
+        && laterOnly.Total == 0 && auditFilters.EntityTypes.Contains("RegressionAudit") && auditFilters.EntityTypes.Contains("RegressionAuditOther")
+        && auditFilters.Actors.Any(a => a.UserId == auditActor && a.UserName == "Audit Admin") && reversedAuditRange,
+        "the audit log filters by admin, entity type, action and date, reports the total, and lists its filter choices");
 }
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 

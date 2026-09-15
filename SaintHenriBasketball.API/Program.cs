@@ -1,3 +1,4 @@
+using SaintHenriBasketball.API.Filters;
 using System.Threading.RateLimiting;
 using Resend;
 using SaintHenriBasketball.Application.Extensions;
@@ -165,6 +166,8 @@ builder.Services.AddControllers(options =>
         new CacheProfile { Duration = 30 });
     options.CacheProfiles.Add("Default60",
         new CacheProfile { Duration = 60 });
+    // Every successful admin-only change gets an audit entry unless the endpoint wrote its own.
+    options.Filters.Add<AdminMutationAuditFilter>();
 });
 
 
