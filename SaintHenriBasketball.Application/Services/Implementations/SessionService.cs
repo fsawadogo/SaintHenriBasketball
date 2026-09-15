@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.Helpers;
 using AutoMapper;
 using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.Exceptions;
@@ -172,6 +173,7 @@ public class SessionService : ISessionService
         session.Status = SessionStatus.Cancelled;
         await _sessionRepository.UpdateAsync(session);
         _logger.LogInformation("Session cancelled successfully. ID: {SessionId}", id);
+        await SessionCacheKeys.InvalidateAsync(_cacheService, id, session.Registrations.Select(r => r.UserId));
 
         // Invalidate affected caches
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
@@ -204,6 +206,7 @@ public class SessionService : ISessionService
     {
         await _waiverService.EnsureAcceptedAsync(userId);
         var registration = await _participation.ReserveAsync(sessionId, userId);
+        await SessionCacheKeys.InvalidateAsync(_cacheService, sessionId, new[] { userId });
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
         await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
@@ -213,6 +216,7 @@ public class SessionService : ISessionService
     public async Task UnregisterFromSessionAsync(Guid sessionId, Guid userId)
     {
         await _participation.CancelAsync(sessionId, userId);
+        await SessionCacheKeys.InvalidateAsync(_cacheService, sessionId, new[] { userId });
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
         await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");

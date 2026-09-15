@@ -70,5 +70,8 @@ public class ReconciliationController : BaseApiController
         await _cacheService.RemoveAsync("Payments:All");
         await _cacheService.RemoveAsync("Payments:Pending");
         await _cacheService.RemoveAsync("Payments:Summary");
+        // Each player's payment history and each payment's details are cached separately.
+        await _cacheService.RemoveByPrefixAsync("Payments:User");
+        await _cacheService.RemoveByPrefixAsync("Payments:Detail");
     }
 }

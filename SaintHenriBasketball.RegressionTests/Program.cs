@@ -827,8 +827,8 @@ await using (var db = Db())
         && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == plainPendingPayment.Id)).Status == PaymentStatus.Pending
         && await db.AuditLogs.CountAsync(a => a.EntityId == notReceivedPayment.Id && a.Action == "Payment.InteracNotReceived" && a.Details!.Contains("Tangerine")) == 1,
         "an Interac transfer marked not received fails once, is audited with the note, and other payments are skipped");
-AccountLifecycleService LifecycleFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
-    new SessionRegistrationRepository(db), new ParticipationRepository(db), NullLogger<AccountLifecycleService>.Instance);
+AccountLifecycleService LifecycleFor(ApplicationDbContext db, RecordingCache? cache = null) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
+    new SessionRegistrationRepository(db), new ParticipationRepository(db), cache ?? new RecordingCache(), NullLogger<AccountLifecycleService>.Instance);
 await using (var db = Db()) {
     var hardDeleteRefused = false;
     db.Users.Remove(await db.Users.SingleAsync(u => u.Id == partialPlayer.Id));
@@ -846,7 +846,13 @@ await using (var db = Db()) {
         && await db.Payments.AnyAsync(p => p.UserId == partialPlayer.Id) && await db.AccountCredits.AnyAsync(c => c.UserId == partialPlayer.Id) && anonymizedReactivateRefused,
         "closing an account erases personal details but keeps payments and the credit ledger");
 }
-await using (var db = Db()) await LifecycleFor(db).DeactivateAsync(spenderPlayer.Id, anonymize: false);
+var lifecycleCache = new RecordingCache();
+await using (var db = Db()) await LifecycleFor(db, lifecycleCache).DeactivateAsync(spenderPlayer.Id, anonymize: false);
+var cacheKeysSample = SessionCacheKeys.For(session.Id, new[] { spenderPlayer.Id, spenderPlayer.Id });
+Assert(lifecycleCache.Removed.Contains($"Attendance:User:{spenderPlayer.Id}") && lifecycleCache.Removed.Contains(SessionCacheKeys.UpcomingSessions)
+    && cacheKeysSample.Contains($"Attendance:Session:{session.Id}:Attendees") && cacheKeysSample.Contains($"Attendance:Session:{session.Id}:Summary")
+    && cacheKeysSample.Count(k => k == $"Attendance:User:{spenderPlayer.Id}") == 1,
+    "deactivating clears the player's cached bookings, and session cache keys cover attendees and the summary");
 await using (var db = Db()) {
     var deactivated = await db.Users.AsNoTracking().SingleAsync(u => u.Id == spenderPlayer.Id);
     Assert(deactivated.IsDeactivated && deactivated.AnonymizedOn == null && deactivated.Email == spenderPlayer.Email
@@ -938,4 +944,13 @@ sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMe
         Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         return new HttpResponseMessage(status) { Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json") };
     }
+}
+
+sealed class RecordingCache : SaintHenriBasketball.Application.Services.Interfaces.ICacheService
+{
+    public List<string> Removed { get; } = new();
+    public Task<T?> GetAsync<T>(string key) => Task.FromResult<T?>(default);
+    public Task SetAsync<T>(string key, T value, TimeSpan? absoluteExpiration = null, TimeSpan? slidingExpiration = null) => Task.CompletedTask;
+    public Task RemoveAsync(string key) { Removed.Add(key); return Task.CompletedTask; }
+    public Task RemoveByPrefixAsync(string prefix) { Removed.Add(prefix + "*"); return Task.CompletedTask; }
 }

@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.Helpers;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Attendance;
@@ -51,13 +52,7 @@ public class AttendanceService : IAttendanceService
     private async Task<AttendanceResponseDto> SaveAttendanceAsync(Guid sessionId, Guid userId, bool isAttending, string? notes, string? reason)
     {
         var record = await _participation.SetAttendanceAsync(sessionId, userId, isAttending, notes, reason);
-        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}");
-        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}:Summary");
-        await _cacheService.RemoveAsync($"Attendance:Session:{sessionId}:Attendees");
-        await _cacheService.RemoveAsync($"Attendance:User:{userId}");
-        await _cacheService.RemoveAsync("UpcomingSessions");
-        await _cacheService.RemoveAsync("AvailableSessions");
-        await _cacheService.RemoveAsync($"Session_{sessionId}");
+        await SessionCacheKeys.InvalidateAsync(_cacheService, sessionId, new[] { userId });
         if (!isAttending)
         {
             try { await _waitlistService.PromoteNextAsync(sessionId); }
@@ -247,8 +242,7 @@ public class AttendanceService : IAttendanceService
             }
 
             // Invalidate cache
-            string sessionCacheKey = $"Attendance:Session:{sessionId}";
-            await _cacheService.RemoveAsync(sessionCacheKey);
+            await SessionCacheKeys.InvalidateAsync(_cacheService, sessionId, request.UserIds);
             
             // Session status or capacity may have changed, invalidate session list caches
             if (response.SuccessfullyAdded > 0)
@@ -318,8 +312,7 @@ public class AttendanceService : IAttendanceService
             }
 
             // Invalidate cache
-            string sessionCacheKey = $"Attendance:Session:{sessionId}";
-            await _cacheService.RemoveAsync(sessionCacheKey);
+            await SessionCacheKeys.InvalidateAsync(_cacheService, sessionId, request.UserIds);
             
             // Session status or capacity may have changed, invalidate session list caches
             if (response.SuccessfullyRemoved > 0)
