@@ -9,7 +9,33 @@ public enum ReferralRedeemOutcome
     CodeUnavailable,
     /// The referee already has a redemption (unique RefereeUserId).
     AlreadyRedeemed,
+    /// An admin deactivated the code before this use was counted.
+    CodeInactive,
 }
+
+public enum ReferralCodeUpdateOutcome
+{
+    Updated,
+    NotFound,
+    /// MaxUses would be below the code's current uses and the caller did not allow it.
+    BelowCurrentUses,
+}
+
+/// Admin list filters. Search matches the code, the owner's name or email. Page is 1-based.
+public record ReferralCodeSearchCriteria(string? Search = null, int Page = 1, int PageSize = 50);
+
+public record ReferralCodeAdminRow(
+    ReferralCode Code,
+    string? OwnerFirstName,
+    string? OwnerLastName,
+    string? OwnerEmail,
+    int PendingRedemptions,
+    int GrantedRedemptions,
+    int RevokedRedemptions,
+    int RewardsGrantedCount,
+    decimal RewardsGrantedTotal);
+
+public record ReferralCodeAdminPage(IReadOnlyList<ReferralCodeAdminRow> Items, int Total);
 
 public interface IReferralRepository
 {
@@ -44,4 +70,19 @@ public interface IReferralRepository
 
     /// Moves the redemption Pending → Revoked. False when it was not Pending.
     Task<bool> TryRevokeAsync(Guid redemptionId);
+
+    /// Untracked read of one code.
+    Task<ReferralCode?> GetCodeByIdAsync(Guid id);
+
+    /// Codes with their owner, redemption counts by status and referral rewards granted, newest first.
+    Task<ReferralCodeAdminPage> SearchCodesAsync(ReferralCodeSearchCriteria criteria);
+
+    Task<ReferralCodeAdminRow?> GetCodeAdminRowAsync(Guid id);
+
+    /// <summary>
+    /// Sets IsActive and MaxUses in one conditional update. Unless <paramref name="allowBelowCurrentUses"/>,
+    /// the update only applies while TimesUsed is at most the new MaxUses, so a redemption racing the
+    /// change cannot leave the limit below the uses already counted.
+    /// </summary>
+    Task<ReferralCodeUpdateOutcome> TryUpdateCodeLimitsAsync(Guid id, bool isActive, int? maxUses, bool allowBelowCurrentUses);
 }
