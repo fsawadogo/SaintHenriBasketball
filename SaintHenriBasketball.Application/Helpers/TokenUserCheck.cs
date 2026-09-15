@@ -1,7 +1,9 @@
+using SaintHenriBasketball.Domain.Enums;
+
 namespace SaintHenriBasketball.Application.Helpers;
 
 /// What the API needs to know about a token's user on every request.
-public sealed record AuthUserSnapshot(bool IsDeactivated, bool IsAdmin);
+public sealed record AuthUserSnapshot(bool IsDeactivated, bool IsAdmin, StaffRole StaffRole);
 
 public static class TokenUserCheck
 {
@@ -9,12 +11,15 @@ public static class TokenUserCheck
     /// Null when a validly signed token may still be used; otherwise the reason it is refused.
     /// A promoted user gets the Admin role at their next sign-in, but a deactivated or demoted user
     /// loses access on their next request instead of when the token expires.
+    /// A token whose volunteer role (<paramref name="tokenStaffRole"/>, the staff_role claim; none means None)
+    /// differs from the account's is refused too, so a changed role takes effect at the next sign-in.
     /// </summary>
-    public static string? Evaluate(AuthUserSnapshot? user, bool tokenClaimsAdmin) => user switch
+    public static string? Evaluate(AuthUserSnapshot? user, bool tokenClaimsAdmin, string? tokenStaffRole) => user switch
     {
         null => "Account not found",
         { IsDeactivated: true } => "Account deactivated",
         { IsAdmin: false } when tokenClaimsAdmin => "Admin access was removed",
+        _ when StaffAccess.RoleFromClaim(tokenStaffRole) != user.StaffRole => "Staff role changed",
         _ => null,
     };
 }

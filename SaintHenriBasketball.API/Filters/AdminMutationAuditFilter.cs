@@ -16,8 +16,9 @@ public class AdminMutationAuditFilter(ILogger<AdminMutationAuditFilter> logger) 
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         var method = context.HttpContext.Request.Method;
-        var requiresAdmin = AdminAuditPolicy.RequiresAdmin(
-            context.ActionDescriptor.EndpointMetadata.OfType<IAuthorizeData>().Select(a => a.Roles));
+        // Staff policies (court captain, treasurer) count as admin-level, so volunteers' changes are audited too.
+        var authorizeData = context.ActionDescriptor.EndpointMetadata.OfType<IAuthorizeData>().ToList();
+        var requiresAdmin = AdminAuditPolicy.RequiresAdminLevel(authorizeData.Select(a => a.Roles), authorizeData.Select(a => a.Policy));
         var skipped = context.ActionDescriptor.EndpointMetadata.OfType<SkipAdminAuditAttribute>().Any();
         if (skipped || !requiresAdmin || !AdminAuditPolicy.IsMutating(method))
         {

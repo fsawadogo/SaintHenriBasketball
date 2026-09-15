@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.Reconciliation;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using System.Security.Claims;
 
@@ -11,7 +12,7 @@ namespace SaintHenriBasketball.API.Controllers;
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/v{version:apiVersion}/admin/payments/reconciliation")]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = StaffAccess.TreasurerOrAdminPolicy)]
 [RequireFeature(FeatureFlagKeys.InteracReconciliation)]
 public class ReconciliationController : BaseApiController
 {

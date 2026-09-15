@@ -281,7 +281,7 @@ public class PaymentsController : ControllerBase
    /// Admin payments list, filtered and paged on the server, with totals for every matching payment
    /// </summary>
    [HttpGet("search")]
-   [Authorize(Roles = "Admin")]
+   [Authorize(Policy = StaffAccess.TreasurerOrAdminPolicy)]
    [ProducesResponseType(typeof(PaymentSearchResultDto), StatusCodes.Status200OK)]
    [ProducesResponseType(StatusCodes.Status400BadRequest)]
    public async Task<ActionResult<PaymentSearchResultDto>> SearchPayments(

@@ -5,6 +5,7 @@ using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.CourtAttendance;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -12,7 +13,7 @@ namespace SaintHenriBasketball.API.Controllers;
 /// Court attendance: the phone roster a captain or admin uses to record what happened, and no-show stats.
 [ApiVersion("1.0")]
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = StaffAccess.CourtCaptainOrAdminPolicy)]
 [RequireFeature(FeatureFlagKeys.CourtAttendance)]
 public class CourtAttendanceController(ICourtAttendanceService courtAttendance, IAuditLogService auditLog) : BaseApiController
 {

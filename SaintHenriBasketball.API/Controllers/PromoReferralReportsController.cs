@@ -5,6 +5,7 @@ using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.PromoReferralReports;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -24,7 +25,7 @@ public class PromoReferralReportsController : BaseApiController
     }
 
     [HttpGet("api/v{version:apiVersion}/admin/reports/promos-referrals/promos")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = StaffAccess.TreasurerOrAdminPolicy)]
     [RequireFeature(FeatureFlagKeys.PromoReferralReports)]
     [ProducesResponseType(typeof(PromoUsageReportDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -35,7 +36,7 @@ public class PromoReferralReportsController : BaseApiController
     }
 
     [HttpGet("api/v{version:apiVersion}/admin/reports/promos-referrals/credits")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = StaffAccess.TreasurerOrAdminPolicy)]
     [RequireFeature(FeatureFlagKeys.PromoReferralReports)]
     [ProducesResponseType(typeof(CreditsReportDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

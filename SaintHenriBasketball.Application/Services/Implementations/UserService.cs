@@ -119,6 +119,7 @@ public class UserService : IUserService
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsAdmin = user.IsAdmin,
+            StaffRole = user.StaffRole,
             PaymentPlan = user.PaymentPlan
         };
     }
@@ -159,6 +160,7 @@ public class UserService : IUserService
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsAdmin = user.IsAdmin,
+            StaffRole = user.StaffRole,
             PaymentPlan = user.PaymentPlan,
             Requires2Fa = requires2Fa,
         };
@@ -231,6 +233,7 @@ public class UserService : IUserService
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsAdmin = user.IsAdmin,
+            StaffRole = user.StaffRole,
             PaymentPlan = user.PaymentPlan,
             Requires2Fa = requires2Fa,
         };
@@ -510,6 +513,10 @@ public class UserService : IUserService
             new(ClaimTypes.Name, user.Username),
             new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
         };
+
+        // Volunteer role (see StaffAccess); checked against the account on every request, like the Admin role.
+        if (Helpers.StaffAccess.ClaimValue(user.StaffRole) is { } staffRole)
+            claims.Add(new Claim(Helpers.StaffAccess.ClaimType, staffRole));
 
         // Short-lived pending-2FA tokens carry this claim; middleware blocks all requests
         // except the 2FA verify/setup endpoints until the user exchanges it.
