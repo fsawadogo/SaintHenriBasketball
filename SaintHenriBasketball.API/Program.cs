@@ -205,7 +205,9 @@ builder.Services.AddCors(options =>
         {
             corsPolicyBuilder.AllowAnyOrigin()
                    .AllowAnyMethod()
-                   .AllowAnyHeader();
+                   .AllowAnyHeader()
+                   // Lets the app read the file name of downloads (CSV exports, invoices).
+                   .WithExposedHeaders("Content-Disposition");
         });
 });
 
