@@ -586,9 +586,9 @@ catch (ValidationException) { negativeAmountRefused = true; }
 await using (var db = Db())
     Assert(completedEditRefused && negativeAmountRefused && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == coveredPaymentId)).Amount == 0m,
         "a completed payment's amount is locked and amounts can't be negative");
-Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true), true) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false), false) == null
-    && TokenUserCheck.Evaluate(null, false) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false), false) != null
-    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false), true) != null,
+Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true, StaffRole.None), true, null) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None), false, null) == null
+    && TokenUserCheck.Evaluate(null, false, null) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false, StaffRole.None), false, null) != null
+    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None), true, null) != null,
     "tokens stop working for missing, deactivated or demoted accounts");
 
 RegisterUserDto Signup(string name, string? code) => new() {
@@ -1057,6 +1057,30 @@ await using (var db = Db())
         && noShowsAfter.SampleEmails.Contains(missedSession.Email!) && !noShowsAfter.SampleEmails.Contains(cameToSession.Email!),
         "recent no-shows are players who skipped their recent sessions, and deactivated players never receive broadcasts");
 }
+// Waitlist rejoin: one row per player and session, so leaving and joining again reuses it instead of failing.
+var rejoinSession = new Session(DateTime.UtcNow.Date.AddDays(30), 1, 10, "10:00", "12:00", "Rejoin court");
+var rejoinBooked = new ApplicationUser("rejoinbooked", "rejoin-booked@example.test", "test-only", "Booked", "Player", PaymentPlan.DropIn) { EmailConfirmed = true };
+var rejoinWaiting = new ApplicationUser("rejoinwaiting", "rejoin-waiting@example.test", "test-only", "Waiting", "Player", PaymentPlan.DropIn) { EmailConfirmed = true };
+await using (var db = Db()) { db.Sessions.Add(rejoinSession); db.Users.AddRange(rejoinBooked, rejoinWaiting); await db.SaveChangesAsync(); }
+await using (var db = Db()) await new ParticipationRepository(db).ReserveAsync(rejoinSession.Id, rejoinBooked.Id);
+await using (var db = Db()) await new ParticipationRepository(db).JoinWaitlistAsync(rejoinSession.Id, rejoinWaiting.Id, null);
+await using (var db = Db()) await new ParticipationRepository(db).LeaveWaitlistAsync(rejoinSession.Id, rejoinWaiting.Id);
+var rejoined = false;
+try { await using var db = Db(); rejoined = (await new ParticipationRepository(db).JoinWaitlistAsync(rejoinSession.Id, rejoinWaiting.Id, "back")).Status == WaitlistStatus.Waiting; }
+catch (DbUpdateException) { rejoined = false; }
+await using (var db = Db())
+    Assert(rejoined && await db.Waitlists.CountAsync(w => w.SessionId == rejoinSession.Id && w.UserId == rejoinWaiting.Id) == 1,
+        "a player who left a waitlist can join it again");
+
+// Admin-audit features (each file under Features/).
+await OutstandingBalancesChecks.RunAsync(Db, Assert);
+await CourtAttendanceChecks.RunAsync(Db, Assert);
+await TreasurerReportChecks.RunAsync(Db, Assert);
+await PlayerTimelineChecks.RunAsync(Db, Assert);
+await SeasonRolloverChecks.RunAsync(Db, Assert);
+await WaitlistAdminChecks.RunAsync(Db, Assert);
+await PromoReferralReportsChecks.RunAsync(Db, Assert);
+await VolunteerRolesChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler

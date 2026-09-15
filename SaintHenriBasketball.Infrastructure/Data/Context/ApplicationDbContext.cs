@@ -447,5 +447,8 @@ public class ApplicationDbContext : DbContext
             // Drives the bell's "unread count" + "recent" queries.
             entity.HasIndex(e => new { e.UserId, e.ReadAt, e.CreatedOn });
         });
+
+        // New admin features keep their table setup in Data/Configurations (one IEntityTypeConfiguration per entity).
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 }

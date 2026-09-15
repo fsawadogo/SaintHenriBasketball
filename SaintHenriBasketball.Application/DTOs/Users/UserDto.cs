@@ -1,4 +1,5 @@
-﻿using SaintHenriBasketball.Domain.Enums;
+﻿using System.Text.Json.Serialization;
+using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Application.DTOs.Users;
 
@@ -16,4 +17,7 @@ public class UserDto
     public bool TwoFactorEnabled { get; set; }
     public bool IsDeactivated { get; set; }
     public DateTime? DeactivatedOn { get; set; }
+    /// Volunteer role as its name: "None", "CourtCaptain" or "Treasurer".
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public StaffRole StaffRole { get; set; }
 }

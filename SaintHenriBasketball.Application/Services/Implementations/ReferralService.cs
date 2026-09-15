@@ -20,6 +20,9 @@ public class ReferralService : IReferralService
     private const decimal DefaultRewardAmount = 10.00m;
     private const int RedeemWindowDays = 30;
 
+    public const string InactiveCodeMessage = "This referral code is no longer active";
+    public const string UsedUpCodeMessage = "This referral code has been used up";
+
     private readonly IReferralRepository _referralRepository;
     private readonly IUserRepository _userRepository;
     private readonly ILogger<ReferralService> _logger;
@@ -88,8 +91,11 @@ public class ReferralService : IReferralService
         if (referralCode.OwnerUserId == refereeUserId)
             throw new ValidationException("You cannot redeem your own code");
 
+        if (!referralCode.IsActive)
+            throw new ValidationException(InactiveCodeMessage);
+
         if (referralCode.MaxUses is int max && referralCode.TimesUsed >= max)
-            throw new ValidationException("This referral code has been used up");
+            throw new ValidationException(UsedUpCodeMessage);
 
         if (await _referralRepository.HasRefereeRedeemedAsync(refereeUserId))
             throw new ValidationException("You have already redeemed a referral code");
@@ -108,7 +114,9 @@ public class ReferralService : IReferralService
         switch (outcome)
         {
             case ReferralRedeemOutcome.CodeUnavailable:
-                throw new ValidationException("This referral code has been used up");
+                throw new ValidationException(UsedUpCodeMessage);
+            case ReferralRedeemOutcome.CodeInactive:
+                throw new ValidationException(InactiveCodeMessage);
             case ReferralRedeemOutcome.AlreadyRedeemed:
                 throw new ValidationException("You have already redeemed a referral code");
         }

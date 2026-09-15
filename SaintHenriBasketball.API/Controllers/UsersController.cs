@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.API.Filters;
+using SaintHenriBasketball.Application.DTOs.VolunteerRoles;
+using SaintHenriBasketball.Application.FeatureFlags;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -24,7 +26,8 @@ public class UsersController(
     IAccountLifecycleService accountLifecycle,
     IAuditLogService auditLogService,
     IMemoryCache memoryCache,
-    IUserDirectoryService userDirectory)
+    IUserDirectoryService userDirectory,
+    IStaffRoleService staffRoles)
     : ControllerBase
 {
     private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -594,6 +597,33 @@ public class UsersController(
     [HttpPatch("{userId}/make-admin")]
     [Authorize(Roles = "Admin")]
     public Task<IActionResult> MakeUserAdmin(Guid userId) => SetAdmin(userId, new SetAdminRequest(true));
+
+    /// <summary>
+    /// Give, change or remove a player's volunteer role: None, CourtCaptain or Treasurer (Admin only). Audited.
+    /// Admins (they already have full access) and deactivated players can't get a role; clearing to None is always allowed.
+    /// The player's current token stops working, so they sign in again with the new role.
+    /// </summary>
+    [HttpPut("{userId}/staff-role")]
+    [Authorize(Roles = "Admin")]
+    [RequireFeature(FeatureFlagKeys.VolunteerRoles)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetStaffRole(Guid userId, [FromBody] SetStaffRoleRequest request)
+    {
+        try
+        {
+            var change = await staffRoles.SetStaffRoleAsync(userId, request?.Role);
+            if (!change.Changed) return NoContent();
+
+            await ForgetUserAsync(userId);
+            await auditLogService.LogAsync("StaffRoleChanged", "User", userId,
+                $"{change.PlayerName}: staff role {change.Before} -> {change.After}", User.AuditUserId(), User.AuditUserName());
+            return NoContent();
+        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+    }
 
     private static string DescribeUserChange(UserDto before, UserDto after)
     {

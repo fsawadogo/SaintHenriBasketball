@@ -40,6 +40,8 @@ public class ApplicationUser
     public DateTime? DeactivatedOn { get; set; }
     /// Set when the player's personal details were erased at their request (Quebec Law 25).
     public DateTime? AnonymizedOn { get; set; }
+    /// Volunteer role with limited admin access (volunteer-roles flag). Stored as int, default None.
+    public StaffRole StaffRole { get; set; }
 
     private ApplicationUser() { } // For EF Core
 

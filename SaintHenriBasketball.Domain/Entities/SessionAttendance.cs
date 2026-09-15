@@ -1,4 +1,6 @@
-﻿namespace SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Enums;
+
+namespace SaintHenriBasketball.Domain.Entities;
 
 public class SessionAttendance
 {
@@ -14,4 +16,7 @@ public class SessionAttendance
     public bool IsAttending { get; set; }
     public string? UpdateReason { get; set; }
     public DateTime LastUpdated { get; set; }
+
+    /// What happened at the session (court attendance). IsAttending stays the player's own answer.
+    public AttendanceOutcome Outcome { get; set; }
 }
