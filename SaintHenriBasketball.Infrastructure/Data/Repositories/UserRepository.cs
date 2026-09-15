@@ -17,6 +17,13 @@ public class UserRepository : IUserRepository
         _logger = logger;
     }
 
+    public async Task<IReadOnlyList<ApplicationUser>> GetActiveConfirmedUsersAsync() =>
+        await _context.Users.AsNoTracking()
+            .Where(u => u.EmailConfirmed && !u.IsDeactivated)
+            .OrderByDescending(u => u.CreatedOn)
+            .ThenBy(u => u.Id)
+            .ToListAsync();
+
     public Task<int> CountActiveAdminsAsync() =>
         _context.Users.CountAsync(u => u.IsAdmin && !u.IsDeactivated);
 

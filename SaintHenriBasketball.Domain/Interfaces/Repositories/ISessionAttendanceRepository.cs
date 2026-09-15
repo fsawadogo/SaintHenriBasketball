@@ -20,6 +20,11 @@ public interface ISessionAttendanceRepository
     Task<IEnumerable<SessionAttendance>> GetUserAttendanceHistoryAsync(Guid userId);
 
     /// <summary>
+    /// Every (player, session) where the player said they're coming, for sessions since the date that weren't cancelled
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, Guid SessionId)>> GetAttendedPairsSinceAsync(DateTime sessionDateFrom);
+
+    /// <summary>
     /// Adds a new attendance record
     /// </summary>
     Task AddAsync(SessionAttendance attendance);

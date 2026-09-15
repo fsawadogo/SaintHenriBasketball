@@ -125,7 +125,7 @@ public class WaiverService : IWaiverService
     public async Task<WaiverAcceptancesDto> GetAcceptancesAsync(int version)
     {
         var acceptances = await _repository.GetAcceptancesAsync(version);
-        var confirmedUsers = (await _userRepository.GetAllUsersAsync()).Where(u => u.EmailConfirmed).ToList();
+        var confirmedUsers = await _userRepository.GetActiveConfirmedUsersAsync();
         var usersById = confirmedUsers.ToDictionary(u => u.Id);
         var acceptedIds = acceptances.Select(a => a.UserId).ToHashSet();
 

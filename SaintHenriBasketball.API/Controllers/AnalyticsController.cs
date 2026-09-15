@@ -62,7 +62,10 @@ public class AnalyticsController : ControllerBase
         var sixtyDaysAgo = DateTime.UtcNow.AddDays(-EngagementTiers.WindowDays);
         var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
 
-        var users = await _db.Users.Where(u => !u.IsAdmin).ToListAsync();
+        var users = await _db.Users.AsNoTracking()
+            .Where(u => !u.IsAdmin && !u.IsDeactivated)
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email })
+            .ToListAsync();
         var recentAttendance = await _db.SessionAttendances
             .Where(a => a.CreatedOn >= sixtyDaysAgo)
             .GroupBy(a => a.UserId)
@@ -78,9 +81,10 @@ public class AnalyticsController : ControllerBase
             .Where(s => s.SessionDate >= sixtyDaysAgo && s.SessionDate <= DateTime.UtcNow)
             .CountAsync();
 
+        var statsByUser = recentAttendance.ToDictionary(a => a.userId);
         var engagement = users.Select(u =>
         {
-            var stats = recentAttendance.FirstOrDefault(a => a.userId == u.Id);
+            var stats = statsByUser.GetValueOrDefault(u.Id);
             var rate = stats != null && totalSessionsInPeriod > 0
                 ? (double)stats.attended / totalSessionsInPeriod * 100
                 : 0;

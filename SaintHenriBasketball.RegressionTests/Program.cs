@@ -1024,6 +1024,39 @@ await using (var db = Db())
         && longSubjectRefused && unknownBroadcast,
         "each broadcast is recorded with its sender, message and delivery counts, and a sent one isn't later marked failed");
 }
+
+// Broadcast audiences: recent no-shows come from two club-wide queries, and deactivated players are never included.
+BroadcastService AudienceFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance), new SessionRegistrationRepository(db),
+    new SessionAttendanceRepository(db, NullLogger<SessionAttendanceRepository>.Instance), null!, null!, null!, null!, new BroadcastQueue(), NullLogger<BroadcastService>.Instance, new BroadcastRepository(db));
+int noShowsBefore, everyoneBefore;
+await using (var db = Db())
+{
+    noShowsBefore = (await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.RecentNoShows)).RecipientCount;
+    everyoneBefore = (await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.All)).RecipientCount;
+}
+var noShowSession = new Session(DateTime.UtcNow.Date.AddDays(-5), 1, 10, "10:00", "12:00", "No-show court");
+var cameToSession = new ApplicationUser("noshowcame", "noshow-came@example.test", "test-only", "Came", "Player", PaymentPlan.DropIn) { EmailConfirmed = true };
+var missedSession = new ApplicationUser("noshowmissed", "noshow-missed@example.test", "test-only", "Missed", "Player", PaymentPlan.DropIn) { EmailConfirmed = true };
+var deactivatedNoShow = new ApplicationUser("noshowgone", "noshow-gone@example.test", "test-only", "Gone", "Player", PaymentPlan.DropIn) { EmailConfirmed = true, IsDeactivated = true };
+await using (var db = Db())
+{
+    db.Sessions.Add(noShowSession);
+    db.Users.AddRange(cameToSession, missedSession, deactivatedNoShow);
+    db.SessionRegistrations.AddRange(
+        new SessionRegistration(cameToSession.Id, noShowSession.Id, PaymentPlan.DropIn),
+        new SessionRegistration(missedSession.Id, noShowSession.Id, PaymentPlan.DropIn),
+        new SessionRegistration(deactivatedNoShow.Id, noShowSession.Id, PaymentPlan.DropIn));
+    db.SessionAttendances.Add(new SessionAttendance { Id = Guid.NewGuid(), SessionId = noShowSession.Id, UserId = cameToSession.Id, IsAttending = true, CreatedOn = DateTime.UtcNow, LastUpdated = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+}
+await using (var db = Db())
+{
+    var noShowsAfter = await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.RecentNoShows);
+    var everyoneAfter = await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.All);
+    Assert(noShowsAfter.RecipientCount - noShowsBefore == 1 && everyoneAfter.RecipientCount - everyoneBefore == 2
+        && noShowsAfter.SampleEmails.Contains(missedSession.Email!) && !noShowsAfter.SampleEmails.Contains(cameToSession.Email!),
+        "recent no-shows are players who skipped their recent sessions, and deactivated players never receive broadcasts");
+}
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler

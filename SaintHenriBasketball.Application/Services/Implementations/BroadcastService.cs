@@ -244,8 +244,8 @@ public class BroadcastService : IBroadcastService
         // Broadcasts only reach players who kept community updates on. Email opt-out is applied
         // per channel in DeliverAsync; transactional emails (receipts, password reset, payment
         // confirmation) bypass both — standard CASL/CAN-SPAM convention.
-        var all = (await _userRepository.GetAllUsersAsync())
-            .Where(u => u.EmailConfirmed && u.CommunityUpdatesEnabled)
+        var all = (await _userRepository.GetActiveConfirmedUsersAsync())
+            .Where(u => u.CommunityUpdatesEnabled)
             .ToList();
 
         return audience switch
@@ -259,25 +259,19 @@ public class BroadcastService : IBroadcastService
 
     private async Task<IReadOnlyList<ApplicationUser>> FilterRecentNoShowsAsync(IReadOnlyList<ApplicationUser> candidates)
     {
+        // Two queries for the whole club instead of two per player.
         var cutoff = DateTime.UtcNow.AddDays(-RecentNoShowLookbackDays);
-        var result = new List<ApplicationUser>();
+        var candidateIds = candidates.Select(u => u.Id).ToHashSet();
+        var registrations = (await _registrationRepository.GetRegistrationPairsInRangeAsync(cutoff, DateTime.UtcNow))
+            .Where(r => candidateIds.Contains(r.UserId))
+            .ToList();
+        var attended = (await _attendanceRepository.GetAttendedPairsSinceAsync(cutoff)).ToHashSet();
 
-        foreach (var user in candidates)
-        {
-            var registrations = await _registrationRepository.GetByUserIdInRangeAsync(user.Id, cutoff, DateTime.UtcNow);
-            if (registrations.Count == 0) continue;
-
-            var attendance = await _attendanceRepository.GetUserAttendanceHistoryAsync(user.Id);
-            var attendedSessionIds = attendance
-                .Where(a => a.IsAttending && a.Session is not null && a.Session.SessionDate >= cutoff)
-                .Select(a => a.SessionId)
-                .ToHashSet();
-
-            var attended = registrations.Count(r => attendedSessionIds.Contains(r.SessionId));
-            var rate = (double)attended / registrations.Count;
-            if (rate < NoShowThreshold) result.Add(user);
-        }
-
-        return result;
+        var noShowIds = registrations
+            .GroupBy(r => r.UserId)
+            .Where(g => (double)g.Count(attended.Contains) / g.Count() < NoShowThreshold)
+            .Select(g => g.Key)
+            .ToHashSet();
+        return candidates.Where(u => noShowIds.Contains(u.Id)).ToList();
     }
 }

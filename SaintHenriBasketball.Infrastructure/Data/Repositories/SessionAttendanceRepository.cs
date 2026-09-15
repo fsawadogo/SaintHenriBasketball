@@ -56,6 +56,14 @@ public class SessionAttendanceRepository : ISessionAttendanceRepository
         }
     }
 
+    public async Task<IReadOnlyList<(Guid UserId, Guid SessionId)>> GetAttendedPairsSinceAsync(DateTime sessionDateFrom) =>
+        (await _context.SessionAttendances.AsNoTracking()
+            .Where(a => a.IsAttending && a.Session.SessionDate >= sessionDateFrom && a.Session.Status != SessionStatus.Cancelled)
+            .Select(a => new { a.UserId, a.SessionId })
+            .ToListAsync())
+        .Select(a => (a.UserId, a.SessionId))
+        .ToList();
+
     public async Task<IEnumerable<SessionAttendance>> GetUserAttendanceHistoryAsync(Guid userId)
     {
         try

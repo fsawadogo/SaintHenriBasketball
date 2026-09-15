@@ -6,6 +6,7 @@ namespace SaintHenriBasketball.Application.DTOs.Email;
 public class EmailRequestDto
 {
     [Required]
+    [MaxLength(EmailRecipientLimits.MaxRecipients, ErrorMessage = "Send to at most 2000 email addresses at a time.")]
     public List<string?> Emails { get; set; } = new();
 
     [Required]

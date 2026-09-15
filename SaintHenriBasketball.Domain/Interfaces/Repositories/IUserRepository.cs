@@ -17,6 +17,9 @@ public interface IUserRepository
     Task<ApplicationUser?> GetByCalendarFeedTokenAsync(string token);
     Task<int> CountActiveAdminsAsync();
 
+    /// Confirmed, not deactivated accounts, newest first, without their registrations.
+    Task<IReadOnlyList<ApplicationUser>> GetActiveConfirmedUsersAsync();
+
     /// One page of players matching <paramref name="criteria"/> with their recent attendance, plus totals for every match.
     Task<UserSearchPage> SearchAsync(UserSearchCriteria criteria);
 }

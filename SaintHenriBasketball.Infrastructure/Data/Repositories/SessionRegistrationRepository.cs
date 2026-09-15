@@ -47,6 +47,14 @@ public class SessionRegistrationRepository : ISessionRegistrationRepository
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<(Guid UserId, Guid SessionId)>> GetRegistrationPairsInRangeAsync(DateTime rangeStart, DateTime rangeEnd) =>
+        (await _context.SessionRegistrations.AsNoTracking()
+            .Where(r => r.Session.SessionDate >= rangeStart.Date && r.Session.SessionDate <= rangeEnd.Date)
+            .Select(r => new { r.UserId, r.SessionId })
+            .ToListAsync())
+        .Select(r => (r.UserId, r.SessionId))
+        .ToList();
+
     public async Task<IReadOnlyList<SessionRegistration>> GetByUserIdInRangeAsync(Guid userId, DateTime rangeStart, DateTime rangeEnd)
     {
         return await _context.SessionRegistrations

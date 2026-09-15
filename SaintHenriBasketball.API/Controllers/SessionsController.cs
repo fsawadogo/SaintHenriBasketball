@@ -456,21 +456,4 @@ public class SessionsController : BaseApiController
         return Ok(response);
     }
 
-    /// <summary>Generate QR code for session check-in</summary>
-    [HttpGet("{id}/qr-code")]
-    public IActionResult GetSessionQrCode(Guid id)
-    {
-        var url = $"https://sainthenribasketball.com/attendance/confirm?sessionId={id}";
-
-        // Generate a simple SVG QR code placeholder
-        // In production, use QRCoder NuGet for real QR generation
-        var svg = $@"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'>
-            <rect width='200' height='200' fill='white'/>
-            <text x='100' y='90' text-anchor='middle' font-family='Arial' font-size='12' fill='#333'>Scan to check in</text>
-            <text x='100' y='110' text-anchor='middle' font-family='Arial' font-size='10' fill='#666'>Session {id.ToString()[..8]}</text>
-            <text x='100' y='130' text-anchor='middle' font-family='Arial' font-size='8' fill='#999'>{url}</text>
-        </svg>";
-
-        return Content(svg, "image/svg+xml");
-    }
 }
