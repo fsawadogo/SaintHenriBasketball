@@ -33,9 +33,14 @@ internal static class SeasonScheduleWizardChecks
         var days = SeasonSchedulePlanner.ValidateDays(start, end, new List<SeasonScheduleDayDto> { Day(6, "10:00", "12:00"), Day(2, "19:00", "21:00") });
         var planned = SeasonSchedulePlanner.Plan(start, end, days);
         assert(planned.Count == 9, "schedule: 4 Saturdays and 5 Tuesdays in September 2043");
-        assert(planned.First().Date == new DateTime(2043, 9, 1) && planned.First().StartTime == "19:00", "schedule: the plan starts on the first matching day");
-        assert(planned.All(p => p.DayOfWeek == (int)p.Date.DayOfWeek), "schedule: every session lands on its own weekday");
-        assert(planned.Zip(planned.Skip(1)).All(pair => pair.First.Date <= pair.Second.Date), "schedule: the plan is in date order");
+        var expected = new[]
+        {
+            (new DateTime(2043, 9, 1), "19:00"), (new DateTime(2043, 9, 5), "10:00"), (new DateTime(2043, 9, 8), "19:00"),
+            (new DateTime(2043, 9, 12), "10:00"), (new DateTime(2043, 9, 15), "19:00"), (new DateTime(2043, 9, 19), "10:00"),
+            (new DateTime(2043, 9, 22), "19:00"), (new DateTime(2043, 9, 26), "10:00"), (new DateTime(2043, 9, 29), "19:00"),
+        };
+        assert(planned.Select(p => (p.Date, p.StartTime)).SequenceEqual(expected),
+            "schedule: the plan lists exactly the right dates and times, in order");
 
         // ---- The clock change doesn't shift dates ----
         var novemberDays = SeasonSchedulePlanner.ValidateDays(new DateTime(2043, 10, 25), new DateTime(2043, 11, 15), new List<SeasonScheduleDayDto> { Day(0, "10:00", "12:00") });
