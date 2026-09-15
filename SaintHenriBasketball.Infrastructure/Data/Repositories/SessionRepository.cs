@@ -119,4 +119,7 @@ public class SessionRepository : ISessionRepository
             .ToListAsync();
     }
 
+    public Task<int> CountSessionsBetweenAsync(DateTime from, DateTime to) =>
+        _context.Sessions.CountAsync(s => s.SessionDate >= from && s.SessionDate <= to);
+
 }

@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +59,7 @@ public class AnalyticsController : ControllerBase
     [HttpGet("engagement")]
     public async Task<IActionResult> GetPlayerEngagement()
     {
-        var sixtyDaysAgo = DateTime.UtcNow.AddDays(-60);
+        var sixtyDaysAgo = DateTime.UtcNow.AddDays(-EngagementTiers.WindowDays);
         var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
 
         var users = await _db.Users.Where(u => !u.IsAdmin).ToListAsync();
@@ -83,7 +84,7 @@ public class AnalyticsController : ControllerBase
             var rate = stats != null && totalSessionsInPeriod > 0
                 ? (double)stats.attended / totalSessionsInPeriod * 100
                 : 0;
-            var tier = rate >= 80 ? "High" : rate >= 50 ? "Medium" : rate >= 20 ? "Low" : "Inactive";
+            var tier = EngagementTiers.Tier(rate);
             var isInactive = stats == null || stats.lastActive < thirtyDaysAgo;
 
             return new {

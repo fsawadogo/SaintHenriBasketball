@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -231,7 +232,7 @@ public class AdminController : ControllerBase
         var recentAttended = attendance.Count(a => a.CreatedOn >= sixtyDaysAgo && a.IsAttending);
         var recentTotal = await _db.Sessions.CountAsync(s => s.SessionDate >= sixtyDaysAgo && s.SessionDate <= DateTime.UtcNow);
         var recentRate = recentTotal > 0 ? (double)recentAttended / recentTotal * 100 : 0;
-        var tier = recentRate >= 80 ? "High" : recentRate >= 50 ? "Medium" : recentRate >= 20 ? "Low" : "Inactive";
+        var tier = EngagementTiers.Tier(recentRate);
 
         var totalPaid = payments.Where(p => p.Status == Domain.Enums.PaymentStatus.Completed).Sum(p => p.Amount);
         var pendingPayments = payments.Count(p => p.Status == Domain.Enums.PaymentStatus.Pending);

@@ -856,6 +856,75 @@ await using (var db = Db()) {
 await using (var db = Db()) await LifecycleFor(db).ReactivateAsync(spenderPlayer.Id);
 await using (var db = Db())
     Assert(!(await db.Users.AsNoTracking().SingleAsync(u => u.Id == spenderPlayer.Id)).IsDeactivated, "a deactivated player can be reactivated");
+
+// Admin lists: filtering, totals and paging run in the database.
+Assert(ListPaging.Clamp(0, 0) == (1, 50) && ListPaging.Clamp(3, 10_000) == (3, ListPaging.MaxPageSize), "admin list paging stays in bounds");
+Assert(EngagementTiers.AttendedRange(EngagementTiers.High, 10) == (8, null)
+    && EngagementTiers.AttendedRange(EngagementTiers.Medium, 3) == (2, 3)
+    && EngagementTiers.AttendedRange(EngagementTiers.Inactive, 0) == (0, null)
+    && EngagementTiers.AttendedRange(EngagementTiers.Low, 0)!.Value.Min == int.MaxValue
+    && EngagementTiers.AttendedRange("Nope", 5) == null
+    && EngagementTiers.Tier(EngagementTiers.Rate(2, 3)) == EngagementTiers.Medium
+    && EngagementTiers.Tier(EngagementTiers.Rate(3, 3)) == EngagementTiers.High, "engagement tiers match their attendance ranges");
+var directoryAlpha = new ApplicationUser("diralpha", "dir-alpha@example.test", "test-only", "Directory", "Alpha", PaymentPlan.Season) { EmailConfirmed = true };
+var directoryAdmin = new ApplicationUser("diradmin", "dir-admin@example.test", "test-only", "Directory", "Admin", PaymentPlan.DropIn) { EmailConfirmed = true, IsAdmin = true };
+var directoryGone = new ApplicationUser("dirgone", "dir-gone@example.test", "test-only", "Directory", "Gone", PaymentPlan.DropIn) { EmailConfirmed = true, IsDeactivated = true };
+var searchStamp = DateTime.UtcNow.Date.AddYears(-3); // no other check writes payments this far back
+await using (var db = Db())
+{
+    db.Users.AddRange(directoryAlpha, directoryAdmin, directoryGone);
+    db.Payments.AddRange(
+        new Payment(directoryAlpha.Id, 110m, PaymentPlan.Season) { Status = PaymentStatus.Completed, PaymentDate = searchStamp, Reference = "DIRSEARCH-SEASON" },
+        new Payment(directoryAlpha.Id, 10m, PaymentPlan.DropIn) { Status = PaymentStatus.Completed, PaymentDate = searchStamp.AddDays(1), Reference = "DIRSEARCH-DROP1" },
+        new Payment(directoryAlpha.Id, 10m, PaymentPlan.DropIn) { Status = PaymentStatus.Pending, PaymentDate = searchStamp.AddDays(2), Reference = "DIRSEARCH-DROP2" },
+        new Payment(directoryAdmin.Id, 20m, PaymentPlan.DropIn) { Status = PaymentStatus.Refunded, PaymentDate = searchStamp.AddDays(3), Reference = "DIRSEARCH-REFUND" });
+    db.SessionAttendances.Add(new SessionAttendance { Id = Guid.NewGuid(), SessionId = session.Id, UserId = directoryAlpha.Id, IsAttending = true, CreatedOn = DateTime.UtcNow, LastUpdated = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+}
+await using (var db = Db())
+{
+    var search = PaymentsFor(db);
+    var window = new PaymentSearchCriteria(From: searchStamp.AddMinutes(-1), To: searchStamp.AddDays(3).AddMinutes(1), PageSize: 2);
+    var firstPage = await search.SearchPaymentsAsync(window);
+    var secondPage = await search.SearchPaymentsAsync(window with { Page = 2 });
+    Assert(firstPage.Total == 4 && firstPage.Items.Select(p => p.Reference).SequenceEqual(new[] { "DIRSEARCH-REFUND", "DIRSEARCH-DROP2" })
+        && secondPage.Items.Select(p => p.Reference).SequenceEqual(new[] { "DIRSEARCH-DROP1", "DIRSEARCH-SEASON" })
+        && firstPage.Summary.CompletedCount == 2 && firstPage.Summary.Collected == 120m
+        && firstPage.Summary.SeasonCollected == 110m && firstPage.Summary.DropInCollected == 10m,
+        "payment search pages newest first and totals only collected money across every page");
+    var byName = await search.SearchPaymentsAsync(new PaymentSearchCriteria(Search: " directory alpha ", Status: PaymentStatus.Completed, Plan: PaymentPlan.DropIn));
+    var byReference = await search.SearchPaymentsAsync(new PaymentSearchCriteria(Search: "dirsearch-refund"));
+    Assert(byName.Total == 1 && byName.Items[0].Reference == "DIRSEARCH-DROP1" && byReference.Total == 1 && byReference.Items[0].UserEmail == directoryAdmin.Email,
+        "payment search matches a full name or reference together with status and plan filters");
+    var reversedRangeRefused = false;
+    try { await search.SearchPaymentsAsync(new PaymentSearchCriteria(From: searchStamp, To: searchStamp.AddDays(-1))); }
+    catch (ValidationException) { reversedRangeRefused = true; }
+    Assert(reversedRangeRefused, "payment search refuses a start date after the end date");
+}
+await using (var db = Db())
+{
+    var directory = new UserDirectoryService(new UserRepository(db, NullLogger<UserRepository>.Instance), new SessionRepository(db), creditMapper);
+    var active = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory" });
+    var deactivated = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Account = UserAccountFilter.Deactivated });
+    var everyone = await directory.SearchAsync(new UserDirectoryQuery { Search = "dir-", Account = UserAccountFilter.All, PageSize = 2 });
+    var seasonPlayers = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", IsAdmin = false, Plan = PaymentPlan.Season });
+    Assert(active.Total == 2 && active.AdminCount == 1 && active.Items.Select(i => i.User.Username).SequenceEqual(new[] { "diradmin", "diralpha" })
+        && deactivated.Total == 1 && deactivated.Items[0].User.IsDeactivated
+        && everyone.Total == 3 && everyone.Items.Count == 2
+        && seasonPlayers.Total == 1 && seasonPlayers.Items[0].User.Username == "diralpha",
+        "player directory searches, filters by account, role and plan, and pages on the server");
+    var byAttendance = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Sort = UserSearchSort.Attendance });
+    var alphaItem = byAttendance.Items[0];
+    var sameTier = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Engagement = alphaItem.EngagementTier.ToLowerInvariant() });
+    var inactive = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Engagement = EngagementTiers.Inactive });
+    var unknownTierRefused = false;
+    try { await directory.SearchAsync(new UserDirectoryQuery { Engagement = "Superstar" }); }
+    catch (ValidationException) { unknownTierRefused = true; }
+    Assert(alphaItem.User.Username == "diralpha" && alphaItem.AttendanceRate > 0 && EngagementTiers.Tier(alphaItem.AttendanceRate) == alphaItem.EngagementTier
+        && sameTier.Items.Any(i => i.User.Username == "diralpha") && inactive.Items.Any(i => i.User.Username == "diradmin")
+        && inactive.Items.All(i => i.EngagementTier == EngagementTiers.Inactive) && unknownTierRefused,
+        "player directory sorts and filters by engagement computed from recent attendance");
+}
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler

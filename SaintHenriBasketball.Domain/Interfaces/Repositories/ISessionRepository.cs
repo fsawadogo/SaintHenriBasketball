@@ -16,6 +16,7 @@ public interface ISessionRepository
     Task<Session> GetClosestSessionAsync();
     Task<Session> GetNextSessionAsync();
     Task<IReadOnlyList<Session>> GetAllSessionsAsync();
+    Task<int> CountSessionsBetweenAsync(DateTime from, DateTime to);
 }
 
 
