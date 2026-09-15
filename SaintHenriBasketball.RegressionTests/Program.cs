@@ -992,9 +992,37 @@ await using (var db = Db())
     try { await audit.SearchAsync(new AuditLogQuery { From = DateTime.UtcNow, To = DateTime.UtcNow.AddDays(-1) }); }
     catch (ValidationException) { reversedAuditRange = true; }
     Assert(byType.Total == 2 && byType.Items.Count == 1 && byActorAndAction.Total == 1 && byActorAndAction.Items[0].Details == "second"
-        && laterOnly.Total == 0 && auditFilters.EntityTypes.Contains("RegressionAudit") && auditFilters.EntityTypes.Contains("RegressionAuditOther")
+        && laterOnly.Total == 0 && byType.Items[0].CreatedAt.Kind == DateTimeKind.Utc && auditFilters.EntityTypes.Contains("RegressionAudit") && auditFilters.EntityTypes.Contains("RegressionAuditOther")
         && auditFilters.Actors.Any(a => a.UserId == auditActor && a.UserName == "Audit Admin") && reversedAuditRange,
         "the audit log filters by admin, entity type, action and date, reports the total, and lists its filter choices");
+}
+
+// Broadcast history: each send is recorded with its sender, message and delivery counts.
+await using (var db = Db())
+{
+    var broadcastHistory = new BroadcastRepository(db);
+    var historyService = new BroadcastService(new UserRepository(db, NullLogger<UserRepository>.Instance), null!, null!, null!, null!, null!, null!,
+        new BroadcastQueue(), NullLogger<BroadcastService>.Instance, broadcastHistory);
+    var queuedBroadcast = await historyService.QueueAsync(
+        new SendBroadcastRequestDto { Audience = BroadcastAudience.All, Subject = "  History check  ", BodyEn = "Hello", BodyFr = " " },
+        directoryAdmin.Id, "Directory Admin");
+    var queuedEntry = (await historyService.GetHistoryAsync(1, 10)).Items[0];
+    await broadcastHistory.RecordDeliveryAsync(queuedBroadcast.BroadcastId!.Value, BroadcastStatus.Sent, queuedBroadcast.Attempted, queuedBroadcast.Attempted, 0);
+    await broadcastHistory.MarkFailedAsync(queuedBroadcast.BroadcastId.Value);
+    var longSubjectRefused = false;
+    try { await historyService.QueueAsync(new SendBroadcastRequestDto { Subject = new string('x', 201), BodyEn = "Body" }, null, "Admin"); }
+    catch (ValidationException) { longSubjectRefused = true; }
+    var broadcastPage = await historyService.GetHistoryAsync(0, 1000);
+    var broadcastDetail = await historyService.GetBroadcastAsync(queuedBroadcast.BroadcastId.Value);
+    var unknownBroadcast = false;
+    try { await historyService.GetBroadcastAsync(Guid.NewGuid()); }
+    catch (NotFoundException) { unknownBroadcast = true; }
+    Assert(queuedBroadcast.Queued && queuedEntry.Status == "Queued" && broadcastPage.Total == 1 && broadcastPage.PageSize == BroadcastService.MaxHistoryPageSize
+        && broadcastPage.Items[0].Subject == "History check" && broadcastPage.Items[0].Status == "Sent" && broadcastPage.Items[0].SentByName == "Directory Admin"
+        && broadcastPage.Items[0].CompletedAt?.Kind == DateTimeKind.Utc && broadcastPage.Items[0].QueuedAt.Kind == DateTimeKind.Utc
+        && broadcastDetail.BodyEn == "Hello" && broadcastDetail.BodyFr == null
+        && longSubjectRefused && unknownBroadcast,
+        "each broadcast is recorded with its sender, message and delivery counts, and a sent one isn't later marked failed");
 }
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 

@@ -18,7 +18,8 @@ public class AdminMutationAuditFilter(ILogger<AdminMutationAuditFilter> logger) 
         var method = context.HttpContext.Request.Method;
         var requiresAdmin = AdminAuditPolicy.RequiresAdmin(
             context.ActionDescriptor.EndpointMetadata.OfType<IAuthorizeData>().Select(a => a.Roles));
-        if (!requiresAdmin || !AdminAuditPolicy.IsMutating(method))
+        var skipped = context.ActionDescriptor.EndpointMetadata.OfType<SkipAdminAuditAttribute>().Any();
+        if (skipped || !requiresAdmin || !AdminAuditPolicy.IsMutating(method))
         {
             await next();
             return;

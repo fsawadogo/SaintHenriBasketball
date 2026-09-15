@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IWaiverRepository, WaiverRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IAccountCreditRepository, AccountCreditRepository>();
+        services.AddScoped<IBroadcastRepository, BroadcastRepository>();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);

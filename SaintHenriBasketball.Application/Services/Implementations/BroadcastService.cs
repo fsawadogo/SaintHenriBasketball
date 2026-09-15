@@ -25,6 +25,10 @@ public class BroadcastService : IBroadcastService
     private readonly UnsubscribeLinks _unsubscribeLinks;
     private readonly BroadcastQueue _queue;
     private readonly ILogger<BroadcastService> _logger;
+    private readonly IBroadcastRepository _broadcasts;
+
+    public const int MaxHistoryPageSize = 100;
+    public static readonly string SubjectTooLongMessage = $"Keep each subject to {BroadcastMessage.MaxSubjectLength} characters or fewer.";
 
     public BroadcastService(
         IUserRepository userRepository,
@@ -35,8 +39,10 @@ public class BroadcastService : IBroadcastService
         IAuditLogRepository auditLogRepository,
         UnsubscribeLinks unsubscribeLinks,
         BroadcastQueue queue,
-        ILogger<BroadcastService> logger)
+        ILogger<BroadcastService> logger,
+        IBroadcastRepository broadcasts)
     {
+        _broadcasts = broadcasts;
         _userRepository = userRepository;
         _registrationRepository = registrationRepository;
         _attendanceRepository = attendanceRepository;
@@ -67,11 +73,25 @@ public class BroadcastService : IBroadcastService
             throw new ValidationException("Subject is required");
         if (string.IsNullOrWhiteSpace(request.BodyEn))
             throw new ValidationException("English body is required");
+        if (request.Subject.Trim().Length > BroadcastMessage.MaxSubjectLength || (request.SubjectFr?.Trim().Length ?? 0) > BroadcastMessage.MaxSubjectLength)
+            throw new ValidationException(SubjectTooLongMessage);
 
         var emailRecipients = (await ResolveAudienceAsync(request.Audience)).Count(ReceivesEmail);
-        await _queue.EnqueueAsync(new QueuedBroadcast(request, adminId, adminName));
+        var record = new BroadcastMessage
+        {
+            Audience = (int)request.Audience,
+            Subject = request.Subject.Trim(),
+            SubjectFr = string.IsNullOrWhiteSpace(request.SubjectFr) ? null : request.SubjectFr.Trim(),
+            BodyEn = request.BodyEn,
+            BodyFr = string.IsNullOrWhiteSpace(request.BodyFr) ? null : request.BodyFr,
+            SentByUserId = adminId,
+            SentByName = string.IsNullOrWhiteSpace(adminName) ? "Admin" : adminName,
+            Attempted = emailRecipients,
+        };
+        await _broadcasts.AddAsync(record);
+        await _queue.EnqueueAsync(new QueuedBroadcast(request, adminId, adminName, record.Id));
         _logger.LogInformation("Broadcast queued — audience {Audience}, {Recipients} email recipients", request.Audience, emailRecipients);
-        return new SendBroadcastResultDto { Attempted = emailRecipients, Queued = true };
+        return new SendBroadcastResultDto { Attempted = emailRecipients, Queued = true, BroadcastId = record.Id };
     }
 
     public async Task<SendBroadcastResultDto> DeliverAsync(QueuedBroadcast broadcast)
@@ -115,7 +135,54 @@ public class BroadcastService : IBroadcastService
             request.Audience, result.Attempted, result.Succeeded, result.Failed);
 
         await WriteAuditAsync(request, result, broadcast.AdminId, broadcast.AdminName);
+        if (broadcast.BroadcastId is Guid broadcastId)
+        {
+            var status = result.Attempted > 0 && result.Succeeded == 0 ? BroadcastStatus.Failed : BroadcastStatus.Sent;
+            await _broadcasts.RecordDeliveryAsync(broadcastId, status, result.Attempted, result.Succeeded, result.Failed);
+        }
         return result;
+    }
+
+    public Task MarkFailedAsync(Guid broadcastId) => _broadcasts.MarkFailedAsync(broadcastId);
+
+    public async Task<BroadcastHistoryPageDto> GetHistoryAsync(int page, int pageSize)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxHistoryPageSize);
+        var (items, total) = await _broadcasts.GetPageAsync(page, pageSize);
+        return new BroadcastHistoryPageDto
+        {
+            Items = items.Select(b => Fill(new BroadcastHistoryItemDto(), b)).ToList(),
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
+    }
+
+    public async Task<BroadcastDetailDto> GetBroadcastAsync(Guid id)
+    {
+        var message = await _broadcasts.GetByIdAsync(id) ?? throw new NotFoundException(nameof(BroadcastMessage), id);
+        var detail = Fill(new BroadcastDetailDto(), message);
+        detail.SubjectFr = message.SubjectFr;
+        detail.BodyEn = message.BodyEn;
+        detail.BodyFr = message.BodyFr;
+        return detail;
+    }
+
+    private static T Fill<T>(T dto, BroadcastMessage message) where T : BroadcastHistoryItemDto
+    {
+        dto.Id = message.Id;
+        dto.Audience = (BroadcastAudience)message.Audience;
+        dto.Subject = message.Subject;
+        dto.SentByName = message.SentByName;
+        // SQL Server returns these without a kind; they are stored in UTC and must serialize with the Z.
+        dto.QueuedAt = DateTime.SpecifyKind(message.QueuedAt, DateTimeKind.Utc);
+        dto.CompletedAt = message.CompletedAt is DateTime completed ? DateTime.SpecifyKind(completed, DateTimeKind.Utc) : null;
+        dto.Status = message.Status.ToString();
+        dto.Attempted = message.Attempted;
+        dto.Succeeded = message.Succeeded;
+        dto.Failed = message.Failed;
+        return dto;
     }
 
     private static bool ReceivesEmail(ApplicationUser user) =>

@@ -66,6 +66,7 @@ public class AuditLogService : IAuditLogService
         EntityType = l.EntityType,
         EntityId = l.EntityId,
         Details = l.Details,
-        CreatedAt = l.CreatedAt,
+        // Stored in UTC; SQL Server returns it without a kind, so mark it before it serializes.
+        CreatedAt = DateTime.SpecifyKind(l.CreatedAt, DateTimeKind.Utc),
     };
 }

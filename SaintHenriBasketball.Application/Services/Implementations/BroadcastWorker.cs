@@ -20,6 +20,18 @@ public class BroadcastWorker(BroadcastQueue queue, IServiceScopeFactory scopeFac
             catch (Exception ex)
             {
                 logger.LogError(ex, "Broadcast delivery failed for audience {Audience}", broadcast.Request.Audience);
+                if (broadcast.BroadcastId is Guid broadcastId)
+                {
+                    try
+                    {
+                        await using var failureScope = scopeFactory.CreateAsyncScope();
+                        await failureScope.ServiceProvider.GetRequiredService<IBroadcastService>().MarkFailedAsync(broadcastId);
+                    }
+                    catch (Exception markError)
+                    {
+                        logger.LogWarning(markError, "Could not mark broadcast {BroadcastId} as failed", broadcastId);
+                    }
+                }
             }
         }
     }
