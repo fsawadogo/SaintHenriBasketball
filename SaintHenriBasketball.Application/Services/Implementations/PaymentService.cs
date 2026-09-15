@@ -158,6 +158,35 @@ public class PaymentService : IPaymentService
        return _mapper.Map<IEnumerable<PaymentDto>>(payments);
    }
 
+   public const string SearchDateRangeMessage = "The start date must be on or before the end date.";
+
+   public async Task<PaymentSearchResultDto> SearchPaymentsAsync(PaymentSearchCriteria criteria)
+   {
+       if (criteria.From is DateTime from && criteria.To is DateTime to && from > to)
+           throw new ValidationException(SearchDateRangeMessage);
+       var (page, pageSize) = ListPaging.Clamp(criteria.Page, criteria.PageSize);
+       var result = await _paymentRepository.SearchAsync(criteria with
+       {
+           Search = string.IsNullOrWhiteSpace(criteria.Search) ? null : criteria.Search.Trim(),
+           Page = page,
+           PageSize = pageSize,
+       });
+       return new PaymentSearchResultDto
+       {
+           Items = _mapper.Map<List<PaymentDto>>(result.Items),
+           Total = result.Totals.Count,
+           Page = page,
+           PageSize = pageSize,
+           Summary = new PaymentSearchSummaryDto
+           {
+               CompletedCount = result.Totals.CompletedCount,
+               Collected = result.Totals.Collected,
+               SeasonCollected = result.Totals.SeasonCollected,
+               DropInCollected = result.Totals.DropInCollected,
+           },
+       };
+   }
+
    public async Task<PaymentDto> ProcessPaymentAsync(CreatePaymentDto createPaymentDto)
    {
        var user = await _userRepository.GetByIdAsync(createPaymentDto.UserId);

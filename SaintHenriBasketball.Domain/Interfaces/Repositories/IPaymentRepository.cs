@@ -30,6 +30,9 @@ public interface IPaymentRepository
     Task<Payment> GetByIdAsync(Guid id);
     Task<IReadOnlyList<Payment>> GetBySessionAsync(Guid sessionId);
     Task<IReadOnlyList<Payment>> GetAllAsync();
+
+    /// One page of payments matching <paramref name="criteria"/>, newest first, with totals for every match.
+    Task<PaymentSearchPage> SearchAsync(PaymentSearchCriteria criteria);
     Task<IReadOnlyList<Payment>> GetPaymentsByStatusAsync(PaymentStatus status);
     Task<IReadOnlyList<Payment>> GetPaymentsByTypeAsync(PaymentPlan plan);
     Task<(Payment Payment, bool Created)> GetOrCreateSessionPaymentAsync(Guid userId, Guid sessionId, decimal amount);

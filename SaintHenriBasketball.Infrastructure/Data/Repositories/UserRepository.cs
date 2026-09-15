@@ -17,6 +17,13 @@ public class UserRepository : IUserRepository
         _logger = logger;
     }
 
+    public async Task<IReadOnlyList<ApplicationUser>> GetActiveConfirmedUsersAsync() =>
+        await _context.Users.AsNoTracking()
+            .Where(u => u.EmailConfirmed && !u.IsDeactivated)
+            .OrderByDescending(u => u.CreatedOn)
+            .ThenBy(u => u.Id)
+            .ToListAsync();
+
     public Task<int> CountActiveAdminsAsync() =>
         _context.Users.CountAsync(u => u.IsAdmin && !u.IsDeactivated);
 
@@ -63,6 +70,50 @@ public class UserRepository : IUserRepository
                 .ThenInclude(sr => sr.Session)
             .OrderBy(u => u.Username)
             .ToListAsync();
+    }
+
+    public async Task<UserSearchPage> SearchAsync(UserSearchCriteria criteria)
+    {
+        var users = _context.Users.AsNoTracking();
+        users = criteria.Account switch
+        {
+            UserAccountFilter.Active => users.Where(u => !u.IsDeactivated),
+            UserAccountFilter.Deactivated => users.Where(u => u.IsDeactivated),
+            _ => users,
+        };
+        if (!string.IsNullOrWhiteSpace(criteria.Search))
+        {
+            var term = criteria.Search.Trim();
+            users = users.Where(u => (u.Email != null && u.Email.Contains(term))
+                || (u.Username != null && u.Username.Contains(term))
+                || ((u.FirstName ?? "") + " " + (u.LastName ?? "")).Contains(term));
+        }
+        if (criteria.IsAdmin is bool isAdmin) users = users.Where(u => u.IsAdmin == isAdmin);
+        if (criteria.Plan is { } plan) users = users.Where(u => u.PaymentPlan == plan);
+
+        var since = criteria.RecentSince;
+        var rows = users.Select(u => new
+        {
+            User = u,
+            Recent = _context.SessionAttendances.Count(a => a.UserId == u.Id && a.IsAttending && a.CreatedOn >= since),
+        });
+        if (criteria.MinRecentAttended is int min) rows = rows.Where(r => r.Recent >= min);
+        if (criteria.MaxRecentAttendedExclusive is int maxExclusive) rows = rows.Where(r => r.Recent < maxExclusive);
+
+        var total = await rows.CountAsync();
+        var adminCount = await rows.CountAsync(r => r.User.IsAdmin);
+        var ordered = criteria.Sort switch
+        {
+            UserSearchSort.Newest => rows.OrderByDescending(r => r.User.CreatedOn).ThenBy(r => r.User.Id),
+            UserSearchSort.Attendance => rows.OrderByDescending(r => r.Recent).ThenBy(r => r.User.FirstName).ThenBy(r => r.User.LastName).ThenBy(r => r.User.Id),
+            _ => rows.OrderBy(r => r.User.FirstName).ThenBy(r => r.User.LastName).ThenBy(r => r.User.Id),
+        };
+        var page = await ordered
+            .Skip((criteria.Page - 1) * criteria.PageSize)
+            .Take(criteria.PageSize)
+            .ToListAsync();
+
+        return new UserSearchPage(page.Select(r => new UserSearchRow(r.User, r.Recent)).ToList(), total, adminCount);
     }
 
     public async Task AddAsync(ApplicationUser user)

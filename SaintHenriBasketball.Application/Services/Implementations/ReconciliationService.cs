@@ -54,6 +54,7 @@ public class ReconciliationService : IReconciliationService
                     Plan = p.Plan,
                     Reference = p.Reference,
                     PaymentDate = p.PaymentDate,
+                    SessionDate = p.Session?.SessionDate,
                     DaysPending = days,
                     IsStale = days >= StaleThresholdDays,
                 };
@@ -81,7 +82,7 @@ public class ReconciliationService : IReconciliationService
 
                 await _paymentService.UpdatePaymentStatusAsync(id, PaymentStatus.Completed);
                 result.Completed++;
-                await WriteAuditAsync(payment, adminId, adminName);
+                await WriteAuditAsync(payment, adminId, adminName, "Payment.InteracReconciled", $"Amount: {payment.Amount:0.00}");
             }
             catch (Exception ex)
             {
@@ -93,24 +94,61 @@ public class ReconciliationService : IReconciliationService
         return result;
     }
 
+    public const int MaxNoteLength = 300;
+
+    public async Task<BulkMarkNotReceivedResultDto> BulkMarkNotReceivedAsync(IEnumerable<Guid> paymentIds, string? note, Guid? adminId, string adminName)
+    {
+        note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        if (note?.Length > MaxNoteLength)
+            throw new Exceptions.ValidationException($"Keep the note under {MaxNoteLength} characters.");
+
+        var result = new BulkMarkNotReceivedResultDto();
+        foreach (var id in paymentIds.Distinct())
+        {
+            try
+            {
+                var payment = await _paymentRepository.GetByIdAsync(id);
+                if (payment is null || payment.Status != PaymentStatus.Pending || !IsInteracSubmission(payment.Reference))
+                {
+                    result.Skipped++;
+                    result.SkippedIds.Add(id);
+                    continue;
+                }
+
+                // Failed releases any credit the payment used and emails the player that the payment didn't go through.
+                await _paymentService.UpdatePaymentStatusAsync(id, PaymentStatus.Failed);
+                result.MarkedNotReceived++;
+                await WriteAuditAsync(payment, adminId, adminName, "Payment.InteracNotReceived",
+                    $"Amount: {payment.Amount:0.00}" + (note == null ? "" : $"; Note: {note}"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Marking payment {PaymentId} as not received failed", id);
+                result.Errors++;
+                result.ErrorIds.Add(id);
+            }
+        }
+        return result;
+    }
+
     private static bool IsInteracSubmission(string? reference) =>
         reference?.Contains(InteracReferenceMarker, StringComparison.Ordinal) == true;
 
-    private async Task WriteAuditAsync(Payment payment, Guid? adminId, string adminName)
+    private async Task WriteAuditAsync(Payment payment, Guid? adminId, string adminName, string action, string details)
     {
         try
         {
             await _auditLogRepository.AddAsync(new AuditLog(
-                action: "Payment.InteracReconciled",
+                action: action,
                 entityType: nameof(Payment),
                 entityId: payment.Id,
-                details: $"Amount: {payment.Amount:0.00}",
+                details: details,
                 userId: adminId,
                 userName: adminName));
         }
         catch (Exception ex)
         {
-            // The payment is already completed; a missing audit row must not report it as failed.
+            // The status change already happened; a missing audit row must not report it as an error.
             _logger.LogWarning(ex, "Audit entry failed for reconciled payment {PaymentId}", payment.Id);
         }
     }

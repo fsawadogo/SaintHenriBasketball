@@ -47,6 +47,8 @@ public class CommunicationController : ControllerBase
         _auditLogService = auditLogService;
     }
 
+    public const int MaxHistoryPageSize = 200;
+
     #region Email History
 
     [HttpGet("history")]
@@ -59,6 +61,9 @@ public class CommunicationController : ControllerBase
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null)
     {
+        // Out-of-range paging used to reach SQL as a negative OFFSET or an unbounded page.
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxHistoryPageSize);
         var query = _dbContext.EmailLogs.AsQueryable();
 
         if (!string.IsNullOrEmpty(recipient))
@@ -122,17 +127,21 @@ public class CommunicationController : ControllerBase
         var thirtyDaysAgo = now.AddDays(-30);
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
 
-        var allUsers = await _dbContext.Users.ToListAsync();
-        var recentAttendance = await _dbContext.SessionAttendances
+        // Only the fields the groups need, and only accounts that can still be emailed.
+        var allUsers = await _dbContext.Users.AsNoTracking()
+            .Where(u => !u.IsDeactivated && u.Email != null)
+            .Select(u => new { u.Id, u.Email, u.PaymentPlan, u.CreatedOn })
+            .ToListAsync();
+        var recentAttendance = (await _dbContext.SessionAttendances
             .Where(a => a.CreatedOn >= thirtyDaysAgo && a.IsAttending)
             .Select(a => a.UserId)
             .Distinct()
-            .ToListAsync();
-        var pendingPaymentUserIds = await _dbContext.Payments
+            .ToListAsync()).ToHashSet();
+        var pendingPaymentUserIds = (await _dbContext.Payments
             .Where(p => p.Status == Domain.Enums.PaymentStatus.Pending)
             .Select(p => p.UserId)
             .Distinct()
-            .ToListAsync();
+            .ToListAsync()).ToHashSet();
 
         var groups = new[]
         {
@@ -175,7 +184,7 @@ public class CommunicationController : ControllerBase
                 id = "pending",
                 name = "Pending Payments",
                 nameFr = "Paiements en attente",
-                count = pendingPaymentUserIds.Count,
+                count = allUsers.Count(u => pendingPaymentUserIds.Contains(u.Id)),
                 emails = allUsers.Where(u => pendingPaymentUserIds.Contains(u.Id)).Select(u => u.Email).ToList()
             },
         };

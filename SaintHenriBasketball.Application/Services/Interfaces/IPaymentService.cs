@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Domain.Enums;
@@ -13,6 +14,7 @@ public interface IPaymentService
     Task<PaymentSummaryDto> GetPaymentSummaryAsync();
     Task<IEnumerable<PaymentDto>> GetPendingPaymentsAsync();
     Task<IEnumerable<PaymentDto>> GetAllPayments();
+    Task<PaymentSearchResultDto> SearchPaymentsAsync(PaymentSearchCriteria criteria);
     Task<PaymentDto> ProcessPaymentAsync(CreatePaymentDto createPaymentDto);
     Task<PaymentReconciliationDto> ReconcilePaymentsAsync(DateTime startDate, DateTime endDate);
     Task<PaymentDto> UpdatePaymentAsync(Guid id, UpdatePaymentDto updatePaymentDto);

@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.Helpers;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.Exceptions;
@@ -13,14 +14,17 @@ public class AccountLifecycleService : IAccountLifecycleService
     private readonly IUserRepository _users;
     private readonly ISessionRegistrationRepository _registrations;
     private readonly IParticipationRepository _participation;
+    private readonly ICacheService _cache;
     private readonly ILogger<AccountLifecycleService> _logger;
 
     public AccountLifecycleService(
         IUserRepository users,
         ISessionRegistrationRepository registrations,
         IParticipationRepository participation,
+        ICacheService cache,
         ILogger<AccountLifecycleService> logger)
     {
+        _cache = cache;
         _users = users;
         _registrations = registrations;
         _participation = participation;
@@ -108,11 +112,15 @@ public class AccountLifecycleService : IAccountLifecycleService
             try
             {
                 await _participation.CancelAsync(registration.SessionId, userId);
+                await SessionCacheKeys.InvalidateAsync(_cache, registration.SessionId);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Could not release session {SessionId} for deactivated user {UserId}", registration.SessionId, userId);
             }
         }
+        await _cache.RemoveAsync($"Attendance:User:{userId}");
+        await _cache.RemoveAsync(SessionCacheKeys.UpcomingSessions);
+        await _cache.RemoveAsync(SessionCacheKeys.AvailableSessions);
     }
 }

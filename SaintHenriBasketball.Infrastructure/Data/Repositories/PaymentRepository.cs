@@ -55,6 +55,49 @@ public class PaymentRepository : IPaymentRepository
             .ToListAsync();
     }
 
+    public async Task<PaymentSearchPage> SearchAsync(PaymentSearchCriteria criteria)
+    {
+        var query = _context.Payments.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(criteria.Search))
+        {
+            var term = criteria.Search.Trim();
+            query = query.Where(p => (p.Reference != null && p.Reference.Contains(term))
+                || (p.User.Email != null && p.User.Email.Contains(term))
+                || ((p.User.FirstName ?? "") + " " + (p.User.LastName ?? "")).Contains(term));
+        }
+        if (criteria.Status is PaymentStatus status) query = query.Where(p => p.Status == status);
+        if (criteria.Plan is PaymentPlan plan) query = query.Where(p => p.Plan == plan);
+        if (criteria.SeasonId is Guid seasonId) query = query.Where(p => p.SeasonId == seasonId);
+        if (criteria.From is DateTime from) query = query.Where(p => p.PaymentDate >= from);
+        if (criteria.To is DateTime to) query = query.Where(p => p.PaymentDate <= to);
+
+        var totals = await query
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Count = g.Count(),
+                CompletedCount = g.Count(p => p.Status == PaymentStatus.Completed),
+                Collected = g.Sum(p => p.Status == PaymentStatus.Completed ? p.Amount : 0m),
+                SeasonCollected = g.Sum(p => p.Status == PaymentStatus.Completed && p.Plan == PaymentPlan.Season ? p.Amount : 0m),
+                DropInCollected = g.Sum(p => p.Status == PaymentStatus.Completed && p.Plan == PaymentPlan.DropIn ? p.Amount : 0m),
+            })
+            .SingleOrDefaultAsync();
+
+        var items = await query
+            .Include(p => p.User)
+            .Include(p => p.Session)
+            .Include(p => p.PromoCode)
+            .OrderByDescending(p => p.PaymentDate)
+            .ThenBy(p => p.Id)
+            .Skip((criteria.Page - 1) * criteria.PageSize)
+            .Take(criteria.PageSize)
+            .ToListAsync();
+
+        return new PaymentSearchPage(items, totals == null
+            ? new PaymentSearchTotals(0, 0, 0m, 0m, 0m)
+            : new PaymentSearchTotals(totals.Count, totals.CompletedCount, totals.Collected, totals.SeasonCollected, totals.DropInCollected));
+    }
+
     public async Task<IReadOnlyList<Payment>> GetPaymentsByStatusAsync(PaymentStatus status)
     {
         return await _context.Payments

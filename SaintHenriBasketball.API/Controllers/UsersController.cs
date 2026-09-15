@@ -23,7 +23,8 @@ public class UsersController(
     ICacheService cacheService,
     IAccountLifecycleService accountLifecycle,
     IAuditLogService auditLogService,
-    IMemoryCache memoryCache)
+    IMemoryCache memoryCache,
+    IUserDirectoryService userDirectory)
     : ControllerBase
 {
     private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -258,6 +259,25 @@ public class UsersController(
     {
         var users = await _userService.GetAllUsersAsync();
         return Ok(users);
+    }
+
+    /// <summary>
+    /// Admin players list: search, filters, engagement and paging run on the server (Admin only)
+    /// </summary>
+    [HttpGet("directory")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(UserDirectoryPageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserDirectoryPageDto>> GetDirectory([FromQuery] UserDirectoryQuery query)
+    {
+        try
+        {
+            return Ok(await userDirectory.SearchAsync(query));
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>

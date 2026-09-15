@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Application.DTOs.AuditLog;
 using System.Net;
 using System.IdentityModel.Tokens.Jwt;
 using AutoMapper;
@@ -811,8 +812,24 @@ await using (var db = Db()) {
         && spenderCredit == 4m && await new AccountCreditRepository(db).GetBalanceAsync(voidPlayer.Id) == 4m,
         "voiding a cancelled session's pending payment returns its credit exactly once");
 }
-AccountLifecycleService LifecycleFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
-    new SessionRegistrationRepository(db), new ParticipationRepository(db), NullLogger<AccountLifecycleService>.Instance);
+var notReceivedPayment = new Payment(winner, 15m, PaymentPlan.DropIn) { Reference = "QA-NOTRECEIVED|INTERAC:BANK-404" };
+var plainPendingPayment = new Payment(winner, 16m, PaymentPlan.DropIn) { Reference = "QA-PLAIN" };
+await using (var db = Db()) { db.Payments.AddRange(notReceivedPayment, plainPendingPayment); await db.SaveChangesAsync(); }
+SaintHenriBasketball.Application.DTOs.Reconciliation.BulkMarkNotReceivedResultDto firstMark, secondMark;
+await using (var db = Db())
+    firstMark = await new ReconciliationService(new PaymentRepository(db), PaymentsFor(db), new AuditLogRepository(db), NullLogger<ReconciliationService>.Instance)
+        .BulkMarkNotReceivedAsync(new[] { notReceivedPayment.Id, plainPendingPayment.Id }, "Not in Tangerine after 10 days", winner, "Regression");
+await using (var db = Db())
+    secondMark = await new ReconciliationService(new PaymentRepository(db), PaymentsFor(db), new AuditLogRepository(db), NullLogger<ReconciliationService>.Instance)
+        .BulkMarkNotReceivedAsync(new[] { notReceivedPayment.Id }, null, winner, "Regression");
+await using (var db = Db())
+    Assert(firstMark is { MarkedNotReceived: 1, Skipped: 1, Errors: 0 } && secondMark is { MarkedNotReceived: 0, Skipped: 1 }
+        && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == notReceivedPayment.Id)).Status == PaymentStatus.Failed
+        && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == plainPendingPayment.Id)).Status == PaymentStatus.Pending
+        && await db.AuditLogs.CountAsync(a => a.EntityId == notReceivedPayment.Id && a.Action == "Payment.InteracNotReceived" && a.Details!.Contains("Tangerine")) == 1,
+        "an Interac transfer marked not received fails once, is audited with the note, and other payments are skipped");
+AccountLifecycleService LifecycleFor(ApplicationDbContext db, RecordingCache? cache = null) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
+    new SessionRegistrationRepository(db), new ParticipationRepository(db), cache ?? new RecordingCache(), NullLogger<AccountLifecycleService>.Instance);
 await using (var db = Db()) {
     var hardDeleteRefused = false;
     db.Users.Remove(await db.Users.SingleAsync(u => u.Id == partialPlayer.Id));
@@ -830,7 +847,13 @@ await using (var db = Db()) {
         && await db.Payments.AnyAsync(p => p.UserId == partialPlayer.Id) && await db.AccountCredits.AnyAsync(c => c.UserId == partialPlayer.Id) && anonymizedReactivateRefused,
         "closing an account erases personal details but keeps payments and the credit ledger");
 }
-await using (var db = Db()) await LifecycleFor(db).DeactivateAsync(spenderPlayer.Id, anonymize: false);
+var lifecycleCache = new RecordingCache();
+await using (var db = Db()) await LifecycleFor(db, lifecycleCache).DeactivateAsync(spenderPlayer.Id, anonymize: false);
+var cacheKeysSample = SessionCacheKeys.For(session.Id, new[] { spenderPlayer.Id, spenderPlayer.Id });
+Assert(lifecycleCache.Removed.Contains($"Attendance:User:{spenderPlayer.Id}") && lifecycleCache.Removed.Contains(SessionCacheKeys.UpcomingSessions)
+    && cacheKeysSample.Contains($"Attendance:Session:{session.Id}:Attendees") && cacheKeysSample.Contains($"Attendance:Session:{session.Id}:Summary")
+    && cacheKeysSample.Count(k => k == $"Attendance:User:{spenderPlayer.Id}") == 1,
+    "deactivating clears the player's cached bookings, and session cache keys cover attendees and the summary");
 await using (var db = Db()) {
     var deactivated = await db.Users.AsNoTracking().SingleAsync(u => u.Id == spenderPlayer.Id);
     Assert(deactivated.IsDeactivated && deactivated.AnonymizedOn == null && deactivated.Email == spenderPlayer.Email
@@ -840,6 +863,200 @@ await using (var db = Db()) {
 await using (var db = Db()) await LifecycleFor(db).ReactivateAsync(spenderPlayer.Id);
 await using (var db = Db())
     Assert(!(await db.Users.AsNoTracking().SingleAsync(u => u.Id == spenderPlayer.Id)).IsDeactivated, "a deactivated player can be reactivated");
+
+// Admin lists: filtering, totals and paging run in the database.
+Assert(ListPaging.Clamp(0, 0) == (1, 50) && ListPaging.Clamp(3, 10_000) == (3, ListPaging.MaxPageSize), "admin list paging stays in bounds");
+Assert(EngagementTiers.AttendedRange(EngagementTiers.High, 10) == (8, null)
+    && EngagementTiers.AttendedRange(EngagementTiers.Medium, 3) == (2, 3)
+    && EngagementTiers.AttendedRange(EngagementTiers.Inactive, 0) == (0, null)
+    && EngagementTiers.AttendedRange(EngagementTiers.Low, 0)!.Value.Min == int.MaxValue
+    && EngagementTiers.AttendedRange("Nope", 5) == null
+    && EngagementTiers.Tier(EngagementTiers.Rate(2, 3)) == EngagementTiers.Medium
+    && EngagementTiers.Tier(EngagementTiers.Rate(3, 3)) == EngagementTiers.High, "engagement tiers match their attendance ranges");
+var directoryAlpha = new ApplicationUser("diralpha", "dir-alpha@example.test", "test-only", "Directory", "Alpha", PaymentPlan.Season) { EmailConfirmed = true };
+var directoryAdmin = new ApplicationUser("diradmin", "dir-admin@example.test", "test-only", "Directory", "Admin", PaymentPlan.DropIn) { EmailConfirmed = true, IsAdmin = true };
+var directoryGone = new ApplicationUser("dirgone", "dir-gone@example.test", "test-only", "Directory", "Gone", PaymentPlan.DropIn) { EmailConfirmed = true, IsDeactivated = true };
+var searchStamp = DateTime.UtcNow.Date.AddYears(-3); // no other check writes payments this far back
+await using (var db = Db())
+{
+    db.Users.AddRange(directoryAlpha, directoryAdmin, directoryGone);
+    db.Payments.AddRange(
+        new Payment(directoryAlpha.Id, 110m, PaymentPlan.Season) { Status = PaymentStatus.Completed, PaymentDate = searchStamp, Reference = "DIRSEARCH-SEASON" },
+        new Payment(directoryAlpha.Id, 10m, PaymentPlan.DropIn) { Status = PaymentStatus.Completed, PaymentDate = searchStamp.AddDays(1), Reference = "DIRSEARCH-DROP1" },
+        new Payment(directoryAlpha.Id, 10m, PaymentPlan.DropIn) { Status = PaymentStatus.Pending, PaymentDate = searchStamp.AddDays(2), Reference = "DIRSEARCH-DROP2" },
+        new Payment(directoryAdmin.Id, 20m, PaymentPlan.DropIn) { Status = PaymentStatus.Refunded, PaymentDate = searchStamp.AddDays(3), Reference = "DIRSEARCH-REFUND" });
+    db.SessionAttendances.Add(new SessionAttendance { Id = Guid.NewGuid(), SessionId = session.Id, UserId = directoryAlpha.Id, IsAttending = true, CreatedOn = DateTime.UtcNow, LastUpdated = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+}
+await using (var db = Db())
+{
+    var search = PaymentsFor(db);
+    var window = new PaymentSearchCriteria(From: searchStamp.AddMinutes(-1), To: searchStamp.AddDays(3).AddMinutes(1), PageSize: 2);
+    var firstPage = await search.SearchPaymentsAsync(window);
+    var secondPage = await search.SearchPaymentsAsync(window with { Page = 2 });
+    Assert(firstPage.Total == 4 && firstPage.Items.Select(p => p.Reference).SequenceEqual(new[] { "DIRSEARCH-REFUND", "DIRSEARCH-DROP2" })
+        && secondPage.Items.Select(p => p.Reference).SequenceEqual(new[] { "DIRSEARCH-DROP1", "DIRSEARCH-SEASON" })
+        && firstPage.Summary.CompletedCount == 2 && firstPage.Summary.Collected == 120m
+        && firstPage.Summary.SeasonCollected == 110m && firstPage.Summary.DropInCollected == 10m,
+        "payment search pages newest first and totals only collected money across every page");
+    var byName = await search.SearchPaymentsAsync(new PaymentSearchCriteria(Search: " directory alpha ", Status: PaymentStatus.Completed, Plan: PaymentPlan.DropIn));
+    var byReference = await search.SearchPaymentsAsync(new PaymentSearchCriteria(Search: "dirsearch-refund"));
+    Assert(byName.Total == 1 && byName.Items[0].Reference == "DIRSEARCH-DROP1" && byReference.Total == 1 && byReference.Items[0].UserEmail == directoryAdmin.Email,
+        "payment search matches a full name or reference together with status and plan filters");
+    var reversedRangeRefused = false;
+    try { await search.SearchPaymentsAsync(new PaymentSearchCriteria(From: searchStamp, To: searchStamp.AddDays(-1))); }
+    catch (ValidationException) { reversedRangeRefused = true; }
+    Assert(reversedRangeRefused, "payment search refuses a start date after the end date");
+}
+await using (var db = Db())
+{
+    var directory = new UserDirectoryService(new UserRepository(db, NullLogger<UserRepository>.Instance), new SessionRepository(db), creditMapper);
+    var active = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory" });
+    var deactivated = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Account = UserAccountFilter.Deactivated });
+    var everyone = await directory.SearchAsync(new UserDirectoryQuery { Search = "dir-", Account = UserAccountFilter.All, PageSize = 2 });
+    var seasonPlayers = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", IsAdmin = false, Plan = PaymentPlan.Season });
+    Assert(active.Total == 2 && active.AdminCount == 1 && active.Items.Select(i => i.User.Username).SequenceEqual(new[] { "diradmin", "diralpha" })
+        && deactivated.Total == 1 && deactivated.Items[0].User.IsDeactivated
+        && everyone.Total == 3 && everyone.Items.Count == 2
+        && seasonPlayers.Total == 1 && seasonPlayers.Items[0].User.Username == "diralpha",
+        "player directory searches, filters by account, role and plan, and pages on the server");
+    var byAttendance = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Sort = UserSearchSort.Attendance });
+    var alphaItem = byAttendance.Items[0];
+    var sameTier = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Engagement = alphaItem.EngagementTier.ToLowerInvariant() });
+    var inactive = await directory.SearchAsync(new UserDirectoryQuery { Search = "directory", Engagement = EngagementTiers.Inactive });
+    var unknownTierRefused = false;
+    try { await directory.SearchAsync(new UserDirectoryQuery { Engagement = "Superstar" }); }
+    catch (ValidationException) { unknownTierRefused = true; }
+    Assert(alphaItem.User.Username == "diralpha" && alphaItem.AttendanceRate > 0 && EngagementTiers.Tier(alphaItem.AttendanceRate) == alphaItem.EngagementTier
+        && sameTier.Items.Any(i => i.User.Username == "diralpha") && inactive.Items.Any(i => i.User.Username == "diradmin")
+        && inactive.Items.All(i => i.EngagementTier == EngagementTiers.Inactive) && unknownTierRefused,
+        "player directory sorts and filters by engagement computed from recent attendance");
+}
+
+// Deleting a session: payments block it; otherwise its registrations and attendance go with it.
+var deletableSession = new Session(DateTime.UtcNow.Date.AddDays(20), 1, 10, "10:00", "12:00", "Delete me court");
+var paidSession = new Session(DateTime.UtcNow.Date.AddDays(21), 1, 10, "10:00", "12:00", "Paid court");
+await using (var db = Db())
+{
+    db.Sessions.AddRange(deletableSession, paidSession);
+    db.SessionRegistrations.Add(new SessionRegistration(directoryAlpha.Id, deletableSession.Id, PaymentPlan.Season));
+    db.SessionAttendances.Add(new SessionAttendance { Id = Guid.NewGuid(), SessionId = deletableSession.Id, UserId = directoryAlpha.Id, IsAttending = true, CreatedOn = DateTime.UtcNow, LastUpdated = DateTime.UtcNow });
+    db.Payments.Add(new Payment(directoryAlpha.Id, 10m, PaymentPlan.DropIn, paidSession.Id) { Reference = "DELETE-BLOCKED", CreatedAt = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+}
+await using (var db = Db())
+{
+    var deletionCache = new RecordingCache();
+    var deletion = new SessionDeletionService(new SessionRepository(db), deletionCache);
+    var deletablePreview = await deletion.PreviewAsync(deletableSession.Id);
+    var paidPreview = await deletion.PreviewAsync(paidSession.Id);
+    var paidRefused = false;
+    try { await deletion.DeleteAsync(paidSession.Id); }
+    catch (ValidationException) { paidRefused = true; }
+    var removed = await deletion.DeleteAsync(deletableSession.Id);
+    var goneAfterwards = false;
+    try { await deletion.PreviewAsync(deletableSession.Id); }
+    catch (NotFoundException) { goneAfterwards = true; }
+    Assert(deletablePreview.CanDelete && deletablePreview.Registrations == 1 && deletablePreview.AttendanceAnswers == 1
+        && !paidPreview.CanDelete && paidPreview.Payments == 1 && paidRefused && removed.Registrations == 1 && goneAfterwards
+        && !await db.SessionRegistrations.AnyAsync(r => r.SessionId == deletableSession.Id)
+        && !await db.SessionAttendances.AnyAsync(a => a.SessionId == deletableSession.Id)
+        && await db.Sessions.AnyAsync(s => s.Id == paidSession.Id)
+        && deletionCache.Removed.Contains($"Attendance:Session:{deletableSession.Id}:Attendees"),
+        "deleting a session removes its registrations and attendance, and a session with payments can't be deleted");
+}
+
+// Audit: automatic entries for admin changes, and a searchable log with totals.
+var recapRouteId = Guid.NewGuid();
+var describedRecap = AdminAuditPolicy.Describe("SessionRecaps", "Delete",
+    new[] { new KeyValuePair<string, string?>("version", "1"), new("sessionId", session.Id.ToString()), new("recapId", recapRouteId.ToString()) },
+    "delete", "/api/v1/admin/sessions/x/recaps/y");
+Assert(AdminAuditPolicy.RequiresAdmin(new string?[] { null, "Admin" }) && AdminAuditPolicy.RequiresAdmin(new string?[] { "Player, Admin" })
+    && !AdminAuditPolicy.RequiresAdmin(new string?[] { null, "Player" })
+    && AdminAuditPolicy.ShouldAudit("delete", true, 204) && !AdminAuditPolicy.ShouldAudit("GET", true, 200)
+    && !AdminAuditPolicy.ShouldAudit("POST", true, 400) && !AdminAuditPolicy.ShouldAudit("POST", false, 200)
+    && describedRecap.EntityId == recapRouteId && describedRecap.EntityType == "SessionRecaps" && describedRecap.Details == "DELETE /api/v1/admin/sessions/x/recaps/y",
+    "only successful admin-only changes are audited automatically, recorded against the last id in the route");
+var auditActor = Guid.NewGuid();
+await using (var db = Db())
+{
+    var audit = new AuditLogService(new AuditLogRepository(db));
+    await audit.LogAsync("Created", "RegressionAudit", null, "first", auditActor, "Audit Admin");
+    await audit.LogAsync("Deleted", "RegressionAudit", null, "second", auditActor, "Audit Admin");
+    await audit.LogAsync("Created", "RegressionAuditOther", null, "third", null, "System");
+    var byType = await audit.SearchAsync(new AuditLogQuery { EntityType = "RegressionAudit", PageSize = 1 });
+    var byActorAndAction = await audit.SearchAsync(new AuditLogQuery { UserId = auditActor, Action = "delet" });
+    var laterOnly = await audit.SearchAsync(new AuditLogQuery { EntityType = "RegressionAudit", From = DateTime.UtcNow.AddMinutes(5) });
+    var auditFilters = await audit.GetFiltersAsync();
+    var reversedAuditRange = false;
+    try { await audit.SearchAsync(new AuditLogQuery { From = DateTime.UtcNow, To = DateTime.UtcNow.AddDays(-1) }); }
+    catch (ValidationException) { reversedAuditRange = true; }
+    Assert(byType.Total == 2 && byType.Items.Count == 1 && byActorAndAction.Total == 1 && byActorAndAction.Items[0].Details == "second"
+        && laterOnly.Total == 0 && byType.Items[0].CreatedAt.Kind == DateTimeKind.Utc && auditFilters.EntityTypes.Contains("RegressionAudit") && auditFilters.EntityTypes.Contains("RegressionAuditOther")
+        && auditFilters.Actors.Any(a => a.UserId == auditActor && a.UserName == "Audit Admin") && reversedAuditRange,
+        "the audit log filters by admin, entity type, action and date, reports the total, and lists its filter choices");
+}
+
+// Broadcast history: each send is recorded with its sender, message and delivery counts.
+await using (var db = Db())
+{
+    var broadcastHistory = new BroadcastRepository(db);
+    var historyService = new BroadcastService(new UserRepository(db, NullLogger<UserRepository>.Instance), null!, null!, null!, null!, null!, null!,
+        new BroadcastQueue(), NullLogger<BroadcastService>.Instance, broadcastHistory);
+    var queuedBroadcast = await historyService.QueueAsync(
+        new SendBroadcastRequestDto { Audience = BroadcastAudience.All, Subject = "  History check  ", BodyEn = "Hello", BodyFr = " " },
+        directoryAdmin.Id, "Directory Admin");
+    var queuedEntry = (await historyService.GetHistoryAsync(1, 10)).Items[0];
+    await broadcastHistory.RecordDeliveryAsync(queuedBroadcast.BroadcastId!.Value, BroadcastStatus.Sent, queuedBroadcast.Attempted, queuedBroadcast.Attempted, 0);
+    await broadcastHistory.MarkFailedAsync(queuedBroadcast.BroadcastId.Value);
+    var longSubjectRefused = false;
+    try { await historyService.QueueAsync(new SendBroadcastRequestDto { Subject = new string('x', 201), BodyEn = "Body" }, null, "Admin"); }
+    catch (ValidationException) { longSubjectRefused = true; }
+    var broadcastPage = await historyService.GetHistoryAsync(0, 1000);
+    var broadcastDetail = await historyService.GetBroadcastAsync(queuedBroadcast.BroadcastId.Value);
+    var unknownBroadcast = false;
+    try { await historyService.GetBroadcastAsync(Guid.NewGuid()); }
+    catch (NotFoundException) { unknownBroadcast = true; }
+    Assert(queuedBroadcast.Queued && queuedEntry.Status == "Queued" && broadcastPage.Total == 1 && broadcastPage.PageSize == BroadcastService.MaxHistoryPageSize
+        && broadcastPage.Items[0].Subject == "History check" && broadcastPage.Items[0].Status == "Sent" && broadcastPage.Items[0].SentByName == "Directory Admin"
+        && broadcastPage.Items[0].CompletedAt?.Kind == DateTimeKind.Utc && broadcastPage.Items[0].QueuedAt.Kind == DateTimeKind.Utc
+        && broadcastDetail.BodyEn == "Hello" && broadcastDetail.BodyFr == null
+        && longSubjectRefused && unknownBroadcast,
+        "each broadcast is recorded with its sender, message and delivery counts, and a sent one isn't later marked failed");
+}
+
+// Broadcast audiences: recent no-shows come from two club-wide queries, and deactivated players are never included.
+BroadcastService AudienceFor(ApplicationDbContext db) => new(new UserRepository(db, NullLogger<UserRepository>.Instance), new SessionRegistrationRepository(db),
+    new SessionAttendanceRepository(db, NullLogger<SessionAttendanceRepository>.Instance), null!, null!, null!, null!, new BroadcastQueue(), NullLogger<BroadcastService>.Instance, new BroadcastRepository(db));
+int noShowsBefore, everyoneBefore;
+await using (var db = Db())
+{
+    noShowsBefore = (await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.RecentNoShows)).RecipientCount;
+    everyoneBefore = (await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.All)).RecipientCount;
+}
+var noShowSession = new Session(DateTime.UtcNow.Date.AddDays(-5), 1, 10, "10:00", "12:00", "No-show court");
+var cameToSession = new ApplicationUser("noshowcame", "noshow-came@example.test", "test-only", "Came", "Player", PaymentPlan.DropIn) { EmailConfirmed = true };
+var missedSession = new ApplicationUser("noshowmissed", "noshow-missed@example.test", "test-only", "Missed", "Player", PaymentPlan.DropIn) { EmailConfirmed = true };
+var deactivatedNoShow = new ApplicationUser("noshowgone", "noshow-gone@example.test", "test-only", "Gone", "Player", PaymentPlan.DropIn) { EmailConfirmed = true, IsDeactivated = true };
+await using (var db = Db())
+{
+    db.Sessions.Add(noShowSession);
+    db.Users.AddRange(cameToSession, missedSession, deactivatedNoShow);
+    db.SessionRegistrations.AddRange(
+        new SessionRegistration(cameToSession.Id, noShowSession.Id, PaymentPlan.DropIn),
+        new SessionRegistration(missedSession.Id, noShowSession.Id, PaymentPlan.DropIn),
+        new SessionRegistration(deactivatedNoShow.Id, noShowSession.Id, PaymentPlan.DropIn));
+    db.SessionAttendances.Add(new SessionAttendance { Id = Guid.NewGuid(), SessionId = noShowSession.Id, UserId = cameToSession.Id, IsAttending = true, CreatedOn = DateTime.UtcNow, LastUpdated = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+}
+await using (var db = Db())
+{
+    var noShowsAfter = await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.RecentNoShows);
+    var everyoneAfter = await AudienceFor(db).PreviewAudienceAsync(BroadcastAudience.All);
+    Assert(noShowsAfter.RecipientCount - noShowsBefore == 1 && everyoneAfter.RecipientCount - everyoneBefore == 2
+        && noShowsAfter.SampleEmails.Contains(missedSession.Email!) && !noShowsAfter.SampleEmails.Contains(cameToSession.Email!),
+        "recent no-shows are players who skipped their recent sessions, and deactivated players never receive broadcasts");
+}
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
@@ -853,4 +1070,13 @@ sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMe
         Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         return new HttpResponseMessage(status) { Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json") };
     }
+}
+
+sealed class RecordingCache : SaintHenriBasketball.Application.Services.Interfaces.ICacheService
+{
+    public List<string> Removed { get; } = new();
+    public Task<T?> GetAsync<T>(string key) => Task.FromResult<T?>(default);
+    public Task SetAsync<T>(string key, T value, TimeSpan? absoluteExpiration = null, TimeSpan? slidingExpiration = null) => Task.CompletedTask;
+    public Task RemoveAsync(string key) { Removed.Add(key); return Task.CompletedTask; }
+    public Task RemoveByPrefixAsync(string prefix) { Removed.Add(prefix + "*"); return Task.CompletedTask; }
 }

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using SaintHenriBasketball.Application.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -158,24 +160,30 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("email-templates")]
-    public async Task<IActionResult> CreateEmailTemplate([FromBody] SavedEmailTemplate template)
+    public async Task<IActionResult> CreateEmailTemplate([FromBody] SaveEmailTemplateRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Name)) return BadRequest("Name the template.");
+        var template = new SavedEmailTemplate(request.Name.Trim(), request.SubjectEn ?? "", request.SubjectFr ?? "", request.BodyEn ?? "", request.BodyFr ?? "")
+        {
+            EmailType = request.EmailType,
+        };
         _db.SavedEmailTemplates.Add(template);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetEmailTemplates), new { id = template.Id }, template);
     }
 
     [HttpPut("email-templates/{id}")]
-    public async Task<IActionResult> UpdateEmailTemplate(Guid id, [FromBody] SavedEmailTemplate update)
+    public async Task<IActionResult> UpdateEmailTemplate(Guid id, [FromBody] SaveEmailTemplateRequest update)
     {
+        if (string.IsNullOrWhiteSpace(update.Name)) return BadRequest("Name the template.");
         var template = await _db.SavedEmailTemplates.FindAsync(id);
         if (template == null) return NotFound();
 
-        template.Name = update.Name;
-        template.SubjectEn = update.SubjectEn;
-        template.SubjectFr = update.SubjectFr;
-        template.BodyEn = update.BodyEn;
-        template.BodyFr = update.BodyFr;
+        template.Name = update.Name.Trim();
+        template.SubjectEn = update.SubjectEn ?? "";
+        template.SubjectFr = update.SubjectFr ?? "";
+        template.BodyEn = update.BodyEn ?? "";
+        template.BodyFr = update.BodyFr ?? "";
         template.EmailType = update.EmailType;
         await _db.SaveChangesAsync();
 
@@ -231,7 +239,7 @@ public class AdminController : ControllerBase
         var recentAttended = attendance.Count(a => a.CreatedOn >= sixtyDaysAgo && a.IsAttending);
         var recentTotal = await _db.Sessions.CountAsync(s => s.SessionDate >= sixtyDaysAgo && s.SessionDate <= DateTime.UtcNow);
         var recentRate = recentTotal > 0 ? (double)recentAttended / recentTotal * 100 : 0;
-        var tier = recentRate >= 80 ? "High" : recentRate >= 50 ? "Medium" : recentRate >= 20 ? "Low" : "Inactive";
+        var tier = EngagementTiers.Tier(recentRate);
 
         var totalPaid = payments.Where(p => p.Status == Domain.Enums.PaymentStatus.Completed).Sum(p => p.Amount);
         var pendingPayments = payments.Count(p => p.Status == Domain.Enums.PaymentStatus.Pending);
@@ -335,6 +343,23 @@ public class AdminController : ControllerBase
 public class UpdateNotesDto
 {
     public string? Notes { get; set; }
+}
+
+/// What an admin can set on a saved email template; the id and creation date come from the server.
+public class SaveEmailTemplateRequest
+{
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+    [MaxLength(500)]
+    public string? SubjectEn { get; set; }
+    [MaxLength(500)]
+    public string? SubjectFr { get; set; }
+    [MaxLength(20000)]
+    public string? BodyEn { get; set; }
+    [MaxLength(20000)]
+    public string? BodyFr { get; set; }
+    [MaxLength(50)]
+    public string? EmailType { get; set; }
 }
 
 public class ImportUserDto

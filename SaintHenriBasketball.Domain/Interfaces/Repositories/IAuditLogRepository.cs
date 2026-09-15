@@ -7,4 +7,9 @@ public interface IAuditLogRepository
     Task<IReadOnlyList<AuditLog>> GetAllAsync(int page = 1, int pageSize = 50, string? entityType = null);
     Task<IReadOnlyList<AuditLog>> GetByEntityAsync(string entityType, Guid entityId);
     Task AddAsync(AuditLog log);
+
+    /// One page of entries matching <paramref name="criteria"/>, newest first, and how many match in total.
+    Task<(IReadOnlyList<AuditLog> Items, int Total)> SearchAsync(AuditLogSearchCriteria criteria);
+    Task<IReadOnlyList<string>> GetEntityTypesAsync();
+    Task<IReadOnlyList<AuditLogActor>> GetActorsAsync();
 }

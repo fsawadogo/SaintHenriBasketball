@@ -9,6 +9,7 @@ public class CustomEmailRequestDto
     public EmailType EmailType { get; set; }
 
     [Required]
+    [MaxLength(EmailRecipientLimits.MaxRecipients, ErrorMessage = "Send to at most 2000 email addresses at a time.")]
     public List<string> Emails { get; set; } = new();
 
     [Required]

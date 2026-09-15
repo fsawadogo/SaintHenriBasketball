@@ -33,6 +33,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WaiverAcceptance> WaiverAcceptances { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<AccountCredit> AccountCredits { get; set; }
+    public DbSet<BroadcastMessage> BroadcastMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -359,6 +360,17 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedOn).IsRequired();
             entity.HasIndex(e => new { e.SessionId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.SessionId);
+        });
+
+        modelBuilder.Entity<BroadcastMessage>(entity =>
+        {
+            entity.ToTable("Broadcasts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(BroadcastMessage.MaxSubjectLength);
+            entity.Property(e => e.SubjectFr).HasMaxLength(BroadcastMessage.MaxSubjectLength);
+            entity.Property(e => e.BodyEn).IsRequired();
+            entity.Property(e => e.SentByName).IsRequired().HasMaxLength(200);
+            entity.HasIndex(e => e.QueuedAt);
         });
 
         modelBuilder.Entity<SessionRecap>(entity =>

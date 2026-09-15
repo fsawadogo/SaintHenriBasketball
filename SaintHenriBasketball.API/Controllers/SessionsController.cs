@@ -21,6 +21,7 @@ public class SessionsController : BaseApiController
     private readonly ILogger<SessionsController> _logger;
     private readonly ISessionCancellationService _cancellationService;
     private readonly IAuditLogService _auditLogService;
+    private readonly ISessionDeletionService _deletionService;
 
     public const int MaxBulkCancel = 100;
 
@@ -28,8 +29,10 @@ public class SessionsController : BaseApiController
         ISessionService sessionService,
         ILogger<SessionsController> logger,
         ISessionCancellationService cancellationService,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        ISessionDeletionService deletionService)
     {
+        _deletionService = deletionService;
         _sessionService = sessionService;
         _logger = logger;
         _cancellationService = cancellationService;
@@ -270,6 +273,42 @@ public class SessionsController : BaseApiController
         catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
 
+    /// <summary>
+    /// What deleting a session would remove. Sessions with payments can't be deleted (Admin only)
+    /// </summary>
+    [HttpGet("{id}/delete-preview")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SessionDeletionPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionDeletionPreviewDto>> GetDeletePreview(Guid id)
+    {
+        try { return Ok(await _deletionService.PreviewAsync(id)); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    /// <summary>
+    /// Permanently delete a session created by mistake. Refused when it has payments: cancel it instead (Admin only)
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SessionDeletionPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionDeletionPreviewDto>> DeleteSession(Guid id)
+    {
+        try
+        {
+            var removed = await _deletionService.DeleteAsync(id);
+            await _auditLogService.LogAsync("Deleted", "Session", id,
+                $"Removed {removed.Registrations} registration(s), {removed.AttendanceAnswers} attendance answer(s), " +
+                $"{removed.Waitlisted} waitlist spot(s), {removed.Feedback} feedback, {removed.Recaps} recap(s)",
+                User.AuditUserId(), User.AuditUserName());
+            return Ok(removed);
+        }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
     private Task AuditCancellationAsync(SessionCancellationResultDto result, string? reason) =>
         _auditLogService.LogAsync("Cancelled", "Session", result.SessionId,
             $"{result.PlayersNotified} player(s) notified; {result.PaymentsVoided} pending payment(s) voided; " +
@@ -417,21 +456,4 @@ public class SessionsController : BaseApiController
         return Ok(response);
     }
 
-    /// <summary>Generate QR code for session check-in</summary>
-    [HttpGet("{id}/qr-code")]
-    public IActionResult GetSessionQrCode(Guid id)
-    {
-        var url = $"https://sainthenribasketball.com/attendance/confirm?sessionId={id}";
-
-        // Generate a simple SVG QR code placeholder
-        // In production, use QRCoder NuGet for real QR generation
-        var svg = $@"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'>
-            <rect width='200' height='200' fill='white'/>
-            <text x='100' y='90' text-anchor='middle' font-family='Arial' font-size='12' fill='#333'>Scan to check in</text>
-            <text x='100' y='110' text-anchor='middle' font-family='Arial' font-size='10' fill='#666'>Session {id.ToString()[..8]}</text>
-            <text x='100' y='130' text-anchor='middle' font-family='Arial' font-size='8' fill='#999'>{url}</text>
-        </svg>";
-
-        return Content(svg, "image/svg+xml");
-    }
 }

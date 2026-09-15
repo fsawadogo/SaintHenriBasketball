@@ -48,13 +48,17 @@ public class ReferralRepository : IReferralRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<IReadOnlyList<ReferralRedemption>> GetRedemptionsAsync(int page = 1, int pageSize = 50) =>
-        await _context.ReferralRedemptions
+    public async Task<IReadOnlyList<ReferralRedemption>> GetRedemptionsAsync(int page = 1, int pageSize = 50)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 200);
+        return await _context.ReferralRedemptions
             .AsNoTracking()
             .OrderByDescending(r => r.RedeemedOn)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+    }
 
     // Not tracked: status changes are conditional ExecuteUpdates, and a tracked copy would go stale after one.
     public async Task<ReferralRedemption?> GetRedemptionByIdAsync(Guid id) =>

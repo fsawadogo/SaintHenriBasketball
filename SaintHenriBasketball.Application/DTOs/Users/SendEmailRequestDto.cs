@@ -1,4 +1,5 @@
-﻿using SaintHenriBasketball.Domain.Enums;
+﻿using SaintHenriBasketball.Application.DTOs.Email;
+using SaintHenriBasketball.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace SaintHenriBasketball.Application.DTOs.Users;
@@ -9,6 +10,7 @@ public class SendEmailRequestDto
     public EmailType EmailType { get; set; }
 
     [Required]
+    [MaxLength(EmailRecipientLimits.MaxRecipients, ErrorMessage = "Send to at most 2000 email addresses at a time.")]
     public List<string> Emails { get; set; } = new();
 
     public EmailLanguage Language { get; set; } = EmailLanguage.English;

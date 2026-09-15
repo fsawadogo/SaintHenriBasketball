@@ -1,3 +1,4 @@
+using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -274,6 +275,34 @@ public class PaymentsController : ControllerBase
        if (before.Plan != after.Plan) changes.Add($"Plan: {before.Plan} -> {after.Plan}");
        if (before.SeasonId != after.SeasonId) changes.Add("Season changed");
        return changes.Count == 0 ? "No change" : string.Join("; ", changes);
+   }
+
+   /// <summary>
+   /// Admin payments list, filtered and paged on the server, with totals for every matching payment
+   /// </summary>
+   [HttpGet("search")]
+   [Authorize(Roles = "Admin")]
+   [ProducesResponseType(typeof(PaymentSearchResultDto), StatusCodes.Status200OK)]
+   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   public async Task<ActionResult<PaymentSearchResultDto>> SearchPayments(
+       [FromQuery] string? search,
+       [FromQuery] PaymentStatus? status,
+       [FromQuery] PaymentPlan? plan,
+       [FromQuery] Guid? seasonId,
+       [FromQuery] DateTimeOffset? from,
+       [FromQuery] DateTimeOffset? to,
+       [FromQuery] int page = 1,
+       [FromQuery] int pageSize = 50)
+   {
+       try
+       {
+           return Ok(await _paymentService.SearchPaymentsAsync(new PaymentSearchCriteria(
+               search, status, plan, seasonId, from?.UtcDateTime, to?.UtcDateTime, page, pageSize)));
+       }
+       catch (ValidationException ex)
+       {
+           return BadRequest(ex.Message);
+       }
    }
 
    [HttpGet("summary")]
