@@ -307,4 +307,80 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         await tx.CommitAsync();
         return (sessionId, placed);
     }
+
+    // ---- Court attendance ----
+
+    private async Task<Session> CourtSessionAsync(Guid sessionId)
+    {
+        var session = await db.Sessions.SingleOrDefaultAsync(s => s.Id == sessionId)
+            ?? throw new NotFoundException("Session not found");
+        if (session.Status == SessionStatus.Cancelled) throw new ValidationException("This session was cancelled.");
+        return session;
+    }
+
+    // On the roster: holds a registration, or the attendance row says they're coming or already has an outcome.
+    private static bool OnRoster(bool registered, SessionAttendance? record) =>
+        registered || (record != null && (record.IsAttending || record.Outcome != AttendanceOutcome.Unmarked));
+
+    public async Task<SessionAttendance> SetOutcomeAsync(Guid sessionId, Guid userId, AttendanceOutcome outcome, string reason)
+    {
+        if (outcome is not (AttendanceOutcome.Unmarked or AttendanceOutcome.Attended or AttendanceOutcome.NoShow))
+            throw new ValidationException("Outcome must be Attended, NoShow or Unmarked.");
+        await using var tx = await LockAsync(sessionId);
+        await CourtSessionAsync(sessionId);
+        var registered = await db.SessionRegistrations.AnyAsync(r => r.SessionId == sessionId && r.UserId == userId);
+        var record = await db.SessionAttendances.SingleOrDefaultAsync(a => a.SessionId == sessionId && a.UserId == userId);
+        if (!OnRoster(registered, record)) throw new NotFoundException("This player is not on the session roster.");
+        if (record?.Outcome == AttendanceOutcome.WalkIn)
+            throw new ValidationException("This player was added as a walk-in. Remove them from the session to undo it.");
+        var now = DateTime.UtcNow;
+        if (record == null)
+        {
+            // A registered player who never answered: create the row as the admin add-participant path does.
+            record = new SessionAttendance { Id = Guid.NewGuid(), SessionId = sessionId, UserId = userId, CreatedOn = now, IsAttending = true, UpdateReason = reason };
+            db.SessionAttendances.Add(record);
+        }
+        record.Outcome = outcome;
+        if (outcome == AttendanceOutcome.Attended) record.CheckInTime ??= now;
+        record.LastUpdated = now;
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+        return record;
+    }
+
+    public async Task<SessionAttendance> AddWalkInAsync(Guid sessionId, Guid userId, string reason)
+    {
+        await using var tx = await LockAsync(sessionId);
+        var session = await CourtSessionAsync(sessionId);
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId) ?? throw new NotFoundException("Player not found");
+        if (user.IsDeactivated) throw new ValidationException("This player's account is deactivated.");
+        var record = await db.SessionAttendances.SingleOrDefaultAsync(a => a.SessionId == sessionId && a.UserId == userId);
+        if (OnRoster(await db.SessionRegistrations.AnyAsync(r => r.SessionId == sessionId && r.UserId == userId), record))
+            throw new ValidationException("This player is already on the roster.");
+        // The player is at the court and an admin is deciding, so the waitlist (waiting players and held offers)
+        // doesn't block them. Capacity still does, as it does on the admin add-participant path.
+        await ExpireAsync(sessionId);
+        var occupied = await OccupiedAsync(sessionId);
+        if (occupied >= session.MaxCapacity)
+            throw new ValidationException($"This session is at capacity ({occupied} of {session.MaxCapacity} places taken). Raise the session's capacity to add this walk-in.");
+        var ownEntries = await db.Waitlists.Where(w => w.SessionId == sessionId && w.UserId == userId
+            && (w.Status == WaitlistStatus.Waiting || w.Status == WaitlistStatus.Offered)).ToListAsync();
+        foreach (var entry in ownEntries) entry.Status = WaitlistStatus.Accepted;
+        db.SessionRegistrations.Add(new SessionRegistration(userId, sessionId, user.PaymentPlan));
+        var now = DateTime.UtcNow;
+        if (record == null)
+        {
+            record = new SessionAttendance { Id = Guid.NewGuid(), SessionId = sessionId, UserId = userId, CreatedOn = now };
+            db.SessionAttendances.Add(record);
+        }
+        record.IsAttending = true;
+        record.UpdateReason = reason;
+        record.Outcome = AttendanceOutcome.WalkIn;
+        record.CheckInTime ??= now;
+        record.LastUpdated = now;
+        await db.SaveChangesAsync();
+        await RefreshCountAsync(session);
+        await tx.CommitAsync();
+        return record;
+    }
 }
