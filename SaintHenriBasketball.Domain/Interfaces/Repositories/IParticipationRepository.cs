@@ -21,7 +21,7 @@ public interface IParticipationRepository
     /// answered; never changes IsAttending on an existing row. Attended fills in a missing CheckInTime.
     Task<SessionAttendance> SetOutcomeAsync(Guid sessionId, Guid userId, AttendanceOutcome outcome, string reason);
 
-    /// Registers an active player who isn't on the roster (same capacity and waitlist rules as a reservation)
-    /// and marks them WalkIn with a check-in time.
+    /// Registers an active player who isn't on the roster and marks them WalkIn with a check-in time.
+    /// Refused at capacity; the waitlist doesn't block it (the player's own waitlist entry is accepted).
     Task<SessionAttendance> AddWalkInAsync(Guid sessionId, Guid userId, string reason);
 }

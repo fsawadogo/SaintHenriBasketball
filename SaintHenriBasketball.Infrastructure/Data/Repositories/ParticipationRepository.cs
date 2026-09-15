@@ -248,7 +248,16 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         var record = await db.SessionAttendances.SingleOrDefaultAsync(a => a.SessionId == sessionId && a.UserId == userId);
         if (OnRoster(await db.SessionRegistrations.AnyAsync(r => r.SessionId == sessionId && r.UserId == userId), record))
             throw new ValidationException("This player is already on the roster.");
-        await ReserveCoreAsync(session, userId);
+        // The player is at the court and an admin is deciding, so the waitlist (waiting players and held offers)
+        // doesn't block them. Capacity still does, as it does on the admin add-participant path.
+        await ExpireAsync(sessionId);
+        var occupied = await OccupiedAsync(sessionId);
+        if (occupied >= session.MaxCapacity)
+            throw new ValidationException($"This session is at capacity ({occupied} of {session.MaxCapacity} places taken). Raise the session's capacity to add this walk-in.");
+        var ownEntries = await db.Waitlists.Where(w => w.SessionId == sessionId && w.UserId == userId
+            && (w.Status == WaitlistStatus.Waiting || w.Status == WaitlistStatus.Offered)).ToListAsync();
+        foreach (var entry in ownEntries) entry.Status = WaitlistStatus.Accepted;
+        db.SessionRegistrations.Add(new SessionRegistration(userId, sessionId, user.PaymentPlan));
         var now = DateTime.UtcNow;
         if (record == null)
         {

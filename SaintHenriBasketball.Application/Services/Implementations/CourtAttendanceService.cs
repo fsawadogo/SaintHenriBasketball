@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.CourtAttendance;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Helpers;
@@ -15,7 +16,9 @@ public class CourtAttendanceService(
     ISessionRepository sessionRepository,
     IPaymentRepository paymentRepository,
     ISeasonRepository seasonRepository,
-    ICacheService cache) : ICourtAttendanceService
+    ICacheService cache,
+    IPaymentService paymentService,
+    ILogger<CourtAttendanceService> logger) : ICourtAttendanceService
 {
     public const int DefaultWindowDays = 90;
     /// Marking and walk-ins open when self check-in does: 30 minutes before the start. No closing time.
@@ -80,6 +83,18 @@ public class CourtAttendanceService(
         var session = await OpenSessionAsync(sessionId, "Walk-ins can be added");
         await participation.AddWalkInAsync(sessionId, userId, WalkInReason);
         await SessionCacheKeys.InvalidateAsync(cache, sessionId, new[] { userId });
+
+        // Bill on the spot, as QR check-in does: drop-in players on today's session get their session payment
+        // (and the payment email) now, so a walk-in after the 11 AM billing job is still billed. Season players aren't billed.
+        // Billing failure must never undo the walk-in; the billing job retries idempotently.
+        try
+        {
+            await paymentService.EnsureDropInPaymentForSessionAsync(userId, sessionId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Auto-bill on court walk-in failed for user {UserId} session {SessionId}", userId, sessionId);
+        }
         return await PlayerAsync(session, userId);
     }
 

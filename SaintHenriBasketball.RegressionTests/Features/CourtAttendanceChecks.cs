@@ -1,5 +1,9 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using SaintHenriBasketball.Application.Mapping;
 using SaintHenriBasketball.Application.DTOs.CourtAttendance;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Helpers;
@@ -16,9 +20,28 @@ internal static class CourtAttendanceChecks
     public static async Task RunAsync(Func<ApplicationDbContext> db, Action<bool, string> assert)
     {
         var cache = new KeyRecordingCache();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["JwtSettings:Key"] = "local-regression-signing-key-long-enough-for-any-hmac-algorithm-0123456789abcdef",
+            ["AppUrl"] = "http://localhost", ["Referrals:RewardAmount"] = "10.00" }).Build();
+        var mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>(), NullLoggerFactory.Instance).CreateMapper();
+        FeatureFlagService Flags(ApplicationDbContext context) => new(new FeatureFlagRepository(context),
+            new MemoryCacheService(new MemoryCache(new MemoryCacheOptions()), NullLogger<MemoryCacheService>.Instance),
+            new AuditLogRepository(context), NullLogger<FeatureFlagService>.Instance);
+        PaymentService PaymentsFor(ApplicationDbContext context)
+        {
+            var users = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var notifications = new NotificationService(new NotificationRepository(context), users, NullLogger<NotificationService>.Instance);
+            var referrals = new ReferralService(new ReferralRepository(context), users, NullLogger<ReferralService>.Instance, new PaymentRepository(context),
+                Flags(context), notifications, new AuditLogRepository(context), config);
+            // No email service: the payment email fails and is logged, and the payment row is still created.
+            return new PaymentService(new PaymentRepository(context), users, new SessionRepository(context), new SessionRegistrationRepository(context), mapper,
+                NullLogger<PaymentService>.Instance, null!, notifications, new SeasonRepository(context, NullLogger<SeasonRepository>.Instance),
+                new PromoCodeRepository(context), new AccountCreditRepository(context), referrals, Flags(context));
+        }
         CourtAttendanceService ServiceFor(ApplicationDbContext context) => new(
             new CourtAttendanceRepository(context), new ParticipationRepository(context), new SessionRepository(context),
-            new PaymentRepository(context), new SeasonRepository(context, NullLogger<SeasonRepository>.Instance), cache);
+            new PaymentRepository(context), new SeasonRepository(context, NullLogger<SeasonRepository>.Instance), cache,
+            PaymentsFor(context), NullLogger<CourtAttendanceService>.Instance);
         async Task<Exception?> TryAsync(Func<CourtAttendanceService, Task> action)
         {
             try { await using var context = db(); await action(ServiceFor(context)); return null; }
@@ -157,8 +180,47 @@ internal static class CourtAttendanceChecks
             context.Sessions.Add(tiny);
             context.SessionRegistrations.Add(new SessionRegistration(dropPaid.Id, tiny.Id, PaymentPlan.DropIn));
             await context.SaveChangesAsync();
-            assert(await TryAsync(s => s.AddWalkInAsync(tiny.Id, walkIn.Id)) is ValidationException, "a walk-in can't overbook a full session");
+            var full = await TryAsync(s => s.AddWalkInAsync(tiny.Id, walkIn.Id));
+            assert(full is ValidationException && full.Message.Contains("capacity") && !full.Message.Contains("waitlist", StringComparison.OrdinalIgnoreCase),
+                "a walk-in can't overbook a full session, and the refusal is worded for the admin");
         }
+
+        // ---- Walk-ins today: the waitlist doesn't block them, and drop-in players are billed on the spot ----
+        var courtToday = new Session(today, 3, 12m, "00:00", "23:59", "Court attendance today court");
+        var regular = Player("todayregular");
+        var waiting = Player("todaywaiting");
+        var walkDrop = Player("todaywalkdrop");
+        var walkSeason = Player("todaywalkseason", PaymentPlan.Season);
+        var walkLate = Player("todaywalklate");
+        await using (var context = db())
+        {
+            context.Sessions.Add(courtToday);
+            context.Users.AddRange(regular, waiting, walkDrop, walkSeason, walkLate);
+            context.SessionRegistrations.Add(new SessionRegistration(regular.Id, courtToday.Id, PaymentPlan.DropIn));
+            context.Waitlists.AddRange(new Waitlist(waiting.Id, courtToday.Id, 1), new Waitlist(walkDrop.Id, courtToday.Id, 2));
+            await context.SaveChangesAsync();
+        }
+        RosterPlayerDto droppedIn, seasonWalkIn;
+        await using (var context = db()) droppedIn = await ServiceFor(context).AddWalkInAsync(courtToday.Id, walkDrop.Id);
+        await using (var context = db()) seasonWalkIn = await ServiceFor(context).AddWalkInAsync(courtToday.Id, walkSeason.Id);
+        await using (var context = db())
+        {
+            var payments = await context.Payments.AsNoTracking().Where(p => p.SessionId == courtToday.Id).ToListAsync();
+            var entries = await context.Waitlists.AsNoTracking().Where(w => w.SessionId == courtToday.Id).ToListAsync();
+            assert(droppedIn.Outcome == "WalkIn" && entries.Single(w => w.UserId == waiting.Id).Status == WaitlistStatus.Waiting
+                && entries.Single(w => w.UserId == walkDrop.Id).Status == WaitlistStatus.Accepted,
+                "a waiting list doesn't block a walk-in, and the walk-in's own waitlist entry is accepted");
+            assert(droppedIn.PaymentStatus == RosterPaymentStatus.Pending && droppedIn.PaymentId != null
+                && payments.Count == 1 && payments[0] is { Plan: PaymentPlan.DropIn, Status: PaymentStatus.Pending, Amount: 12m } && payments[0].UserId == walkDrop.Id,
+                "a drop-in walk-in on today's session is billed on the spot, like a QR check-in");
+            assert(seasonWalkIn.PaymentStatus == RosterPaymentStatus.SeasonFeeUnpaid && seasonWalkIn.PaymentId == null && !payments.Any(p => p.UserId == walkSeason.Id),
+                "a season walk-in is not billed for the session");
+        }
+        var atCapacity = await TryAsync(s => s.AddWalkInAsync(courtToday.Id, walkLate.Id));
+        await using (var context = db())
+            assert(atCapacity is ValidationException && atCapacity.Message.Contains("3 of 3") && !atCapacity.Message.Contains("waitlist", StringComparison.OrdinalIgnoreCase)
+                && !await context.SessionRegistrations.AnyAsync(r => r.UserId == walkLate.Id) && !await context.Payments.AnyAsync(p => p.UserId == walkLate.Id),
+                "a walk-in is refused at capacity even with the waitlist bypassed, and nothing is registered or billed");
         assert(await TryAsync(s => s.SetOutcomeAsync(court.Id, walkIn.Id, "NoShow")) is ValidationException, "a walk-in's outcome can't be changed to another outcome");
 
         // ---- No-show stats over a window ----
