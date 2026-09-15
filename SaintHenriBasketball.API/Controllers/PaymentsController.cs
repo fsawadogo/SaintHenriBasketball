@@ -29,6 +29,7 @@ public class PaymentsController : ControllerBase
    private readonly ILogger<PaymentsController> _logger;
    private readonly ICacheService _cacheService;
    private readonly IWebHostEnvironment _webHostEnvironment;
+   private readonly IPaymentRefundService _refundService;
 
     public PaymentsController(
        IPaymentService paymentService,
@@ -38,7 +39,8 @@ public class PaymentsController : ControllerBase
        IAuditLogService auditLogService,
        ILogger<PaymentsController> logger,
        ICacheService cacheService,
-       IWebHostEnvironment webHostEnvironment)
+       IWebHostEnvironment webHostEnvironment,
+       IPaymentRefundService refundService)
     {
         _paymentService = paymentService;
         _emailService = emailService;
@@ -48,6 +50,7 @@ public class PaymentsController : ControllerBase
         _logger = logger;
         _cacheService = cacheService;
         _webHostEnvironment = webHostEnvironment;
+        _refundService = refundService;
     }
 
     [HttpPost]
@@ -221,6 +224,37 @@ public class PaymentsController : ControllerBase
        }
        catch (ValidationException ex) { return BadRequest(ex.Message); }
        catch (NotFoundException ex) { return NotFound(ex.Message); }
+   }
+
+   /// <summary>
+   /// Give a completed payment's money back: to the card (Stripe), as account credit, or recorded as sent
+   /// back by hand. Requires a reason; audited; the player is notified.
+   /// </summary>
+   [HttpPost("{id}/refund")]
+   [Authorize(Roles = "Admin")]
+   [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status200OK)]
+   [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(StatusCodes.Status404NotFound)]
+   public async Task<ActionResult<PaymentDto>> RefundPayment(Guid id, [FromBody] RefundPaymentDto request)
+   {
+       try
+       {
+           var wasRefunded = (await _paymentService.GetPaymentAsync(id)).Status == PaymentStatus.Refunded;
+           var payment = await _refundService.RefundAsync(id, request);
+           await InvalidatePaymentCachesAsync(id, payment.UserId);
+           if (!wasRefunded)
+               await _auditLogService.LogAsync("Refunded", "Payment", id,
+                   $"Method: {request.Method}; Amount: {payment.Amount:0.00}; Reason: {request.Reason?.Trim()}",
+                   User.AuditUserId(), User.AuditUserName());
+           return Ok(payment);
+       }
+       catch (ValidationException ex) { return BadRequest(ex.Message); }
+       catch (NotFoundException ex) { return NotFound(ex.Message); }
+       catch (Stripe.StripeException ex)
+       {
+           _logger.LogError(ex, "Stripe refund failed for payment {PaymentId}", id);
+           return BadRequest($"Stripe couldn't refund this card payment: {ex.StripeError?.Message ?? ex.Message}");
+       }
    }
 
    private async Task InvalidatePaymentCachesAsync(Guid paymentId, Guid userId)

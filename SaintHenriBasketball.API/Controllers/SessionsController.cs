@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Application.DTOs.Session;
+using SaintHenriBasketball.API.Extensions;
 
 namespace SaintHenriBasketball.API.Controllers;
 
@@ -18,13 +19,21 @@ public class SessionsController : BaseApiController
 {
     private readonly ISessionService _sessionService;
     private readonly ILogger<SessionsController> _logger;
+    private readonly ISessionCancellationService _cancellationService;
+    private readonly IAuditLogService _auditLogService;
+
+    public const int MaxBulkCancel = 100;
 
     public SessionsController(
         ISessionService sessionService,
-        ILogger<SessionsController> logger)
+        ILogger<SessionsController> logger,
+        ISessionCancellationService cancellationService,
+        IAuditLogService auditLogService)
     {
         _sessionService = sessionService;
         _logger = logger;
+        _cancellationService = cancellationService;
+        _auditLogService = auditLogService;
     }
 
     /// <summary>
@@ -232,25 +241,41 @@ public class SessionsController : BaseApiController
     /// </summary>
     [HttpPost("{id}/cancel")]
     [Authorize(Roles = "Admin")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(SessionCancellationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CancelSession(Guid id)
+    public async Task<ActionResult<SessionCancellationResultDto>> CancelSession(Guid id,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] CancelSessionRequest? request)
     {
         try
         {
-            await _sessionService.CancelSessionAsync(id);
-            return NoContent();
+            var result = await _cancellationService.CancelAsync(id, request ?? new CancelSessionRequest());
+            await AuditCancellationAsync(result, request?.Reason);
+            return Ok(result);
         }
-        catch (NotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error cancelling session {SessionId}", id);
-            return StatusCode(500, "An error occurred while cancelling the session");
-        }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
     }
+
+    /// <summary>
+    /// What cancelling a session will affect: registered players and their payments (Admin only)
+    /// </summary>
+    [HttpGet("{id}/cancel-preview")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SessionCancellationPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SessionCancellationPreviewDto>> GetCancelPreview(Guid id)
+    {
+        try { return Ok(await _cancellationService.PreviewAsync(id)); }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    private Task AuditCancellationAsync(SessionCancellationResultDto result, string? reason) =>
+        _auditLogService.LogAsync("Cancelled", "Session", result.SessionId,
+            $"{result.PlayersNotified} player(s) notified; {result.PaymentsVoided} pending payment(s) voided; " +
+            $"{result.PaymentsRefunded} paid drop-in(s) refunded as credit ({result.RefundedAmount:0.00}); {result.PaidNotRefunded} paid, not refunded" +
+            (string.IsNullOrWhiteSpace(reason) ? "" : $". Reason: {reason.Trim()}"),
+            User.AuditUserId(), User.AuditUserName());
 
     /// <summary>
     /// Update a session (Admin only)
@@ -367,22 +392,29 @@ public class SessionsController : BaseApiController
     /// <summary>Bulk cancel sessions</summary>
     [HttpPost("bulk-cancel")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> BulkCancelSessions([FromBody] List<Guid> sessionIds)
+    [ProducesResponseType(typeof(BulkSessionCancellationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BulkSessionCancellationResultDto>> BulkCancelSessions([FromBody] BulkCancelSessionsRequest request)
     {
-        var cancelled = 0;
-        foreach (var id in sessionIds)
+        var ids = request.SessionIds.Distinct().ToList();
+        if (ids.Count == 0) return BadRequest("Choose at least one session to cancel.");
+        if (ids.Count > MaxBulkCancel) return BadRequest($"Cancel at most {MaxBulkCancel} sessions at a time.");
+
+        var response = new BulkSessionCancellationResultDto { Total = ids.Count };
+        foreach (var id in ids)
         {
             try
             {
-                await _sessionService.CancelSessionAsync(id);
-                cancelled++;
+                var result = await _cancellationService.CancelAsync(id, new CancelSessionRequest { Reason = request.Reason, RefundPaidToCredit = request.RefundPaidToCredit });
+                await AuditCancellationAsync(result, request.Reason);
+                response.Results.Add(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is ValidationException or NotFoundException)
             {
-                _logger.LogWarning(ex, "Failed to cancel session {SessionId}", id);
+                response.Failed.Add(new SessionCancellationFailureDto { SessionId = id, Message = ex.Message });
             }
         }
-        return Ok(new { cancelled, total = sessionIds.Count });
+        return Ok(response);
     }
 
     /// <summary>Generate QR code for session check-in</summary>

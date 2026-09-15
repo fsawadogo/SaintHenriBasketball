@@ -127,6 +127,35 @@ public class StripeService : IStripeService
         return checkoutSession.Url;
     }
 
+    public async Task ExpireCheckoutAsync(string checkoutSessionId)
+    {
+        var service = new StripeCheckout.SessionService();
+        var checkout = await service.GetAsync(checkoutSessionId);
+        if (checkout.Status != "open") return;
+        await service.ExpireAsync(checkoutSessionId);
+        _logger.LogInformation("Stripe Checkout Session {CheckoutSessionId} expired", checkoutSessionId);
+    }
+
+    public async Task<string> RefundCheckoutAsync(string checkoutSessionId, long amountInCents, Guid paymentId)
+    {
+        var checkout = await new StripeCheckout.SessionService().GetAsync(checkoutSessionId);
+        if (string.IsNullOrEmpty(checkout.PaymentIntentId))
+            throw new ValidationException("Stripe has no completed charge for this checkout, so it can't be refunded to the card.");
+
+        var refund = await new RefundService().CreateAsync(
+            new RefundCreateOptions
+            {
+                PaymentIntent = checkout.PaymentIntentId,
+                Amount = amountInCents,
+                Reason = "requested_by_customer",
+                Metadata = new Dictionary<string, string> { { "paymentId", paymentId.ToString() } },
+            },
+            new RequestOptions { IdempotencyKey = $"refund-{paymentId}" });
+
+        _logger.LogInformation("Stripe refund {RefundId} created for payment {PaymentId}", refund.Id, paymentId);
+        return refund.Id;
+    }
+
     private static bool BelongsTo(Payment payment, string metadataKey, Guid id) => metadataKey == "seasonId"
         ? payment.Plan == PaymentPlan.Season && payment.SeasonId == id
         : payment.SessionId == id;

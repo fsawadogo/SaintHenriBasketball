@@ -20,4 +20,7 @@ public class PaymentDto
     public decimal DiscountAmount { get; set; }
     public decimal CreditApplied { get; set; }
     public string? PromoCode { get; set; }
+    public DateTime? RefundedOn { get; set; }
+    public RefundMethod? RefundMethod { get; set; }
+    public string? RefundReason { get; set; }
 }

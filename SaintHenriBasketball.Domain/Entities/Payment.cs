@@ -33,6 +33,11 @@ public class Payment
     public Guid? PromoCodeId { get; set; }
     public PromoCode? PromoCode { get; set; }
 
+    /// Set when a completed payment's money was given back.
+    public DateTime? RefundedOn { get; set; }
+    public RefundMethod? RefundMethod { get; set; }
+    public string? RefundReason { get; set; }
+
     private Payment() { } // For EF Core
 
     public Payment(Guid userId, decimal amount, PaymentPlan plan)

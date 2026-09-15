@@ -26,6 +26,13 @@ public class PaymentRepository : IPaymentRepository
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<Payment>> GetBySessionAsync(Guid sessionId) =>
+        await _context.Payments
+            .Include(p => p.User)
+            .Include(p => p.Session)
+            .Where(p => p.SessionId == sessionId)
+            .ToListAsync();
+
     public async Task<Payment> GetByIdAsync(Guid id)
     {
         return (await _context.Payments

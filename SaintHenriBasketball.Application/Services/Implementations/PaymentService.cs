@@ -244,6 +244,18 @@ public class PaymentService : IPaymentService
         return _mapper.Map<PaymentDto>(payment);
    }
 
+   public async Task<bool> VoidForCancelledSessionAsync(Guid paymentId)
+   {
+       var payment = await _paymentRepository.GetByIdAsync(paymentId);
+       if (payment == null || payment.Status != PaymentStatus.Pending) return false;
+       payment.Status = PaymentStatus.Failed;
+       await _paymentRepository.UpdateAsync(payment);
+       if (payment.CreditApplied > 0)
+           await ReleaseCreditAsync(payment);
+       _logger.LogInformation("Payment {PaymentId} voided because its session was cancelled", paymentId);
+       return true;
+   }
+
    /// Reopening a failed payment: its account credit was already given back, so the full charge returns.
    private static void ReopenFailedPayment(Payment payment, PaymentStatus from, PaymentStatus to)
    {
@@ -314,6 +326,17 @@ public class PaymentService : IPaymentService
                case PaymentStatus.Failed:
                    await _emailService.SendPaymentFailedAsync(
                        user, payment.Amount, payment.Reference, failureReason);
+                   break;
+
+               case PaymentStatus.Refunded:
+                   await _notificationService.CreateAsync(
+                       user.Id,
+                       Domain.Entities.NotificationType.Generic,
+                       title: "Payment refunded",
+                       body: payment.RefundMethod == RefundMethod.AccountCredit
+                           ? $"Your payment of ${payment.Amount:F2} was refunded as account credit."
+                           : $"Your payment of ${payment.Amount:F2} was refunded.",
+                       url: "/payment-history");
                    break;
            }
        }
