@@ -44,4 +44,14 @@ public static class FeatureFlagKeys
     public const string SeasonPaymentReminders = "season-payment-reminders";
     public const string InteracReviewQueue = "interac-review-queue";
     public const string SeasonCardPayments = "season-card-payments";
+
+    // Phase 9 — Admin audit: new admin tools
+    public const string OutstandingBalances = "outstanding-balances";
+    public const string CourtAttendance = "court-attendance";
+    public const string TreasurerReport = "treasurer-report";
+    public const string PlayerTimeline = "player-timeline";
+    public const string SeasonRollover = "season-rollover";
+    public const string WaitlistAdmin = "waitlist-admin";
+    public const string PromoReferralReports = "promo-referral-reports";
+    public const string VolunteerRoles = "volunteer-roles";
 }

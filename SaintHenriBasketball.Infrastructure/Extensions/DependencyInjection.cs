@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SaintHenriBasketball.Application.Mapping;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Application.Services.Implementations;
+using SaintHenriBasketball.Infrastructure.Extensions.Features;
 
 namespace SaintHenriBasketball.Infrastructure.Extensions;
 
@@ -39,6 +40,16 @@ public static class DependencyInjection
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IAccountCreditRepository, AccountCreditRepository>();
         services.AddScoped<IBroadcastRepository, BroadcastRepository>();
+
+        // Admin-audit features: each registers its own services and repositories.
+        services.AddOutstandingBalancesFeature();
+        services.AddCourtAttendanceFeature();
+        services.AddTreasurerReportFeature();
+        services.AddPlayerTimelineFeature();
+        services.AddSeasonRolloverFeature();
+        services.AddWaitlistAdminFeature();
+        services.AddPromoReferralReportsFeature();
+        services.AddVolunteerRolesFeature();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);

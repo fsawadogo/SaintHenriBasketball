@@ -1057,6 +1057,15 @@ await using (var db = Db())
         && noShowsAfter.SampleEmails.Contains(missedSession.Email!) && !noShowsAfter.SampleEmails.Contains(cameToSession.Email!),
         "recent no-shows are players who skipped their recent sessions, and deactivated players never receive broadcasts");
 }
+// Admin-audit features (each file under Features/).
+await OutstandingBalancesChecks.RunAsync(Db, Assert);
+await CourtAttendanceChecks.RunAsync(Db, Assert);
+await TreasurerReportChecks.RunAsync(Db, Assert);
+await PlayerTimelineChecks.RunAsync(Db, Assert);
+await SeasonRolloverChecks.RunAsync(Db, Assert);
+await WaitlistAdminChecks.RunAsync(Db, Assert);
+await PromoReferralReportsChecks.RunAsync(Db, Assert);
+await VolunteerRolesChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
