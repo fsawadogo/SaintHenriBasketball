@@ -133,14 +133,16 @@ public class PaymentService : IPaymentService
    {
        var payments = await _paymentRepository.GetAllAsync();
 
+       // Revenue is money actually collected: pending, failed and refunded payments don't count.
+       var collected = payments.Where(p => p.Status == PaymentStatus.Completed).ToList();
        return new PaymentSummaryDto
        {
            TotalPayments = payments.Count(),
-           TotalAmount = payments.Sum(p => p.Amount),
+           TotalAmount = collected.Sum(p => p.Amount),
            SeasonPayments = payments.Count(p => p.Plan == PaymentPlan.Season),
            DropInPayments = payments.Count(p => p.Plan == PaymentPlan.DropIn),
-           SeasonRevenue = payments.Where(p => p.Plan == PaymentPlan.Season).Sum(p => p.Amount),
-           DropInRevenue = payments.Where(p => p.Plan == PaymentPlan.DropIn).Sum(p => p.Amount)
+           SeasonRevenue = collected.Where(p => p.Plan == PaymentPlan.Season).Sum(p => p.Amount),
+           DropInRevenue = collected.Where(p => p.Plan == PaymentPlan.DropIn).Sum(p => p.Amount)
        };
    }
 

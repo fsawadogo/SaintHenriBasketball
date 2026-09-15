@@ -10,4 +10,7 @@ public interface IAccountLifecycleService
     Task ReactivateAsync(Guid userId);
 
     Task<int> CountActiveAdminsAsync();
+
+    /// Grants or removes admin access. Callers enforce who may do this (not yourself, not the last admin).
+    Task SetAdminAsync(Guid userId, bool isAdmin);
 }

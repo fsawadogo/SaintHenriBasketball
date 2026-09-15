@@ -162,6 +162,14 @@ public class SeasonsController : BaseApiController
         {
             return NotFound(ex.Message);
         }
+        catch (SaintHenriBasketball.Application.Exceptions.ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            return BadRequest("This season has payments recorded against it, so it can't be deleted. Mark it as closed instead.");
+        }
     }
 
     /// <summary>

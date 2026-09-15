@@ -284,7 +284,8 @@ public class UserService : IUserService
 
         user.FirstName = updateDto.FirstName ?? user.FirstName;
         user.LastName = updateDto.LastName ?? user.LastName;
-        user.PaymentPlan = updateDto.PaymentPlan;
+        if (updateDto.PaymentPlan is { } paymentPlan)
+            user.PaymentPlan = paymentPlan;
 
         await _userRepository.UpdateAsync(user);
         return _mapper.Map<UserDto>(user);

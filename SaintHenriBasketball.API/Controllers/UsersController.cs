@@ -181,6 +181,8 @@ public class UsersController(
 
         try
         {
+            // Players change their plan through PATCH me/payment-plan, and never their own admin access.
+            updateUserDto.PaymentPlan = null;
             await _userService.UpdateUserAsync(userId, updateUserDto);
 
             // Invalidate cache
@@ -216,8 +218,12 @@ public class UsersController(
                 return BadRequest(ModelState);
 
             var userId = Guid.Parse(userIdClaim.Value);
+            var before = await _userService.GetUserAsync(userId);
             await _userService.UpdateUserPaymentPlanAsync(userId, updatePaymentPlanDto.PaymentPlan);
             _logger.LogInformation("User updated their payment plan successfully: {UserId}", userId);
+            if (before.PaymentPlan != updatePaymentPlanDto.PaymentPlan)
+                await auditLogService.LogAsync("PlanChangedByPlayer", "User", userId,
+                    $"Plan: {before.PaymentPlan} -> {updatePaymentPlanDto.PaymentPlan}", userId, User.AuditUserName());
 
             // Invalidate cache
             await cacheService.RemoveAsync($"Users:Current:{userId}");
@@ -272,8 +278,11 @@ public class UsersController(
             if (!string.IsNullOrEmpty(updateUserDto.Email) && !new EmailAddressAttribute().IsValid(updateUserDto.Email))
                 return BadRequest("Invalid email format");
 
-            await _userService.UpdateUserAsync(userId, updateUserDto);
+            var before = await _userService.GetUserAsync(userId);
+            var after = await _userService.UpdateUserAsync(userId, updateUserDto);
             _logger.LogInformation("User updated successfully: {UserId}", userId);
+            AuthUserCache.Forget(memoryCache, userId);
+            await auditLogService.LogAsync("Updated", "User", userId, DescribeUserChange(before, after), User.AuditUserId(), User.AuditUserName());
 
             // Invalidate cache
             await cacheService.RemoveAsync($"Users:Current:{userId}");
@@ -466,6 +475,9 @@ public class UsersController(
             var user = await _userService.GetUserByEmailAsync(email);
 
             await _userService.UpdateUserPaymentPlanAsync(user.Id, updatePaymentPlanDto.PaymentPlan);
+            if (user.PaymentPlan != updatePaymentPlanDto.PaymentPlan)
+                await auditLogService.LogAsync("PlanChanged", "User", user.Id,
+                    $"Plan: {user.PaymentPlan} -> {updatePaymentPlanDto.PaymentPlan}", User.AuditUserId(), User.AuditUserName());
             _logger.LogInformation("User payment plan updated successfully: {Email}", email);
 
             // Invalidate cache
@@ -487,61 +499,67 @@ public class UsersController(
         }
     }
 
-    [HttpPatch("{userId}/make-admin")]
+    public record SetAdminRequest(bool IsAdmin);
+
+    /// <summary>
+    /// Give or remove admin access (Admin only). You can't remove your own access or the last active admin's.
+    /// </summary>
+    [HttpPut("{userId}/admin")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> MakeUserAdmin(Guid userId)
+    public async Task<IActionResult> SetAdmin(Guid userId, [FromBody] SetAdminRequest request)
     {
         try
         {
-            var user = await _userService.GetUserAsync(userId);
-
-            var updateUserDto = new UpdateUserDto
+            var target = await _userService.GetUserAsync(userId);
+            if (target.IsAdmin == request.IsAdmin) return NoContent();
+            if (request.IsAdmin && target.IsDeactivated)
+                return BadRequest("Reactivate this player before giving them admin access.");
+            if (!request.IsAdmin)
             {
-                Username = user.Username,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                PaymentPlan = user.PaymentPlan,
-                IsAdmin = true
-            };
-
-            await _userService.UpdateUserAsync(userId, updateUserDto);
-            _logger.LogInformation("User made admin successfully: {UserId}", userId);
-
-            // Invalidate cache
-            await cacheService.RemoveAsync($"Users:Current:{userId}");
-            await cacheService.RemoveAsync($"Users:Detail:{userId}");
-            await cacheService.RemoveAsync("Users:All");
-
-            // Send email notification
-            var emailResult = await _userService.SendTargetedEmailsAsync(
-                EmailType.GeneralAnnouncement,
-                new List<string?> { user.Email },
-                EmailLanguage.English,
-                "You have been granted admin privileges."
-            );
-
-            if (!emailResult.AllSucceeded)
-            {
-                _logger.LogWarning("Failed to send admin notification email to {Email}", user.Email);
+                if (User.AuditUserId() == userId)
+                    return BadRequest("You can't remove your own admin access. Ask another admin.");
+                if (await accountLifecycle.CountActiveAdminsAsync() <= 1)
+                    return BadRequest("This is the club's last active admin. Make someone else an admin first.");
             }
 
-            return Ok("User made admin successfully");
+            await accountLifecycle.SetAdminAsync(userId, request.IsAdmin);
+            await ForgetUserAsync(userId);
+            await auditLogService.LogAsync(request.IsAdmin ? "AdminGranted" : "AdminRevoked", "User", userId,
+                $"{target.FirstName} {target.LastName}".Trim(), User.AuditUserId(), User.AuditUserName());
+
+            if (request.IsAdmin)
+            {
+                var emailResult = await _userService.SendTargetedEmailsAsync(
+                    EmailType.GeneralAnnouncement,
+                    new List<string?> { target.Email },
+                    target.PreferredLanguage,
+                    "You have been given admin access to Saint-Henri Basketball.",
+                    "Vous avez maintenant un accès administrateur à Saint-Henri Basketball.");
+                if (!emailResult.AllSucceeded)
+                    _logger.LogWarning("Failed to send the admin access email to {UserId}", userId);
+            }
+
+            return NoContent();
         }
-        catch (ValidationException ex)
-        {
-            _logger.LogWarning("Make admin failed for {UserId}: {Message}", userId, ex.Message);
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error making user admin {UserId}", userId);
-            return StatusCode(500, "An unexpected error occurred while making user admin");
-        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+    }
+
+    /// Kept for older clients; same rules as PUT {userId}/admin.
+    [HttpPatch("{userId}/make-admin")]
+    [Authorize(Roles = "Admin")]
+    public Task<IActionResult> MakeUserAdmin(Guid userId) => SetAdmin(userId, new SetAdminRequest(true));
+
+    private static string DescribeUserChange(UserDto before, UserDto after)
+    {
+        var changes = new List<string>();
+        if (before.Email != after.Email) changes.Add("Email changed");
+        if (before.Username != after.Username) changes.Add("Username changed");
+        if (before.FirstName != after.FirstName || before.LastName != after.LastName) changes.Add("Name changed");
+        if (before.PaymentPlan != after.PaymentPlan) changes.Add($"Plan: {before.PaymentPlan} -> {after.PaymentPlan}");
+        return changes.Count == 0 ? "No change" : string.Join("; ", changes);
     }
 
     /// <summary>
@@ -634,7 +652,8 @@ public class UsersController(
                 return NotFound($"User with ID {userId} not found");
 
             await _userService.ForgotPasswordAsync(user.Email);
-            _logger.LogInformation("Admin sent password reset link to user: {UserId}, {Email}", userId, user.Email);
+            _logger.LogInformation("Admin sent password reset link to user: {UserId}", userId);
+            await auditLogService.LogAsync("PasswordResetSent", "User", userId, null, User.AuditUserId(), User.AuditUserName());
 
             return Ok($"Password reset link has been sent to {user.Email}");
         }
