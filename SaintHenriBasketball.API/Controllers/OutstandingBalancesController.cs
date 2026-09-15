@@ -5,6 +5,7 @@ using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.OutstandingBalances;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -13,7 +14,7 @@ namespace SaintHenriBasketball.API.Controllers;
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/v{version:apiVersion}/admin/balances")]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = StaffAccess.TreasurerOrAdminPolicy)]
 [RequireFeature(FeatureFlagKeys.OutstandingBalances)]
 public class OutstandingBalancesController : BaseApiController
 {

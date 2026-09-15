@@ -5,7 +5,7 @@ using SaintHenriBasketball.Domain.Interfaces.Repositories;
 namespace SaintHenriBasketball.API.Filters;
 
 /// Per-user snapshot for token validation, cached briefly so each request doesn't hit the database.
-/// Call <see cref="Forget"/> after deactivating, reactivating or changing a user's admin access.
+/// Call <see cref="Forget"/> after deactivating, reactivating or changing a user's admin access or volunteer role.
 public static class AuthUserCache
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(60);
@@ -16,7 +16,7 @@ public static class AuthUserCache
     {
         if (cache.TryGetValue(Key(userId), out AuthUserSnapshot? snapshot)) return snapshot;
         var user = await users.GetByIdAsync(userId);
-        snapshot = user is null ? null : new AuthUserSnapshot(user.IsDeactivated, user.IsAdmin);
+        snapshot = user is null ? null : new AuthUserSnapshot(user.IsDeactivated, user.IsAdmin, user.StaffRole);
         cache.Set(Key(userId), snapshot, Lifetime);
         return snapshot;
     }

@@ -586,9 +586,9 @@ catch (ValidationException) { negativeAmountRefused = true; }
 await using (var db = Db())
     Assert(completedEditRefused && negativeAmountRefused && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == coveredPaymentId)).Amount == 0m,
         "a completed payment's amount is locked and amounts can't be negative");
-Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true), true) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false), false) == null
-    && TokenUserCheck.Evaluate(null, false) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false), false) != null
-    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false), true) != null,
+Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true, StaffRole.None), true, null) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None), false, null) == null
+    && TokenUserCheck.Evaluate(null, false, null) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false, StaffRole.None), false, null) != null
+    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None), true, null) != null,
     "tokens stop working for missing, deactivated or demoted accounts");
 
 RegisterUserDto Signup(string name, string? code) => new() {

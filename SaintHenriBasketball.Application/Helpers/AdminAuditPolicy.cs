@@ -17,6 +17,11 @@ public static class AdminAuditPolicy
             .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Contains("Admin", StringComparer.OrdinalIgnoreCase));
 
+    /// True when the endpoint requires the Admin role, or a staff policy (court captain or treasurer, or admin),
+    /// so changes made by volunteers are audited like an admin's.
+    public static bool RequiresAdminLevel(IEnumerable<string?> roleLists, IEnumerable<string?> policies) =>
+        RequiresAdmin(roleLists) || policies.Any(policy => policy != null && StaffAccess.Policies.Contains(policy));
+
     /// Successful admin-only changes only; reads and failed requests aren't recorded.
     public static bool ShouldAudit(string method, bool requiresAdmin, int statusCode) =>
         requiresAdmin && IsMutating(method) && statusCode is >= 200 and < 400;

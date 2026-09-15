@@ -1,4 +1,5 @@
 using SaintHenriBasketball.API.Filters;
+using SaintHenriBasketball.API.Authorization;
 using System.Threading.RateLimiting;
 using Resend;
 using SaintHenriBasketball.Application.Extensions;
@@ -150,11 +151,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
                     services.GetRequiredService<SaintHenriBasketball.Domain.Interfaces.Repositories.IUserRepository>(),
                     userId);
-                var reason = SaintHenriBasketball.Application.Helpers.TokenUserCheck.Evaluate(snapshot, principal.IsInRole("Admin"));
+                var reason = SaintHenriBasketball.Application.Helpers.TokenUserCheck.Evaluate(
+                    snapshot,
+                    principal.IsInRole("Admin"),
+                    principal.FindFirst(SaintHenriBasketball.Application.Helpers.StaffAccess.ClaimType)?.Value);
                 if (reason != null) context.Fail(reason);
             }
         };
     });
+
+// Volunteer staff policies: admin, or the matching staff role while volunteer-roles is on.
+builder.Services.AddAuthorization(options => options.AddStaffRolePolicies());
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, StaffRoleAuthorizationHandler>();
 
 // Add memory caching
 builder.Services.AddMemoryCache();

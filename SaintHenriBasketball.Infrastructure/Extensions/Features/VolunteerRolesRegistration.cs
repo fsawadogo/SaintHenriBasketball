@@ -1,4 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using SaintHenriBasketball.Application.Services.Implementations;
+using SaintHenriBasketball.Application.Services.Interfaces;
+using SaintHenriBasketball.Domain.Interfaces.Repositories;
+using SaintHenriBasketball.Infrastructure.Data.Repositories;
 
 namespace SaintHenriBasketball.Infrastructure.Extensions.Features;
 
@@ -7,6 +11,9 @@ public static class VolunteerRolesRegistration
 {
     public static IServiceCollection AddVolunteerRolesFeature(this IServiceCollection services)
     {
+        services.AddScoped<IVolunteerRolesRepository, VolunteerRolesRepository>();
+        services.AddScoped<IStaffRoleService, StaffRoleService>();
+        services.AddScoped<ICourtCaptainService, CourtCaptainService>();
         return services;
     }
 }

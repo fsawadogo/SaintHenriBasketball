@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.FeatureFlags;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using System.Security.Claims;
 
@@ -57,15 +58,27 @@ public class FeatureFlagsController : BaseApiController
 
     /// Flags the client app gates on. Anonymous callers and players get public flags only;
     /// an authenticated admin also receives admin-only flags so admin screens can gate on them.
+    /// While volunteer-roles is on, a volunteer also receives the admin-only flags their staff screens gate on.
     [HttpGet("api/v{version:apiVersion}/feature-flags/public")]
     [AllowAnonymous]
     [SaintHenriBasketball.API.Filters.AllowTwoFactorEnrollment]
     [ProducesResponseType(typeof(IReadOnlyDictionary<string, bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyDictionary<string, bool>>> GetPublic()
     {
-        var includeAdminOnly = User.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+        var authenticated = User.Identity?.IsAuthenticated == true;
+        var includeAdminOnly = authenticated && User.IsInRole("Admin");
         var flags = await _featureFlagService.GetClientFlagsAsync(includeAdminOnly);
         Response.Headers.Vary = "Authorization";
+
+        var staffRole = authenticated && !includeAdminOnly ? StaffAccess.RoleFromClaim(User.FindFirstValue(StaffAccess.ClaimType)) : null;
+        if (staffRole is { } role && role != Domain.Enums.StaffRole.None && await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.VolunteerRoles))
+        {
+            var adminFlags = await _featureFlagService.GetClientFlagsAsync(includeAdminOnly: true);
+            var merged = new Dictionary<string, bool>(flags);
+            foreach (var key in StaffAccess.ClientFlagKeys(role))
+                if (adminFlags.TryGetValue(key, out var enabled)) merged[key] = enabled;
+            return Ok(merged);
+        }
         return Ok(flags);
     }
 
