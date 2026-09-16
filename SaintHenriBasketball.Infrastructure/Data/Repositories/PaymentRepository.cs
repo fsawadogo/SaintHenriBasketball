@@ -187,6 +187,9 @@ public class PaymentRepository : IPaymentRepository
             .FirstOrDefaultAsync();
     }
 
+    public async Task<bool> HasAnyPaymentForSessionAsync(Guid userId, Guid sessionId) =>
+        await _context.Payments.AnyAsync(p => p.UserId == userId && p.SessionId == sessionId);
+
     public async Task<Payment?> GetByUserAndSeasonAsync(Guid userId, Guid seasonId)
     {
         return await _context.Payments

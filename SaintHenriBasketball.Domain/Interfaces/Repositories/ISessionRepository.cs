@@ -18,6 +18,9 @@ public interface ISessionRepository
     Task<IReadOnlyList<Session>> GetAllSessionsAsync();
     Task<int> CountSessionsBetweenAsync(DateTime from, DateTime to);
 
+    /// Sessions dated between the two calendar dates, both included, with their registrations.
+    Task<IReadOnlyList<Session>> GetSessionsBetweenDatesAsync(DateTime fromDate, DateTime toDate);
+
     /// Counts of the rows deleting the session would remove, or null when it doesn't exist.
     Task<SessionDeletionImpact?> GetDeletionImpactAsync(Guid sessionId);
 

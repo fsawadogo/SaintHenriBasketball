@@ -47,6 +47,11 @@ public interface IPaymentRepository
     /// already exists.
     Task<Payment?> GetByUserAndSessionAsync(Guid userId, Guid sessionId);
 
+    /// True when any payment exists for the (user, session) pair, whatever its status — a refunded one included.
+    /// The unattended billing sweep uses this so a refund isn't undone by the next hourly run; the QR check-in
+    /// path keeps using <see cref="GetByUserAndSessionAsync"/>, which lets a refunded player pay again.
+    Task<bool> HasAnyPaymentForSessionAsync(Guid userId, Guid sessionId);
+
     /// The payment <see cref="GetOrCreateSeasonPaymentAsync"/> would reuse (neither Refunded nor Failed), or null.
     Task<Payment?> GetByUserAndSeasonAsync(Guid userId, Guid seasonId);
 

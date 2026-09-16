@@ -708,18 +708,34 @@ public class PaymentService : IPaymentService
        return await EnsureCoreAsync(user, session, registrationConfirmed: true);
    }
 
-   public async Task<int> RunDailyDropInBillingAsync()
-   {
-       var todayLocal = SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
+   public Task<int> RunDailyDropInBillingAsync() => RunDropInBillingAsync(DateTime.UtcNow);
 
-       var upcoming = await _sessionRepository.GetUpcomingSessionsAsync();
-       var todays = upcoming
-           .Where(s => s.Status == SessionStatus.Open && s.SessionDate.Date == todayLocal)
-           .ToList();
+   public async Task<int> RunDropInBillingAsync(DateTime nowUtc)
+   {
+       var todayLocal = SessionTimeHelper.ToLocal(nowUtc).Date;
+
+       // Yesterday is included so a late session whose billing hour lands after midnight isn't missed.
+       var candidates = await _sessionRepository.GetSessionsBetweenDatesAsync(todayLocal.AddDays(-1), todayLocal);
+       // Open or full: a session that filled up still has drop-in players to bill. Cancelled and completed ones are skipped.
+       var todays = new List<Session>();
+       foreach (var candidate in candidates.Where(s => s.Status == SessionStatus.Open || s.Status == SessionStatus.Full))
+       {
+           if (DropInBillingSchedule.ParseStartTime(candidate.StartTime) is null)
+           {
+               // Surface the bad row instead of billing it at the fallback hour, which for an evening
+               // session would be hours before it starts.
+               _logger.LogWarning("DropInBilling: session {SessionId} on {SessionDate:yyyy-MM-dd} has an unusable start time '{StartTime}'; not billed",
+                   candidate.Id, candidate.SessionDate, candidate.StartTime);
+               continue;
+           }
+
+           if (DropInBillingSchedule.IsDue(candidate.SessionDate, candidate.StartTime, nowUtc))
+               todays.Add(candidate);
+       }
 
        if (todays.Count == 0)
        {
-           _logger.LogInformation("DropInBilling: no open sessions today; nothing to do");
+           _logger.LogInformation("DropInBilling: no sessions due for billing; nothing to do");
            return 0;
        }
 
@@ -737,6 +753,12 @@ public class PaymentService : IPaymentService
            {
                if (!users.TryGetValue(reg.UserId, out var user)) continue;
                if (user.PaymentPlan != PaymentPlan.DropIn) continue;
+
+               // Any payment at all — a refunded one included — means this player has already been billed
+               // for this session. A session stays billable for up to 48 hours now, so without this the next
+               // hourly run would undo an admin's refund with a fresh Pending payment and another email.
+               // Only this unattended sweep refuses; the QR check-in path still lets a refunded player pay again.
+               if (await _paymentRepository.HasAnyPaymentForSessionAsync(reg.UserId, session.Id)) continue;
 
                var result = await EnsureCoreAsync(user, session, registrationConfirmed: true);
                if (result.Created) created++;
