@@ -36,6 +36,12 @@ public static class SessionTimeHelper
         return TimeZoneInfo.ConvertTimeFromUtc(asUtc, MontrealTz);
     }
 
+    /// Montreal's calendar date for an instant. Session lists must use this, not the server's date:
+    /// Azure runs on UTC, where the evening in Montreal is already the next day.
+    public static DateTime MontrealToday(DateTime utcNow) => ToLocal(utcNow).Date;
+
+    public static DateTime MontrealToday() => MontrealToday(DateTime.UtcNow);
+
     /// Parses a session time string and returns the formatted `h:mm` for display.
     /// Falls back to the original string when parsing fails.
     public static string FormatDisplay(string? time)

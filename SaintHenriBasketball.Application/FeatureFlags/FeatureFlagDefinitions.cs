@@ -135,5 +135,9 @@ public static class FeatureFlagDefinitions
             "Volunteer staff roles (court captain, treasurer) with limited admin access.",
             "Rôles bénévoles (capitaine de terrain, trésorier) avec un accès admin limité.",
             IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonScheduleWizard,
+            "Create a season and every session for it in one step: session days, times, spots, drop-in price and gym.",
+            "Créer une saison et toutes ses séances d'un coup : jours, heures, places, prix à la séance et gymnase.",
+            IsPublic: false),
     };
 }

@@ -1081,6 +1081,7 @@ await SeasonRolloverChecks.RunAsync(Db, Assert);
 await WaitlistAdminChecks.RunAsync(Db, Assert);
 await PromoReferralReportsChecks.RunAsync(Db, Assert);
 await VolunteerRolesChecks.RunAsync(Db, Assert);
+await SeasonScheduleWizardChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler

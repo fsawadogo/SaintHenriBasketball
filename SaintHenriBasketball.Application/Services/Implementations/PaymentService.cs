@@ -708,18 +708,23 @@ public class PaymentService : IPaymentService
        return await EnsureCoreAsync(user, session, registrationConfirmed: true);
    }
 
-   public async Task<int> RunDailyDropInBillingAsync()
-   {
-       var todayLocal = SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
+   public Task<int> RunDailyDropInBillingAsync() => RunDropInBillingAsync(DateTime.UtcNow);
 
-       var upcoming = await _sessionRepository.GetUpcomingSessionsAsync();
-       var todays = upcoming
-           .Where(s => s.Status == SessionStatus.Open && s.SessionDate.Date == todayLocal)
+   public async Task<int> RunDropInBillingAsync(DateTime nowUtc)
+   {
+       var todayLocal = SessionTimeHelper.ToLocal(nowUtc).Date;
+
+       // Yesterday is included so a late session whose billing hour lands after midnight isn't missed.
+       var candidates = await _sessionRepository.GetSessionsBetweenDatesAsync(todayLocal.AddDays(-1), todayLocal);
+       // Open or full: a session that filled up still has drop-in players to bill. Cancelled and completed ones are skipped.
+       var todays = candidates
+           .Where(s => (s.Status == SessionStatus.Open || s.Status == SessionStatus.Full)
+               && DropInBillingSchedule.IsDue(s.SessionDate, s.StartTime, nowUtc))
            .ToList();
 
        if (todays.Count == 0)
        {
-           _logger.LogInformation("DropInBilling: no open sessions today; nothing to do");
+           _logger.LogInformation("DropInBilling: no sessions due for billing; nothing to do");
            return 0;
        }
 

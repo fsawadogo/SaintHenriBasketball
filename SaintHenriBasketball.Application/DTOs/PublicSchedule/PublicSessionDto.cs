@@ -11,4 +11,7 @@ public class PublicSessionDto
     public int RegisteredPlayersCount { get; set; }
     public int SpotsRemaining { get; set; }
     public decimal DropInPrice { get; set; }
+
+    /// True when the session has no spots left. Shown as a "Full" badge instead of hiding the session.
+    public bool IsFull { get; set; }
 }

@@ -5,7 +5,6 @@ using SaintHenriBasketball.Application.DTOs.PublicSchedule;
 using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Application.Services.Interfaces;
-using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
 namespace SaintHenriBasketball.API.Controllers;
@@ -19,11 +18,13 @@ public class PublicScheduleController : ControllerBase
 
     private readonly ISessionRepository _sessionRepository;
     private readonly ICacheService _cache;
+    private readonly IFeatureFlagService _flags;
 
-    public PublicScheduleController(ISessionRepository sessionRepository, ICacheService cache)
+    public PublicScheduleController(ISessionRepository sessionRepository, ICacheService cache, IFeatureFlagService flags)
     {
         _sessionRepository = sessionRepository;
         _cache = cache;
+        _flags = flags;
     }
 
     [HttpGet("api/v{version:apiVersion}/public/sessions/upcoming")]
@@ -32,7 +33,9 @@ public class PublicScheduleController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<PublicSessionDto>>> GetUpcoming([FromQuery] int take = 12)
     {
         var clampedTake = Math.Clamp(take, 1, 30);
-        var cacheKey = $"PublicSchedule:Upcoming:{clampedTake}";
+        // Full sessions are listed with a badge only while the wizard flag is on, so the key carries the choice.
+        var includeFull = await _flags.IsEnabledAsync(FeatureFlagKeys.SeasonScheduleWizard);
+        var cacheKey = $"PublicSchedule:Upcoming:{(includeFull ? "full" : "open")}-{clampedTake}";
 
         var cached = await _cache.GetAsync<List<PublicSessionDto>>(cacheKey);
         if (cached is not null)
@@ -42,26 +45,7 @@ public class PublicScheduleController : ControllerBase
         }
 
         var upcoming = await _sessionRepository.GetUpcomingSessionsAsync();
-        var now = DateTime.UtcNow;
-        var result = upcoming
-            .Where(s => s.Status == SessionStatus.Open)
-            // The repository query compares dates only; hide sessions from earlier today that have ended.
-            .Where(s => SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(s.SessionDate, s.EndTime, fallbackHour: 12)) > now)
-            .OrderBy(s => s.SessionDate)
-            .Take(clampedTake)
-            .Select(s => new PublicSessionDto
-            {
-                Id = s.Id,
-                SessionDate = s.SessionDate,
-                StartTime = s.StartTime,
-                EndTime = s.EndTime,
-                Location = s.Location,
-                MaxCapacity = s.MaxCapacity,
-                RegisteredPlayersCount = s.RegisteredPlayersCount,
-                SpotsRemaining = Math.Max(0, s.MaxCapacity - s.RegisteredPlayersCount),
-                DropInPrice = s.DropInPrice,
-            })
-            .ToList();
+        var result = PublicScheduleSelector.Select(upcoming, DateTime.UtcNow, clampedTake, includeFull);
 
         await _cache.SetAsync(cacheKey, result, CacheTtl);
         Response.Headers["Cache-Control"] = "public, max-age=60";
