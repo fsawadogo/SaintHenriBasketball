@@ -41,8 +41,8 @@ public static class QuartzExtensions
             q.AddTrigger(opts => opts
                 .ForJob(billingJobKey)
                 .WithIdentity("DropInBilling-trigger")
-                .WithDescription("Auto-bill drop-in players Sat 11 AM ET")
-                .WithCronSchedule("0 0 11 ? * SAT", x => x.InTimeZone(montreal)));
+                .WithDescription("Auto-bill drop-in players an hour after each session starts")
+                .WithCronSchedule("0 0 * * * ?", x => x.InTimeZone(montreal)));
 
             var capacityJobKey = new JobKey("CapacityCheck");
             q.AddJob<CapacityCheckJob>(opts => opts.WithIdentity(capacityJobKey).StoreDurably());

@@ -1,9 +1,13 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using SaintHenriBasketball.Application.DTOs.PublicSchedule;
 using SaintHenriBasketball.Application.DTOs.SeasonSchedule;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Helpers;
+using SaintHenriBasketball.Application.Mapping;
 using SaintHenriBasketball.Application.Services.Implementations;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
@@ -238,5 +242,81 @@ internal static class SeasonScheduleWizardChecks
         assert(withFull.Count == 2 && withFull[1].IsFull && !withFull[0].IsFull, "public schedule: with the flag full sessions are listed and marked");
         assert(withFull.All(s => s.Location != null && s.Location.Contains(tag)) && withFull[0].SpotsRemaining == 20, "public schedule: the session details come through");
         assert(PublicScheduleSelector.Select(pool, publicNowUtc, 1, includeFull: true).Count == 1, "public schedule: the take limit is respected");
+
+        // ---- Billing is due an hour after a session starts, any day of the week ----
+        var billingDay = new DateTime(2044, 11, 8); // Tuesday
+        var oneHourIn = SessionTimeHelper.ToUtc(billingDay.AddHours(20));
+        assert(!DropInBillingSchedule.IsDue(billingDay, "19:00", SessionTimeHelper.ToUtc(billingDay.AddHours(19).AddMinutes(30))),
+            "billing: not due half an hour into the session");
+        assert(DropInBillingSchedule.IsDue(billingDay, "19:00", oneHourIn), "billing: due one hour after the start");
+        assert(DropInBillingSchedule.IsDue(new DateTime(2044, 11, 5), "10:00", SessionTimeHelper.ToUtc(new DateTime(2044, 11, 5).AddHours(11))),
+            "billing: a Saturday 10:00 session is still billed at 11:00");
+
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["JwtSettings:Key"] = "local-regression-signing-key-long-enough-for-any-hmac-algorithm-0123456789abcdef",
+            ["AppUrl"] = "http://localhost", ["Referrals:RewardAmount"] = "10.00" }).Build();
+        var mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>(), NullLoggerFactory.Instance).CreateMapper();
+        FeatureFlagService Flags(ApplicationDbContext context) => new(new FeatureFlagRepository(context),
+            new MemoryCacheService(new MemoryCache(new MemoryCacheOptions()), NullLogger<MemoryCacheService>.Instance),
+            new AuditLogRepository(context), NullLogger<FeatureFlagService>.Instance);
+        PaymentService PaymentsFor(ApplicationDbContext context)
+        {
+            var users = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var notifications = new NotificationService(new NotificationRepository(context), users, NullLogger<NotificationService>.Instance);
+            var referrals = new ReferralService(new ReferralRepository(context), users, NullLogger<ReferralService>.Instance, new PaymentRepository(context),
+                Flags(context), notifications, new AuditLogRepository(context), config);
+            // No email service: the payment email fails and is logged, and the payment row is still created.
+            return new PaymentService(new PaymentRepository(context), users, new SessionRepository(context), new SessionRegistrationRepository(context), mapper,
+                NullLogger<PaymentService>.Instance, null!, notifications, new SeasonRepository(context, NullLogger<SeasonRepository>.Instance),
+                new PromoCodeRepository(context), new AccountCreditRepository(context), referrals, Flags(context));
+        }
+
+        var eveningDate = SessionTimeHelper.MontrealToday();
+        var evening = new Session(eveningDate, 20, 14m, "19:00", "21:00", $"Billing court {tag}");
+        var eveningPlayer = new ApplicationUser($"wizardbill_{tag}", $"wizardbill_{tag}@example.test", "test-only", "Wizard", "Bill", PaymentPlan.DropIn) { EmailConfirmed = true };
+        await using (var context = db())
+        {
+            context.Sessions.Add(evening);
+            context.Users.Add(eveningPlayer);
+            context.SessionRegistrations.Add(new SessionRegistration(eveningPlayer.Id, evening.Id, PaymentPlan.DropIn));
+            await context.SaveChangesAsync();
+        }
+
+        int billed;
+        await using (var context = db())
+            billed = await PaymentsFor(context).RunDropInBillingAsync(SessionTimeHelper.ToUtc(eveningDate.AddHours(20)));
+        assert(billed >= 1, "billing: a Tuesday evening session is billed an hour after it starts");
+
+        await using (var context = db())
+            assert(await context.Payments.AnyAsync(p => p.UserId == eveningPlayer.Id && p.SessionId == evening.Id && p.Amount == 14m),
+                "billing: the payment uses the session's own drop-in price");
+
+        int billedAgain;
+        await using (var context = db())
+            billedAgain = await PaymentsFor(context).RunDropInBillingAsync(SessionTimeHelper.ToUtc(eveningDate.AddHours(21)));
+        assert(billedAgain == 0, "billing: running again bills nobody twice");
+
+        int billedEarly;
+        await using (var context = db())
+            billedEarly = await PaymentsFor(context).RunDropInBillingAsync(SessionTimeHelper.ToUtc(eveningDate.AddHours(9)));
+        assert(billedEarly == 0, "billing: nothing is billed before a session starts");
+
+        // A session that filled up still has drop-in players to bill.
+        var fullDate = SessionTimeHelper.MontrealToday();
+        var fullBillingSession = new Session(fullDate, 1, 16m, "18:00", "20:00", $"Billing full court {tag}") { Status = SessionStatus.Full, RegisteredPlayersCount = 1 };
+        var fullPlayer = new ApplicationUser($"wizardfull_{tag}", $"wizardfull_{tag}@example.test", "test-only", "Wizard", "Full", PaymentPlan.DropIn) { EmailConfirmed = true };
+        await using (var context = db())
+        {
+            context.Sessions.Add(fullBillingSession);
+            context.Users.Add(fullPlayer);
+            context.SessionRegistrations.Add(new SessionRegistration(fullPlayer.Id, fullBillingSession.Id, PaymentPlan.DropIn));
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = db())
+            await PaymentsFor(context).RunDropInBillingAsync(SessionTimeHelper.ToUtc(fullDate.AddHours(19)));
+        await using (var context = db())
+            assert(await context.Payments.AnyAsync(p => p.UserId == fullPlayer.Id && p.SessionId == fullBillingSession.Id),
+                "billing: a session that filled up is still billed");
     }
 }

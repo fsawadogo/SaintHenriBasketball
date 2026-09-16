@@ -40,4 +40,7 @@ public interface IPaymentService
     /// for each registered drop-in player. Idempotent — safe to combine with QR check-in.
     /// Returns the number of new payments created.
     Task<int> RunDailyDropInBillingAsync();
+
+    /// Bills drop-in players for every session that started at least an hour ago. `nowUtc` makes it checkable.
+    Task<int> RunDropInBillingAsync(DateTime nowUtc);
 }

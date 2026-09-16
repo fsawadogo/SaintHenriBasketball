@@ -123,6 +123,17 @@ public class SessionRepository : ISessionRepository
     public Task<int> CountSessionsBetweenAsync(DateTime from, DateTime to) =>
         _context.Sessions.CountAsync(s => s.SessionDate >= from && s.SessionDate <= to);
 
+    public async Task<IReadOnlyList<Session>> GetSessionsBetweenDatesAsync(DateTime fromDate, DateTime toDate)
+    {
+        var from = fromDate.Date;
+        var toExclusive = toDate.Date.AddDays(1);
+        return await _context.Sessions
+            .Include(s => s.Registrations)
+            .Where(s => s.SessionDate >= from && s.SessionDate < toExclusive)
+            .OrderBy(s => s.SessionDate)
+            .ToListAsync();
+    }
+
     public async Task<SessionDeletionImpact?> GetDeletionImpactAsync(Guid sessionId)
     {
         if (!await _context.Sessions.AnyAsync(s => s.Id == sessionId)) return null;
