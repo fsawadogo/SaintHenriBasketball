@@ -57,4 +57,7 @@ public static class FeatureFlagKeys
 
     // Season schedule wizard — create a season and all its sessions in one step.
     public const string SeasonScheduleWizard = "season-schedule-wizard";
+
+    // Redesigned admin seasons page — one hero for the open season, rows for the rest.
+    public const string SeasonsPageRedesign = "seasons-page-redesign";
 }

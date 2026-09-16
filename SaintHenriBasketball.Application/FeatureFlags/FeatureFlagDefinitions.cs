@@ -139,5 +139,9 @@ public static class FeatureFlagDefinitions
             "Create a season and every session for it in one step: session days, times, spots, drop-in price and gym.",
             "Créer une saison et toutes ses séances d'un coup : jours, heures, places, prix à la séance et gymnase.",
             IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonsPageRedesign,
+            "Redesigned seasons page: the season open now gets a hero with the club mark, the others become compact rows.",
+            "Page des saisons repensée : la saison en cours est mise en vedette avec l'écusson du club, les autres deviennent des rangées compactes.",
+            IsPublic: false),
     };
 }
