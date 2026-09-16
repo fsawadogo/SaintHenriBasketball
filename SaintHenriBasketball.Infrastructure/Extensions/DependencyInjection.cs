@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddWaitlistAdminFeature();
         services.AddPromoReferralReportsFeature();
         services.AddVolunteerRolesFeature();
+        services.AddSeasonScheduleWizardFeature();
 
         // Add AutoMapper
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile).Assembly);

@@ -1,15 +1,19 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using SaintHenriBasketball.Application.DTOs.SeasonSchedule;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Helpers;
+using SaintHenriBasketball.Application.Services.Implementations;
+using SaintHenriBasketball.Domain.Entities;
+using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Infrastructure.Data.Context;
+using SaintHenriBasketball.Infrastructure.Data.Repositories;
 
 /// Regression checks for the `season-schedule-wizard` feature. Uses its own data dated 2043+, so other checks don't overlap.
 internal static class SeasonScheduleWizardChecks
 {
     public static async Task RunAsync(Func<ApplicationDbContext> db, Action<bool, string> assert)
     {
-        await Task.CompletedTask; // database checks arrive in task 2
-
         static SeasonScheduleDayDto Day(int dayOfWeek, string start, string end, int capacity = 20, decimal price = 10m, string location = "717 Saint-Ferdinand") =>
             new() { DayOfWeek = dayOfWeek, StartTime = start, EndTime = end, MaxCapacity = capacity, DropInPrice = price, Location = location };
 
@@ -88,5 +92,127 @@ internal static class SeasonScheduleWizardChecks
         // ---- Duplicate key ----
         assert(SeasonSchedulePlanner.Key(new DateTime(2043, 9, 5, 13, 0, 0), "10:00:00") == SeasonSchedulePlanner.Key(new DateTime(2043, 9, 5), "10:00"),
             "schedule: a session is identified by its date and start time, however the time is written");
+
+        // ---- Service: preview, create, duplicates, skips, all-or-nothing ----
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var cache = new RecordingCache();
+        SeasonScheduleService Service(ApplicationDbContext context) => new(
+            new SeasonRepository(context, NullLogger<SeasonRepository>.Instance),
+            new SeasonScheduleRepository(context),
+            new AuditLogService(new AuditLogRepository(context)),
+            cache,
+            NullLogger<SeasonScheduleService>.Instance);
+
+        async Task<Exception?> FailureAsync(Func<SeasonScheduleService, Task> action)
+        {
+            try { await using var context = db(); await action(Service(context)); return null; }
+            catch (Exception ex) { return ex; }
+        }
+        async Task CloseOpenSeasonsAsync()
+        {
+            await using var context = db();
+            await context.Seasons.Where(s => s.Status == SeasonStatus.Open)
+                .ExecuteUpdateAsync(u => u.SetProperty(s => s.Status, SeasonStatus.Closed));
+        }
+
+        var seasonStart = new DateTime(2044, 9, 5);   // Monday
+        var seasonEnd = new DateTime(2044, 10, 2);    // Sunday
+        var wizardDays = new List<SeasonScheduleDayDto> { Day(6, "10:00", "12:00", 20, 10m, $"Wizard court {tag}"), Day(2, "19:00", "21:00", 12, 15m, $"Wizard gym {tag}") };
+
+        // A session that already exists on one of the Saturdays, and a cancelled one that must not block its date.
+        var existingSaturday = new DateTime(2044, 9, 10);
+        var cancelledSaturday = new DateTime(2044, 9, 17);
+        await using (var context = db())
+        {
+            context.Sessions.Add(new Session(existingSaturday, 20, 10m, "10:00:00", "12:00", $"Existing court {tag}"));
+            context.Sessions.Add(new Session(cancelledSaturday, 20, 10m, "10:00", "12:00", $"Cancelled court {tag}") { Status = SessionStatus.Cancelled });
+            await context.SaveChangesAsync();
+        }
+
+        await CloseOpenSeasonsAsync();
+
+        SeasonSchedulePreviewDto preview;
+        await using (var context = db())
+            preview = await Service(context).PreviewAsync(new SeasonSchedulePreviewRequestDto { StartDate = seasonStart, EndDate = seasonEnd, Days = wizardDays });
+
+        assert(preview.Sessions.Count == 8, "wizard preview: 4 Saturdays and 4 Tuesdays");
+        assert(preview.Sessions.Count(s => s.AlreadyExists) == 1
+            && preview.Sessions.Single(s => s.AlreadyExists).Date == existingSaturday, "wizard preview: an existing session at the same time is marked");
+        assert(preview.Sessions.Single(s => s.Date == cancelledSaturday).AlreadyExists == false, "wizard preview: a cancelled session doesn't block its date");
+        assert(preview.SessionsToCreate == 7 && preview.SessionsAlreadyExisting == 1, "wizard preview: the totals match");
+        assert(preview.WillBeClosed == false && preview.OpenSeasonName is null, "wizard preview: with no season open the new one would be open");
+
+        // ---- Create, skipping one Tuesday ----
+        var skipTuesday = new DateTime(2044, 9, 20);
+        SeasonScheduleCreateResultDto created;
+        await using (var context = db())
+            created = await Service(context).CreateAsync(new CreateSeasonWithScheduleDto
+            {
+                Name = $"Wizard season {tag}", StartDate = seasonStart, EndDate = seasonEnd, Price = 120m, Notes = "Bring both shirts",
+                Days = wizardDays, Skip = new List<SeasonScheduleSkipDto> { new() { Date = skipTuesday, StartTime = "19:00" } },
+            }, null, "Regression");
+
+        assert(created.SessionsCreated == 6 && created.SessionsSkipped == 1 && created.SessionsAlreadyExisting == 1, "wizard create: created, skipped and existing counts");
+        assert(created.Status == SeasonStatus.Open, "wizard create: the season opens when no other season is open");
+
+        await using (var context = db())
+        {
+            var saved = await context.Sessions.AsNoTracking()
+                // "Wizard " narrows to sessions the wizard itself created; the fixture's "Existing"/"Cancelled" court
+                // sessions above also carry the tag (for their own uniqueness) but must not be counted here.
+                .Where(s => s.SessionDate >= seasonStart && s.SessionDate <= seasonEnd && s.Location!.Contains("Wizard") && s.Location.Contains(tag)).ToListAsync();
+            assert(saved.Count == 6, "wizard create: six sessions saved");
+            assert(saved.Count(s => s.StartTime == "19:00" && s.MaxCapacity == 12 && s.DropInPrice == 15m) == 3, "wizard create: each day keeps its own time, spots and price");
+            assert(saved.All(s => s.Status == SessionStatus.Open), "wizard create: sessions are open");
+            assert(saved.All(s => s.SessionDate != skipTuesday), "wizard create: the unticked date is not created");
+            assert(await context.AuditLogs.AnyAsync(a => a.EntityId == created.SeasonId && a.Action == SeasonScheduleService.CreatedAction), "wizard create: one activity log entry");
+        }
+
+        assert(cache.Removed.Contains("AllSeasons") && cache.Removed.Contains("CurrentSeason")
+            && cache.Removed.Contains(SessionCacheKeys.UpcomingSessions) && cache.Removed.Contains(SessionCacheKeys.AvailableSessions)
+            && cache.Removed.Contains("AllSessions") && cache.Removed.Contains("PublicSchedule:Upcoming*"), "wizard create: season, session and public schedule caches cleared");
+
+        // ---- A second season while the first is open is created closed ----
+        SeasonScheduleCreateResultDto second;
+        await using (var context = db())
+            second = await Service(context).CreateAsync(new CreateSeasonWithScheduleDto
+            {
+                Name = $"Wizard next {tag}", StartDate = new DateTime(2045, 1, 7), EndDate = new DateTime(2045, 1, 28), Price = 130m,
+                Days = new List<SeasonScheduleDayDto> { Day(6, "10:00", "12:00", 20, 10m, $"Wizard court {tag}") },
+            }, null, "Regression");
+        assert(second.Status == SeasonStatus.Closed, "wizard create: a second season is created closed while another is open");
+
+        await using (var context = db())
+            assert((await Service(context).PreviewAsync(new SeasonSchedulePreviewRequestDto
+            {
+                StartDate = new DateTime(2045, 3, 4), EndDate = new DateTime(2045, 3, 25),
+                Days = new List<SeasonScheduleDayDto> { Day(6, "10:00", "12:00", 20, 10m, $"Wizard court {tag}") },
+            })).WillBeClosed, "wizard preview: warns that the season would be created closed");
+
+        // ---- Nothing is saved when one session can't be saved ----
+        var brokenName = $"Wizard broken {tag}";
+        var brokenDate = new DateTime(2046, 5, 5);
+        var brokenFailure = await FailureAsync(async _ =>
+        {
+            await using var context = db();
+            var repository = new SeasonScheduleRepository(context);
+            // Notes are limited to 500 characters in the database, so this insert fails.
+            var season = new Season(new DateTime(2046, 5, 1), new DateTime(2046, 5, 31), 100m, new string('x', 600)) { Name = brokenName };
+            await repository.AddSeasonWithSessionsAsync(season, new[] { new Session(brokenDate, 20, 10m, "10:00", "12:00", $"Broken court {tag}") });
+        });
+        assert(brokenFailure is not null, "wizard save: a failing insert throws");
+        await using (var context = db())
+        {
+            assert(!await context.Seasons.AnyAsync(s => s.Name == brokenName), "wizard save: the season is not saved when a session fails");
+            assert(!await context.Sessions.AnyAsync(s => s.SessionDate == brokenDate), "wizard save: no session is saved either");
+        }
+
+        // ---- Refused input reaches the service too ----
+        assert(await FailureAsync(s => s.CreateAsync(new CreateSeasonWithScheduleDto
+        {
+            Name = "", StartDate = seasonStart, EndDate = seasonEnd, Price = 100m, Days = wizardDays,
+        }, null, "Regression")) is ValidationException, "wizard create: a season without a name is refused");
+
+        await CloseOpenSeasonsAsync();
     }
 }
