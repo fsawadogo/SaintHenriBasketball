@@ -29,6 +29,9 @@ public class ApplicationUser
     public string? PhoneNumber { get; set; }
     public bool SmsOptIn { get; set; }
     public bool SmsAnnouncementDismissed { get; set; }
+    /// Set when the player asked not to see the welcome tour again. Kept on the account rather than
+    /// in the browser so it follows them across devices and survives clearing site data.
+    public bool PlayerTourDismissed { get; set; }
     public bool SessionRemindersEnabled { get; set; } = true;
     public bool PaymentRemindersEnabled { get; set; } = true;
     public bool WaitlistAlertsEnabled { get; set; } = true;

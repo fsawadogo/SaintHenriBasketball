@@ -105,6 +105,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.MedicalAlerts).HasMaxLength(2000);
             entity.Property(e => e.PhoneNumber).HasMaxLength(40);
             entity.Property(e => e.SmsOptIn).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.PlayerTourDismissed).IsRequired().HasDefaultValue(false);
             entity.Property(e => e.EmailNotificationsEnabled).IsRequired().HasDefaultValue(true);
             entity.Property(e => e.InAppNotificationsEnabled).IsRequired().HasDefaultValue(true);
 
