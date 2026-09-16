@@ -12,7 +12,7 @@ public static class PublicScheduleSelector
         return sessions
             .Where(s => s.Status == SessionStatus.Open || (includeFull && s.Status == SessionStatus.Full))
             // The repository compares dates only; hide sessions from earlier today that have ended.
-            .Where(s => SessionTimeHelper.ToUtc(SessionTimeHelper.CombineLocal(s.SessionDate, s.EndTime, fallbackHour: 12)) > nowUtc)
+            .Where(s => !SessionTimeHelper.HasEnded(s.SessionDate, s.EndTime, nowUtc))
             .OrderBy(s => s.SessionDate).ThenBy(s => s.StartTime, StringComparer.Ordinal)
             .Take(take)
             .Select(s => new PublicSessionDto

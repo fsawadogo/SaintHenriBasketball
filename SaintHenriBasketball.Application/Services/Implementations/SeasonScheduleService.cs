@@ -14,7 +14,6 @@ public class SeasonScheduleService : ISeasonScheduleService
     public const string CreatedAction = "Season.CreatedWithSchedule";
     private const string AllSeasonsCacheKey = "AllSeasons";
     private const string CurrentSeasonCacheKey = "CurrentSeason";
-    private const string AllSessionsCacheKey = "AllSessions";
     /// Matches the group MemoryCacheService builds from "PublicSchedule:Upcoming:{...}" keys.
     private const string PublicScheduleCachePrefix = "PublicSchedule:Upcoming";
 
@@ -124,7 +123,6 @@ public class SeasonScheduleService : ISeasonScheduleService
         await _cache.RemoveAsync(CurrentSeasonCacheKey);
         await _cache.RemoveAsync(SessionCacheKeys.UpcomingSessions);
         await _cache.RemoveAsync(SessionCacheKeys.AvailableSessions);
-        await _cache.RemoveAsync(AllSessionsCacheKey);
         await _cache.RemoveByPrefixAsync(PublicScheduleCachePrefix);
     }
 

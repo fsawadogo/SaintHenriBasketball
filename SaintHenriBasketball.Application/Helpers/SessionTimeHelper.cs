@@ -42,6 +42,13 @@ public static class SessionTimeHelper
 
     public static DateTime MontrealToday() => MontrealToday(DateTime.UtcNow);
 
+    /// True once a session's end time has passed. One rule, shared by the public schedule and the
+    /// "next session" lookups: the repositories compare dates only, so a session that finished earlier
+    /// today still matches their `SessionDate.Date >= today` filter. An unreadable end time falls back
+    /// to noon, the same fallback the public schedule uses.
+    public static bool HasEnded(DateTime sessionDate, string? endTime, DateTime nowUtc) =>
+        ToUtc(CombineLocal(sessionDate, endTime, fallbackHour: 12)) <= nowUtc;
+
     /// Parses a session time string and returns the formatted `h:mm` for display.
     /// Falls back to the original string when parsing fails.
     public static string FormatDisplay(string? time)

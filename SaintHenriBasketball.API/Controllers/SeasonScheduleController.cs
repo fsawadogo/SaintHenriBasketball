@@ -25,6 +25,7 @@ public class SeasonScheduleController : BaseApiController
 
     /// The sessions the wizard would create. Writes nothing.
     [HttpPost("preview")]
+    [SkipAdminAudit]
     [ProducesResponseType(typeof(SeasonSchedulePreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SeasonSchedulePreviewDto>> Preview([FromBody] SeasonSchedulePreviewRequestDto body)

@@ -89,20 +89,39 @@ public class SessionRepository : ISessionRepository
         return await _context.Sessions.AnyAsync(s => s.Id == id);
     }
 
+    /// How many date-ordered rows the "next session" lookups materialise before picking the first
+    /// session that hasn't ended. Only sessions dated today can already have ended, so any bound
+    /// above the number of sessions in a single day is enough; the gym runs a handful.
+    private const int NextSessionCandidateLimit = 50;
+
+    /// The first of <paramref name="candidates"/> whose end time hasn't passed. The end-time rule needs
+    /// `CombineLocal`/`ToUtc`, which don't translate to SQL, so it runs in memory over a bounded page.
+    /// Ordered here too: SQL orders by date alone, which leaves same-day sessions in an arbitrary order.
+    private static Session? FirstNotEnded(IEnumerable<Session> candidates)
+    {
+        var nowUtc = DateTime.UtcNow;
+        return candidates
+            .Where(s => !SessionTimeHelper.HasEnded(s.SessionDate, s.EndTime, nowUtc))
+            .OrderBy(s => s.SessionDate).ThenBy(s => s.StartTime, StringComparer.Ordinal)
+            .FirstOrDefault();
+    }
+
     public async Task<Session?> GetClosestSessionAsync()
     {
         var today = SessionTimeHelper.MontrealToday(); // Montreal's date: the server runs on UTC
-        return await _context.Sessions
+        var candidates = await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s => s.SessionDate.Date >= today)
             .OrderBy(s => s.SessionDate)
-            .FirstOrDefaultAsync();
+            .Take(NextSessionCandidateLimit)
+            .ToListAsync();
+        return FirstNotEnded(candidates);
     }
 
     public async Task<Session?> GetNextSessionAsync()
     {
         var today = SessionTimeHelper.MontrealToday(); // Montreal's date: the server runs on UTC
-        return await _context.Sessions
+        var candidates = await _context.Sessions
             .Include(s => s.Registrations)
             .ThenInclude(r => r.User)
             .Where(s =>
@@ -110,7 +129,9 @@ public class SessionRepository : ISessionRepository
                 s.Status == SessionStatus.Open &&
                 s.RegisteredPlayersCount < s.MaxCapacity)
             .OrderBy(s => s.SessionDate)
-            .FirstOrDefaultAsync();
+            .Take(NextSessionCandidateLimit)
+            .ToListAsync();
+        return FirstNotEnded(candidates);
     }
 
     public async Task<IReadOnlyList<Session>> GetAllSessionsAsync()

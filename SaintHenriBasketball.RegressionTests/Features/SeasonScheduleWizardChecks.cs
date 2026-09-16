@@ -175,7 +175,7 @@ internal static class SeasonScheduleWizardChecks
 
         assert(cache.Removed.Contains("AllSeasons") && cache.Removed.Contains("CurrentSeason")
             && cache.Removed.Contains(SessionCacheKeys.UpcomingSessions) && cache.Removed.Contains(SessionCacheKeys.AvailableSessions)
-            && cache.Removed.Contains("AllSessions") && cache.Removed.Contains("PublicSchedule:Upcoming*"), "wizard create: season, session and public schedule caches cleared");
+            && cache.Removed.Contains("PublicSchedule:Upcoming*"), "wizard create: season, session and public schedule caches cleared");
 
         // ---- A second season while the first is open is created closed ----
         SeasonScheduleCreateResultDto second;
@@ -318,5 +318,72 @@ internal static class SeasonScheduleWizardChecks
         await using (var context = db())
             assert(await context.Payments.AnyAsync(p => p.UserId == fullPlayer.Id && p.SessionId == fullBillingSession.Id),
                 "billing: a session that filled up is still billed");
+
+        // ---- A refunded payment is not re-created by the next sweep ----
+        // The session stays billable for up to 48 hours now, so the sweep revisits it after the refund.
+        var refundDate = SessionTimeHelper.MontrealToday();
+        var refundSession = new Session(refundDate, 20, 12m, "17:00", "19:00", $"Billing refund court {tag}");
+        var refundPlayer = new ApplicationUser($"wizardrefund_{tag}", $"wizardrefund_{tag}@example.test", "test-only", "Wizard", "Refund", PaymentPlan.DropIn) { EmailConfirmed = true };
+        await using (var context = db())
+        {
+            context.Sessions.Add(refundSession);
+            context.Users.Add(refundPlayer);
+            context.SessionRegistrations.Add(new SessionRegistration(refundPlayer.Id, refundSession.Id, PaymentPlan.DropIn));
+            context.Payments.Add(new Payment(refundPlayer.Id, 12m, PaymentPlan.DropIn, refundSession.Id)
+            {
+                Status = PaymentStatus.Refunded,
+                RefundedOn = DateTime.UtcNow,
+                Reference = $"DROPIN-REFUNDED-{tag}",
+                CreatedAt = DateTime.UtcNow,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = db())
+            await PaymentsFor(context).RunDropInBillingAsync(SessionTimeHelper.ToUtc(refundDate.AddHours(18)));
+        await using (var context = db())
+            assert(await context.Payments.CountAsync(p => p.UserId == refundPlayer.Id && p.SessionId == refundSession.Id) == 1,
+                "billing: a refunded drop-in payment is not billed again by the sweep");
+
+        // ---- A start time the code can't read is never billed ----
+        var badTimeDay = new DateTime(2044, 11, 8);
+        assert(!DropInBillingSchedule.IsDue(badTimeDay, "", SessionTimeHelper.ToUtc(badTimeDay.AddHours(11)))
+            && !DropInBillingSchedule.IsDue(badTimeDay, "", SessionTimeHelper.ToUtc(badTimeDay.AddHours(23)))
+            && !DropInBillingSchedule.IsDue(badTimeDay, "", SessionTimeHelper.ToUtc(badTimeDay.AddDays(2))),
+            "billing: a session with an empty start time is never due");
+        assert(!DropInBillingSchedule.IsDue(badTimeDay, "7pm", SessionTimeHelper.ToUtc(badTimeDay.AddHours(23)))
+            && !DropInBillingSchedule.IsDue(badTimeDay, "19h00", SessionTimeHelper.ToUtc(badTimeDay.AddDays(2)))
+            && !DropInBillingSchedule.IsDue(badTimeDay, "   ", SessionTimeHelper.ToUtc(badTimeDay.AddDays(2))),
+            "billing: a session with a malformed start time is never due");
+        assert(DropInBillingSchedule.ParseStartTime("19:00") == TimeSpan.FromHours(19)
+            && DropInBillingSchedule.ParseStartTime("9:30") == new TimeSpan(9, 30, 0)
+            && DropInBillingSchedule.ParseStartTime("10:00:00") == TimeSpan.FromHours(10),
+            "billing: the start-time formats sessions are actually stored in still parse");
+
+        // ---- A session that has already ended is not the next one ----
+        var endedRuleDay = new DateTime(2044, 11, 5);
+        var oneOClock = SessionTimeHelper.ToUtc(endedRuleDay.AddHours(13));
+        assert(SessionTimeHelper.HasEnded(endedRuleDay, "12:00", oneOClock), "ended session: a session that finished this morning has ended");
+        assert(!SessionTimeHelper.HasEnded(endedRuleDay, "21:00", oneOClock), "ended session: tonight's session has not ended");
+        assert(!SessionTimeHelper.HasEnded(endedRuleDay.AddDays(1), "10:00", oneOClock), "ended session: tomorrow's session has not ended");
+        assert(SessionTimeHelper.HasEnded(endedRuleDay, "not a time", oneOClock)
+            && !SessionTimeHelper.HasEnded(endedRuleDay, "not a time", SessionTimeHelper.ToUtc(endedRuleDay.AddHours(9))),
+            "ended session: an unreadable end time falls back to noon, as the public schedule does");
+
+        // Seeds a session ending at 00:01 today, so it has already ended at every instant of the day
+        // except the one minute after midnight — the only moment this check would be ambiguous.
+        var endedToday = new Session(SessionTimeHelper.MontrealToday(), 20, 10m, "00:00", "00:01", $"Ended today {tag}");
+        await using (var context = db())
+        {
+            context.Sessions.Add(endedToday);
+            await context.SaveChangesAsync();
+        }
+        await using (var context = db())
+        {
+            var next = await new SessionRepository(context).GetNextSessionAsync();
+            assert(next is null || !SessionTimeHelper.HasEnded(next.SessionDate, next.EndTime, DateTime.UtcNow),
+                "next session: the lookup never returns a session that has already ended");
+            assert(next?.Id != endedToday.Id, "next session: a session that ended earlier today is skipped");
+        }
     }
 }
