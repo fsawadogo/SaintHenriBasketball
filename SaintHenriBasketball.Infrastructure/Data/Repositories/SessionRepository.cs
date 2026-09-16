@@ -1,4 +1,5 @@
-﻿using SaintHenriBasketball.Domain.Entities;
+﻿using SaintHenriBasketball.Application.Helpers;
+using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Infrastructure.Data.Context;
@@ -37,7 +38,7 @@ public class SessionRepository : ISessionRepository
 
     public async Task<IReadOnlyList<Session>> GetUpcomingSessionsAsync()
     {
-        var today = DateTime.Today; // Use local date only
+        var today = SessionTimeHelper.MontrealToday(); // Montreal's date: the server runs on UTC
         return await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s => s.SessionDate.Date >= today)
@@ -47,7 +48,7 @@ public class SessionRepository : ISessionRepository
 
     public async Task<IReadOnlyList<Session>> GetAvailableSessionsAsync()
     {
-        var today = DateTime.Today; // Use local date only
+        var today = SessionTimeHelper.MontrealToday(); // Montreal's date: the server runs on UTC
         return await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s =>
@@ -90,7 +91,7 @@ public class SessionRepository : ISessionRepository
 
     public async Task<Session?> GetClosestSessionAsync()
     {
-        var today = DateTime.Today; // Use local date only
+        var today = SessionTimeHelper.MontrealToday(); // Montreal's date: the server runs on UTC
         return await _context.Sessions
             .Include(s => s.Registrations)
             .Where(s => s.SessionDate.Date >= today)
@@ -100,7 +101,7 @@ public class SessionRepository : ISessionRepository
 
     public async Task<Session?> GetNextSessionAsync()
     {
-        var today = DateTime.Today; // Use local date only
+        var today = SessionTimeHelper.MontrealToday(); // Montreal's date: the server runs on UTC
         return await _context.Sessions
             .Include(s => s.Registrations)
             .ThenInclude(r => r.User)

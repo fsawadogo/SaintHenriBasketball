@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using SaintHenriBasketball.Application.DTOs.PublicSchedule;
 using SaintHenriBasketball.Application.DTOs.SeasonSchedule;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Helpers;
@@ -214,5 +215,28 @@ internal static class SeasonScheduleWizardChecks
         }, null, "Regression")) is ValidationException, "wizard create: a season without a name is refused");
 
         await CloseOpenSeasonsAsync();
+
+        // ---- Montreal's date, not the server's ----
+        assert(SessionTimeHelper.MontrealToday(new DateTime(2044, 3, 8, 2, 30, 0, DateTimeKind.Utc)) == new DateTime(2044, 3, 7),
+            "montreal date: 2:30 UTC is still the previous day in Montreal");
+        assert(SessionTimeHelper.MontrealToday(new DateTime(2044, 3, 8, 14, 0, 0, DateTimeKind.Utc)) == new DateTime(2044, 3, 8),
+            "montreal date: the afternoon in UTC is the same day in Montreal");
+
+        // ---- What the public page shows ----
+        var publicDay = new DateTime(2044, 11, 5);
+        var publicNowUtc = SessionTimeHelper.ToUtc(publicDay.AddHours(8));
+        var openSession = new Session(publicDay, 20, 10m, "10:00", "12:00", $"Public open {tag}");
+        var fullSession = new Session(publicDay, 20, 10m, "13:00", "15:00", $"Public full {tag}") { Status = SessionStatus.Full, RegisteredPlayersCount = 20 };
+        var cancelledSession = new Session(publicDay, 20, 10m, "16:00", "18:00", $"Public cancelled {tag}") { Status = SessionStatus.Cancelled };
+        var endedSession = new Session(publicDay, 20, 10m, "06:00", "07:00", $"Public ended {tag}");
+        var pool = new[] { openSession, fullSession, cancelledSession, endedSession };
+
+        var openOnly = PublicScheduleSelector.Select(pool, publicNowUtc, 12, includeFull: false);
+        assert(openOnly.Count == 1 && openOnly[0].StartTime == "10:00", "public schedule: without the flag only open sessions that haven't ended are shown");
+
+        var withFull = PublicScheduleSelector.Select(pool, publicNowUtc, 12, includeFull: true);
+        assert(withFull.Count == 2 && withFull[1].IsFull && !withFull[0].IsFull, "public schedule: with the flag full sessions are listed and marked");
+        assert(withFull.All(s => s.Location != null && s.Location.Contains(tag)) && withFull[0].SpotsRemaining == 20, "public schedule: the session details come through");
+        assert(PublicScheduleSelector.Select(pool, publicNowUtc, 1, includeFull: true).Count == 1, "public schedule: the take limit is respected");
     }
 }
