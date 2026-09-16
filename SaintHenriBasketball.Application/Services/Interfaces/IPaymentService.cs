@@ -36,9 +36,7 @@ public interface IPaymentService
     /// session / the session isn't today.
     Task<(Guid Id, bool Created)?> EnsureDropInPaymentForSessionAsync(Guid userId, Guid sessionId);
 
-    /// Sweeps every open session whose date is today and ensures a Pending drop-in payment
-    /// for each registered drop-in player. Idempotent — safe to combine with QR check-in.
-    /// Returns the number of new payments created.
+    /// Runs the billing sweep for right now. See <see cref="RunDropInBillingAsync"/> for what it does.
     Task<int> RunDailyDropInBillingAsync();
 
     /// Bills drop-in players for every session that started at least an hour ago. `nowUtc` makes it checkable.
