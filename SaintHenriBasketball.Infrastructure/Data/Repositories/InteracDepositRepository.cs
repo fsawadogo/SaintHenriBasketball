@@ -11,12 +11,29 @@ public class InteracDepositRepository(ApplicationDbContext db) : IInteracDeposit
     public async Task<InteracDeposit?> GetAsync(Guid id) =>
         await db.InteracDeposits.SingleOrDefaultAsync(d => d.Id == id);
 
-    public async Task<InteracDeposit?> FindDuplicateAsync(string fingerprint, string? messageId) =>
+    public async Task<InteracDeposit?> FindDuplicateAsync(string fingerprint, string? messageId, string? referenceNumber) =>
         await db.InteracDeposits
-            .Where(d => d.Fingerprint == fingerprint || (messageId != null && d.MessageId == messageId))
+            .Where(d => d.Fingerprint == fingerprint
+                        || (messageId != null && d.MessageId == messageId)
+                        || (referenceNumber != null && d.ReferenceNumber == referenceNumber))
             .FirstOrDefaultAsync();
 
-    public async Task AddAsync(InteracDeposit deposit) => await db.InteracDeposits.AddAsync(deposit);
+    public async Task<(bool Added, InteracDeposit? Existing)> TryAddAsync(InteracDeposit deposit)
+    {
+        try
+        {
+            await db.InteracDeposits.AddAsync(deposit);
+            await db.SaveChangesAsync();
+            return (true, deposit);
+        }
+        catch (DbUpdateException)
+        {
+            // A unique index refused it: the same confirmation arrived twice, possibly at the same moment.
+            db.Entry(deposit).State = EntityState.Detached;
+            var existing = await FindDuplicateAsync(deposit.Fingerprint, deposit.MessageId, deposit.ReferenceNumber);
+            return (false, existing);
+        }
+    }
 
     public async Task SaveAsync() => await db.SaveChangesAsync();
 

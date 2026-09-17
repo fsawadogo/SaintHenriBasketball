@@ -58,12 +58,47 @@ internal static class InteracAutoMatchChecks
             && !InteracDepositService.NamesMatch("Jeanne Tremblay", "Marc Tremblay"),
             "interac matching: names compare without accents, case or word order, and two different people never match");
 
+        // --- Proving the caller is really forwarding an Interac email ---
+        assert(InteracWebhookVerification.SecretMatches("s3cret", "s3cret")
+            && !InteracWebhookVerification.SecretMatches("s3cret ", "s3cret")
+            && !InteracWebhookVerification.SecretMatches(null, "s3cret")
+            && !InteracWebhookVerification.SecretMatches("anything", null),
+            "interac webhook: the shared token must match exactly, and no configured token refuses everything");
+
+        const string signingSecret = "signing-secret";
+        const string rawBody = "{\"subject\":\"x\"}";
+        var signature = System.Convert.ToHexString(System.Security.Cryptography.HMACSHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(signingSecret), System.Text.Encoding.UTF8.GetBytes(rawBody))).ToLowerInvariant();
+        assert(InteracWebhookVerification.SignatureMatches(signature, rawBody, signingSecret)
+            && InteracWebhookVerification.SignatureMatches($"sha256={signature}", rawBody, signingSecret)
+            && !InteracWebhookVerification.SignatureMatches(signature, rawBody + " ", signingSecret)
+            && !InteracWebhookVerification.SignatureMatches(null, rawBody, signingSecret),
+            "interac webhook: the signature covers the body as sent, in either header shape");
+
+        var forwarded = """
+            ---------- Forwarded message ---------
+            From: Interac <notify@payments.interac.ca>
+            Date: Mon, 25 May 2026
+            Subject: Interac e-Transfer
+            """;
+        assert(InteracWebhookVerification.OriginalSender(null, forwarded) == "notify@payments.interac.ca"
+            && InteracWebhookVerification.OriginalSender("Interac <notify@payments.interac.ca>", null) == "notify@payments.interac.ca",
+            "interac webhook: the original sender is read from the forwarded text when the service reports the forwarder instead");
+
+        assert(InteracWebhookVerification.SenderAllowed("notify@payments.interac.ca", null)
+            && InteracWebhookVerification.SenderAllowed("x@mail.interac.ca", null)
+            && !InteracWebhookVerification.SenderAllowed("attacker@interac.ca.evil.test", null)
+            && !InteracWebhookVerification.SenderAllowed("someone@gmail.com", null)
+            && !InteracWebhookVerification.SenderAllowed(null, null),
+            "interac webhook: only Interac's domains pass, and a lookalike domain does not");
+
         // --- Ingesting, against real payments ---
         var payer = new ApplicationUser($"ia_payer_{tag}", $"ia-payer-{tag}@example.test", "test-only", "Jeanne", $"Tremblay{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
         var other = new ApplicationUser($"ia_other_{tag}", $"ia-other-{tag}@example.test", "test-only", "Marc", $"Autre{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
         var session = new Session(DateTime.UtcNow.Date.AddDays(3), 10, 10m, "10:00", "12:00", "Saint-Henri");
 
-        var exactReference = $"DROPIN-2605-{tag[..4].GetHashCode() % 9000 + 1000}";
+        // Four digits derived from the tag: stable across runs, and unique to this run.
+        var exactReference = $"DROPIN-2605-{int.Parse(tag[..4], System.Globalization.NumberStyles.HexNumber) % 9000 + 1000}";
         var matching = new Payment(payer.Id, 10m, PaymentPlan.DropIn, session.Id) { Reference = exactReference, CreatedAt = DateTime.UtcNow.AddDays(-2), PaymentDate = DateTime.UtcNow.AddDays(-2) };
         var wrongAmount = new Payment(other.Id, 25m, PaymentPlan.DropIn, session.Id) { Reference = $"DROPIN-2605-7777", CreatedAt = DateTime.UtcNow.AddDays(-2), PaymentDate = DateTime.UtcNow.AddDays(-2) };
 
@@ -163,6 +198,61 @@ internal static class InteracAutoMatchChecks
             var payment = await context.Payments.AsNoTracking().SingleAsync(p => p.Id == wrongAmount.Id);
             assert(payment.Status == PaymentStatus.Completed, "interac auto-match: the payment an admin matched is paid");
         }
+
+        // The reference the app hands out today is a bare GUID, not the older short form.
+        var guidPayer = new ApplicationUser($"ia_guid_{tag}", $"ia-guid-{tag}@example.test", "test-only", "Guy", $"Guid{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
+        var guidReference = $"DROPIN-{Guid.NewGuid():N}";
+        var guidPayment = new Payment(guidPayer.Id, 12m, PaymentPlan.DropIn, session.Id) { Reference = guidReference, CreatedAt = DateTime.UtcNow.AddDays(-1), PaymentDate = DateTime.UtcNow.AddDays(-1) };
+
+        // And before a payment row exists the page shows SHB-<player>-<session>.
+        var fallbackPayer = new ApplicationUser($"ia_fb_{tag}", $"ia-fb-{tag}@example.test", "test-only", "Fabi", $"Back{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
+        var fallbackPayment = new Payment(fallbackPayer.Id, 14m, PaymentPlan.DropIn, session.Id) { Reference = $"DROPIN-{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow.AddDays(-1), PaymentDate = DateTime.UtcNow.AddDays(-1) };
+
+        await using (var context = db())
+        {
+            context.Users.AddRange(guidPayer, fallbackPayer);
+            context.Payments.AddRange(guidPayment, fallbackPayment);
+            await context.SaveChangesAsync();
+        }
+
+        IngestInteracEmailResultDto guidResult;
+        await using (var context = db())
+            guidResult = await Service(context).IngestAsync(new IngestInteracEmailDto
+            {
+                MessageId = $"msg-{tag}-guid",
+                Subject = Subject($"Guy Guid{tag}", "12.00"),
+                Body = Email($"Guy Guid{tag}", "12.00", guidReference, $"CAREF{tag}G", "May 28, 2026"),
+                ReceivedAt = DateTimeOffset.UtcNow,
+            });
+        assert(guidResult.Status == InteracDepositStatus.Matched && guidResult.MatchedPaymentId == guidPayment.Id,
+            "interac auto-match: the GUID reference the app hands out today is matched");
+
+        var shb = $"SHB-{fallbackPayer.Id.ToString("N")[..8]}-{session.Id.ToString("N")[..8]}";
+        IngestInteracEmailResultDto fallbackResult;
+        await using (var context = db())
+            fallbackResult = await Service(context).IngestAsync(new IngestInteracEmailDto
+            {
+                MessageId = $"msg-{tag}-fb",
+                Subject = Subject($"Fabi Back{tag}", "14.00"),
+                Body = Email($"Fabi Back{tag}", "14.00", shb, $"CAREF{tag}F", "May 29, 2026"),
+                ReceivedAt = DateTimeOffset.UtcNow,
+            });
+        assert(fallbackResult.Status == InteracDepositStatus.Matched && fallbackResult.MatchedPaymentId == fallbackPayment.Id,
+            "interac auto-match: the SHB-player-session reference shown before a payment exists is matched");
+
+        // The bank's own reference identifies one transfer, whatever else changes.
+        IngestInteracEmailResultDto sameReference;
+        await using (var context = db())
+            sameReference = await Service(context).IngestAsync(new IngestInteracEmailDto
+            {
+                MessageId = $"msg-{tag}-guid-resent",
+                Subject = Subject($"Guy Guid{tag}", "12.00"),
+                // Same Interac reference, different day and message: still the same money.
+                Body = Email($"Guy Guid{tag}", "12.00", null, $"CAREF{tag}G", "May 29, 2026"),
+                ReceivedAt = DateTimeOffset.UtcNow.AddHours(2),
+            });
+        assert(sameReference.Outcome == "duplicate" && sameReference.DepositId == guidResult.DepositId,
+            "interac auto-match: the bank reference alone identifies a repeat, even when the rest of the email differs");
 
         // Setting one aside.
         await using (var context = db())

@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
@@ -73,11 +73,7 @@ public class PaymentService : IPaymentService
        await ValidateSeasonAsync(createPaymentDto.Plan, createPaymentDto.SeasonId);
        var payment = new Payment(createPaymentDto.UserId, createPaymentDto.Amount, createPaymentDto.Plan) { SeasonId = createPaymentDto.SeasonId };
 
-       var reference = createPaymentDto.Plan == PaymentPlan.Season
-           ? $"SEASON-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}"
-           : $"DROPIN-{DateTime.UtcNow:yyMM}-{Random.Shared.Next(1000, 9999)}";
-
-       payment.Reference = reference;
+       payment.Reference = await UniqueReferenceAsync(createPaymentDto.Plan);
 
        await _paymentRepository.AddAsync(payment);
 
@@ -89,6 +85,27 @@ public class PaymentService : IPaymentService
            payment.Reference);
 
        return _mapper.Map<PaymentDto>(payment);
+   }
+
+   /// <summary>
+   /// A short, readable reference a player can copy into a transfer message — and one that names a
+   /// single payment. Four random digits in a month collide often enough to matter: around fifty
+   /// payments give better than a one-in-ten chance of a repeat, and a repeated reference is exactly
+   /// what stops a deposit from being matched automatically.
+   /// </summary>
+   private async Task<string> UniqueReferenceAsync(PaymentPlan plan)
+   {
+       var prefix = plan == PaymentPlan.Season ? "SEASON" : "DROPIN";
+       var month = DateTime.UtcNow.ToString("yyMM");
+
+       for (var attempt = 0; attempt < 5; attempt++)
+       {
+           var candidate = $"{prefix}-{month}-{Random.Shared.Next(1000, 9999)}";
+           if (!await _paymentRepository.ReferenceExistsAsync(candidate)) return candidate;
+       }
+
+       // Five clashes in a row means the month is crowded; widen the number rather than risk a repeat.
+       return $"{prefix}-{month}-{Random.Shared.Next(10000, 99999)}";
    }
 
    public async Task<PaymentDto> GetPaymentAsync(Guid id)

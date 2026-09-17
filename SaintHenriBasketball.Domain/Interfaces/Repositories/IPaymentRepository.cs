@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Domain.Entities;
+﻿using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Domain.Interfaces.Repositories;
@@ -54,6 +54,9 @@ public interface IPaymentRepository
 
     /// The payment <see cref="GetOrCreateSeasonPaymentAsync"/> would reuse (neither Refunded nor Failed), or null.
     Task<Payment?> GetByUserAndSeasonAsync(Guid userId, Guid seasonId);
+
+    /// True when a payment already carries this reference, ignoring any submitted Interac suffix.
+    Task<bool> ReferenceExistsAsync(string reference);
 
     Task<bool> HasCompletedPaymentAsync(Guid userId);
 

@@ -227,6 +227,9 @@ public class ApplicationDbContext : DbContext
             // The same confirmation forwarded twice must not be counted twice.
             entity.HasIndex(e => e.Fingerprint).IsUnique();
             entity.HasIndex(e => e.MessageId);
+            // Interac's own reference names one transfer, so it is the strongest guard against
+            // counting the same money twice. Filtered, because an email may carry none.
+            entity.HasIndex(e => e.ReferenceNumber).IsUnique().HasFilter("[ReferenceNumber] IS NOT NULL");
             entity.HasIndex(e => new { e.Status, e.ReceivedAt });
             // Keep the deposit if its payment is ever removed: it is the bank's record, not ours.
             entity.HasOne(e => e.MatchedPayment).WithMany().HasForeignKey(e => e.MatchedPaymentId).OnDelete(DeleteBehavior.SetNull);
