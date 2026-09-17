@@ -34,8 +34,9 @@ public class InteracDepositService : IInteracDepositService
     private static readonly Regex GuidReference = new(@"\b(?:DROPIN|SEASON)-[0-9a-fA-F]{32}\b", RegexOptions.Compiled);
     /// The older, human-sized reference, still on admin-created payments and in transfers: DROPIN-2605-1591.
     private static readonly Regex ShortReference = new(@"\b(?:DROPIN|SEASON)-\d{4}-\d{3,5}\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    /// What the payment page shows before a payment row exists: SHB-<first 8 of the player id>-<first 8 of the session id>.
-    private static readonly Regex FallbackReference = new(@"\bSHB-(?<user>[0-9a-fA-F]{8})-(?<session>[0-9a-fA-F]{8})\b", RegexOptions.Compiled);
+    /// What a payment page shows before a payment row exists: SHB-&lt;first 8 of the player id&gt;-&lt;first
+    /// 8 of the session id, or of the season id on the season page&gt;.
+    private static readonly Regex FallbackReference = new(@"\bSHB-(?<user>[0-9a-fA-F]{8})-(?<subject>[0-9a-fA-F]{8})\b", RegexOptions.Compiled);
     private const string InteracReferenceMarker = "|INTERAC:";
 
     private readonly IInteracDepositRepository _repository;
@@ -243,19 +244,20 @@ public class InteracDepositService : IInteracDepositService
             if (byReference.Count > 1) return (null, InteracMatchConfidence.None, $"Two payments carry the reference {written.Value}");
         }
 
-        // 2. The payment page shows SHB-<player>-<session> until a payment row exists, so that names
-        // a player and a session rather than a payment.
+        // 2. Both payment pages show SHB-<player>-<what is being paid for> until a payment row
+        // exists, so that names a player and either a session or a season, not a payment.
         var fallback = FallbackReference.Match(message);
         if (fallback.Success)
         {
             var user = fallback.Groups["user"].Value.ToLowerInvariant();
-            var session = fallback.Groups["session"].Value.ToLowerInvariant();
-            var byPlayerAndSession = candidates
+            var subject = fallback.Groups["subject"].Value.ToLowerInvariant();
+            var byPlayer = candidates
                 .Where(c => Head8(c.Payment.UserId) == user
-                            && c.Payment.SessionId is Guid sessionId && Head8(sessionId) == session)
+                            && ((c.Payment.SessionId is Guid sessionId && Head8(sessionId) == subject)
+                                || (c.Payment.SeasonId is Guid seasonId && Head8(seasonId) == subject)))
                 .ToList();
-            if (byPlayerAndSession.Count == 1)
-                return Decide(byPlayerAndSession[0].Payment, parsed, $"Reference {fallback.Value} names this player and session");
+            if (byPlayer.Count == 1)
+                return Decide(byPlayer[0].Payment, parsed, $"Reference {fallback.Value} names this player and what they are paying for");
         }
 
         // 3. The Interac reference the player typed into the app when they submitted the transfer.

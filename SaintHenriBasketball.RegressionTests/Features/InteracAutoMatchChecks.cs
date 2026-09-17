@@ -240,6 +240,32 @@ internal static class InteracAutoMatchChecks
         assert(fallbackResult.Status == InteracDepositStatus.Matched && fallbackResult.MatchedPaymentId == fallbackPayment.Id,
             "interac auto-match: the SHB-player-session reference shown before a payment exists is matched");
 
+        // The season page shows SHB-<player>-<season>, because a season fee is not tied to a session.
+        var seasonPayer = new ApplicationUser($"ia_sea_{tag}", $"ia-sea-{tag}@example.test", "test-only", "Sara", $"Saison{tag}", PaymentPlan.Season) { EmailConfirmed = true };
+        var seasonForFallback = new Season(new DateTime(2003, 2, 1), new DateTime(2003, 4, 30), 90m) { Name = $"Hiver 2003 {tag}" };
+        var seasonPayment = new Payment(seasonPayer.Id, 90m, PaymentPlan.Season) { SeasonId = seasonForFallback.Id, Reference = $"SEASON-{Guid.NewGuid():N}", CreatedAt = DateTime.UtcNow.AddDays(-1), PaymentDate = DateTime.UtcNow.AddDays(-1) };
+
+        await using (var context = db())
+        {
+            context.Users.Add(seasonPayer);
+            context.Seasons.Add(seasonForFallback);
+            context.Payments.Add(seasonPayment);
+            await context.SaveChangesAsync();
+        }
+
+        var seasonShb = $"SHB-{seasonPayer.Id.ToString("N")[..8]}-{seasonForFallback.Id.ToString("N")[..8]}";
+        IngestInteracEmailResultDto seasonResult;
+        await using (var context = db())
+            seasonResult = await Service(context).IngestAsync(new IngestInteracEmailDto
+            {
+                MessageId = $"msg-{tag}-season",
+                Subject = Subject($"Sara Saison{tag}", "90.00"),
+                Body = Email($"Sara Saison{tag}", "90.00", seasonShb, $"CAREF{tag}S", "May 31, 2026"),
+                ReceivedAt = DateTimeOffset.UtcNow,
+            });
+        assert(seasonResult.Status == InteracDepositStatus.Matched && seasonResult.MatchedPaymentId == seasonPayment.Id,
+            "interac auto-match: the SHB reference on the season page names a player and a season, and settles the season fee");
+
         // The bank's own reference identifies one transfer, whatever else changes.
         IngestInteracEmailResultDto sameReference;
         await using (var context = db())
