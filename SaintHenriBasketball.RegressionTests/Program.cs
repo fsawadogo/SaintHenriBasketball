@@ -1086,6 +1086,7 @@ await SeasonScheduleWizardChecks.RunAsync(Db, Assert);
 await SeasonPlanChoiceChecks.RunAsync(Db, Assert);
 await SeasonDashboardChecks.RunAsync(Db, Assert);
 await SignupFunnelChecks.RunAsync(Db, Assert);
+await InteracAutoMatchChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
