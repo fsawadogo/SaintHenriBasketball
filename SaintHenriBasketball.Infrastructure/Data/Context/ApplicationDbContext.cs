@@ -34,6 +34,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<AccountCredit> AccountCredits { get; set; }
     public DbSet<BroadcastMessage> BroadcastMessages { get; set; }
+    public DbSet<SeasonPlanChoice> SeasonPlanChoices { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -260,6 +261,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.StartDate).IsRequired();
             entity.Property(e => e.EndDate).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.SeasonPassCapacity).IsRequired()
+                .HasDefaultValue(Season.DefaultSeasonPassCapacity);
         });
 
         modelBuilder.Entity<SeasonRegistration>(entity =>
@@ -278,6 +281,28 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(e => e.RegisteredOn)
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<SeasonPlanChoice>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.Season)
+                .WithMany()
+                .HasForeignKey(e => e.SeasonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Plan).IsRequired();
+            entity.Property(e => e.ChosenOn).IsRequired();
+
+            // One choice per player per season. SeasonRegistration lacks this and relies on a code
+            // check instead (SeasonService.cs:239-243); do not repeat that here.
+            entity.HasIndex(e => new { e.SeasonId, e.UserId }).IsUnique();
         });
 
         modelBuilder.Entity<EmailLog>(entity =>

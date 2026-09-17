@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<ISessionRegistrationRepository, SessionRegistrationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISeasonRepository, SeasonRepository>();
+        services.AddScoped<ISeasonPlanChoiceRepository, SeasonPlanChoiceRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<ISessionAttendanceRepository, SessionAttendanceRepository>();
         services.AddScoped<IWaitlistRepository, WaitlistRepository>();

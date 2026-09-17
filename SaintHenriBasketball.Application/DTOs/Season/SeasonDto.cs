@@ -12,6 +12,8 @@ public class SeasonDto
     public SeasonStatus Status { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedOn { get; set; }
+    /// How many players may hold a season pass for this season.
+    public int SeasonPassCapacity { get; set; }
     public int RegisteredUsersCount { get; set; }
     public List<SeasonUserDto> RegisteredUsers { get; set; } = new();
     public bool IsCurrentSeason { get; set; }

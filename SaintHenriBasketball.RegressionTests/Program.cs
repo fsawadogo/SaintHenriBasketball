@@ -328,7 +328,8 @@ ReferralService ReferralsFor(ApplicationDbContext db) => new(new ReferralReposit
     NullLogger<ReferralService>.Instance, new PaymentRepository(db), CreditFlags(db), NotificationsFor(db), new AuditLogRepository(db), creditConfig);
 PaymentService PaymentsFor(ApplicationDbContext db) => new(new PaymentRepository(db), new UserRepository(db, NullLogger<UserRepository>.Instance),
     new SessionRepository(db), new SessionRegistrationRepository(db), creditMapper, NullLogger<PaymentService>.Instance, null!, NotificationsFor(db),
-    new SeasonRepository(db, NullLogger<SeasonRepository>.Instance), new PromoCodeRepository(db), new AccountCreditRepository(db), ReferralsFor(db), CreditFlags(db));
+    new SeasonRepository(db, NullLogger<SeasonRepository>.Instance), new PromoCodeRepository(db), new AccountCreditRepository(db), ReferralsFor(db), CreditFlags(db),
+    new SeasonPlanChoiceRepository(db, NullLogger<SeasonPlanChoiceRepository>.Instance));
 UserService UsersFor(ApplicationDbContext db) => new(creditConfig, creditMapper, new UserRepository(db, NullLogger<UserRepository>.Instance), null!,
     NullLogger<UserService>.Instance, CreditFlags(db), new ReferralRepository(db));
 async Task<string?> TryPayAsync(Guid userId, Guid sessionId, string? promoCode, int method = 1, string? reference = null)
@@ -1082,6 +1083,7 @@ await WaitlistAdminChecks.RunAsync(Db, Assert);
 await PromoReferralReportsChecks.RunAsync(Db, Assert);
 await VolunteerRolesChecks.RunAsync(Db, Assert);
 await SeasonScheduleWizardChecks.RunAsync(Db, Assert);
+await SeasonPlanChoiceChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler

@@ -268,7 +268,8 @@ internal static class SeasonScheduleWizardChecks
             // No email service: the payment email fails and is logged, and the payment row is still created.
             return new PaymentService(new PaymentRepository(context), users, new SessionRepository(context), new SessionRegistrationRepository(context), mapper,
                 NullLogger<PaymentService>.Instance, null!, notifications, new SeasonRepository(context, NullLogger<SeasonRepository>.Instance),
-                new PromoCodeRepository(context), new AccountCreditRepository(context), referrals, Flags(context));
+                new PromoCodeRepository(context), new AccountCreditRepository(context), referrals, Flags(context),
+                new SeasonPlanChoiceRepository(context, NullLogger<SeasonPlanChoiceRepository>.Instance));
         }
 
         var eveningDate = SessionTimeHelper.MontrealToday();

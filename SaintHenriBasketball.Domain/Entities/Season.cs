@@ -11,7 +11,12 @@ public class Season
     public decimal Price { get; set; }
     public SeasonStatus Status { get; set; }
     public string? Notes { get; set; }
+    /// How many players may hold a season pass for this season. A spot is held by a completed
+    /// payment, never by an unpaid choice. Defaults to 15.
+    public int SeasonPassCapacity { get; set; } = DefaultSeasonPassCapacity;
     public DateTime CreatedOn { get; private set; }
+
+    public const int DefaultSeasonPassCapacity = 15;
     public ICollection<SeasonRegistration> Registrations { get; private set; }
 
     private Season() { } // For EF Core
