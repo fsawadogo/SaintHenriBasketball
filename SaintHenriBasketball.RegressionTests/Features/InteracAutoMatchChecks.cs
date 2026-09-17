@@ -92,6 +92,14 @@ internal static class InteracAutoMatchChecks
             && !InteracWebhookVerification.SenderAllowed(null, null),
             "interac webhook: only Interac's domains pass, and a lookalike domain does not");
 
+        // The season page submits without a bank confirmation number, so the marker recorded in its
+        // place must survive the same validation a typed reference passes, and must keep the
+        // "|INTERAC:" suffix readable — that suffix is what puts a payment in the admin's queue.
+        var marker = PaymentService.TransferSentMarker;
+        assert(!string.IsNullOrWhiteSpace(marker) && marker.Length <= 80 && !marker.Contains('|')
+            && !marker.Any(char.IsControl),
+            "interac submission: the marker stored when a player sends without a confirmation number is a reference the confirm path accepts");
+
         // --- Ingesting, against real payments ---
         var payer = new ApplicationUser($"ia_payer_{tag}", $"ia-payer-{tag}@example.test", "test-only", "Jeanne", $"Tremblay{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
         var other = new ApplicationUser($"ia_other_{tag}", $"ia-other-{tag}@example.test", "test-only", "Marc", $"Autre{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
