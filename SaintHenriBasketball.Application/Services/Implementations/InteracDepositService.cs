@@ -29,8 +29,14 @@ public class InteracDepositService : IInteracDepositService
     public const int MaxNoteLength = 300;
     public const int DefaultListLimit = 100;
 
-    /// The club's own payment references: DROPIN-2605-1591 or SEASON-2609-4820.
-    private static readonly Regex PaymentReference = new(@"\b(?:DROPIN|SEASON)-\d{4}-\d{3,5}\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    // The club has handed out three shapes of reference, and a transfer may carry any of them.
+    /// What the app stores today: DROPIN-9f2c… or SEASON-9f2c… (a bare GUID).
+    private static readonly Regex GuidReference = new(@"\b(?:DROPIN|SEASON)-[0-9a-fA-F]{32}\b", RegexOptions.Compiled);
+    /// The older, human-sized reference, still on admin-created payments and in transfers: DROPIN-2605-1591.
+    private static readonly Regex ShortReference = new(@"\b(?:DROPIN|SEASON)-\d{4}-\d{3,5}\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    /// What a payment page shows before a payment row exists: SHB-&lt;first 8 of the player id&gt;-&lt;first
+    /// 8 of the session id, or of the season id on the season page&gt;.
+    private static readonly Regex FallbackReference = new(@"\bSHB-(?<user>[0-9a-fA-F]{8})-(?<subject>[0-9a-fA-F]{8})\b", RegexOptions.Compiled);
     private const string InteracReferenceMarker = "|INTERAC:";
 
     private readonly IInteracDepositRepository _repository;
@@ -58,34 +64,28 @@ public class InteracDepositService : IInteracDepositService
         var receivedAt = email.ReceivedAt?.UtcDateTime ?? DateTime.UtcNow;
         var fingerprint = Fingerprint(parsed, receivedAt);
 
-        var existing = await _repository.FindDuplicateAsync(fingerprint, email.MessageId);
-        if (existing != null)
-        {
-            // Forwarding rules resend; the same money must never be counted twice.
-            return new IngestInteracEmailResultDto
-            {
-                Outcome = "duplicate",
-                DepositId = existing.Id,
-                Status = existing.Status,
-                Confidence = existing.Confidence,
-                MatchedPaymentId = existing.MatchedPaymentId,
-            };
-        }
+        var seen = await _repository.FindDuplicateAsync(fingerprint, email.MessageId, parsed.ReferenceNumber);
+        if (seen != null) return Duplicate(seen);
 
-        var body = (email.Body ?? string.Empty).Length > MaxBodyLength
-            ? InteracEmailParser.ToPlainText(email.Body!)[..Math.Min(MaxBodyLength, InteracEmailParser.ToPlainText(email.Body!).Length)]
-            : InteracEmailParser.ToPlainText(email.Body ?? string.Empty);
-
+        var plain = InteracEmailParser.ToPlainText(email.Body ?? string.Empty);
         var deposit = new InteracDeposit(receivedAt, parsed.Amount, parsed.SenderName, parsed.ReferenceNumber,
-            (email.Subject ?? string.Empty).Trim(), body, fingerprint, email.MessageId)
+            (email.Subject ?? string.Empty).Trim(), plain.Length > MaxBodyLength ? plain[..MaxBodyLength] : plain,
+            fingerprint, email.MessageId)
         {
             Note = parsed.Message,
         };
+
+        // Store first, match second. Two deliveries of the same email can arrive at the same moment;
+        // whichever loses the unique index stops here, so the money is never completed twice.
+        var (added, existing) = await _repository.TryAddAsync(deposit);
+        if (!added) return existing != null ? Duplicate(existing) : new IngestInteracEmailResultDto { Outcome = "duplicate" };
 
         var (payment, confidence, _) = await FindMatchAsync(parsed, receivedAt);
 
         if (payment != null && confidence == InteracMatchConfidence.Exact)
         {
+            // Read again through the payment service: the candidate list is a moment old, and only a
+            // payment still pending may be completed.
             await _paymentService.UpdatePaymentStatusAsync(payment.Id, PaymentStatus.Completed);
             deposit.Status = InteracDepositStatus.Matched;
             deposit.Confidence = confidence;
@@ -100,7 +100,6 @@ public class InteracDepositService : IInteracDepositService
             deposit.Confidence = payment != null ? InteracMatchConfidence.Likely : InteracMatchConfidence.None;
         }
 
-        await _repository.AddAsync(deposit);
         await _repository.SaveAsync();
 
         return new IngestInteracEmailResultDto
@@ -112,6 +111,16 @@ public class InteracDepositService : IInteracDepositService
             MatchedPaymentId = deposit.MatchedPaymentId,
         };
     }
+
+    /// Forwarding rules resend; the same money must never be counted twice.
+    private static IngestInteracEmailResultDto Duplicate(InteracDeposit existing) => new()
+    {
+        Outcome = "duplicate",
+        DepositId = existing.Id,
+        Status = existing.Status,
+        Confidence = existing.Confidence,
+        MatchedPaymentId = existing.MatchedPaymentId,
+    };
 
     public async Task<IReadOnlyList<InteracDepositDto>> ListAsync(bool unmatchedOnly)
     {
@@ -219,45 +228,49 @@ public class InteracDepositService : IInteracDepositService
         var candidates = await _repository.GetPendingCandidatesAsync(receivedAt - MatchWindow);
         if (candidates.Count == 0) return (null, InteracMatchConfidence.None, string.Empty);
 
-        // 1. The reference the player was asked to write in the transfer message.
-        var reference = PaymentReference.Match(parsed.Message ?? string.Empty);
-        if (reference.Success)
+        // 1. The reference the player was asked to write in the transfer message, in any shape the
+        // club has handed out.
+        var message = parsed.Message ?? string.Empty;
+        var written = GuidReference.Match(message);
+        if (!written.Success) written = ShortReference.Match(message);
+
+        if (written.Success)
         {
             var byReference = candidates
-                .Where(c => ReferenceHead(c.Payment.Reference).Equals(reference.Value, StringComparison.OrdinalIgnoreCase))
+                .Where(c => ReferenceHead(c.Payment.Reference).Equals(written.Value, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            if (byReference.Count == 1)
-            {
-                var match = byReference[0].Payment;
-                return match.Amount == parsed.Amount
-                    ? (match, InteracMatchConfidence.Exact, $"Reference {reference.Value} and the amount both match")
-                    // Right player, wrong money: an admin decides whether it settles the payment.
-                    : (match, InteracMatchConfidence.Likely, $"Reference {reference.Value} matches, but the deposit is {parsed.Amount:0.00} and the payment is {match.Amount:0.00}");
-            }
-
-            if (byReference.Count > 1)
-            {
-                return (null, InteracMatchConfidence.None, $"Two payments carry the reference {reference.Value}");
-            }
+            if (byReference.Count == 1) return Decide(byReference[0].Payment, parsed, $"Reference {written.Value}");
+            if (byReference.Count > 1) return (null, InteracMatchConfidence.None, $"Two payments carry the reference {written.Value}");
         }
 
-        // 2. The Interac reference the player typed into the app when they submitted the transfer.
+        // 2. Both payment pages show SHB-<player>-<what is being paid for> until a payment row
+        // exists, so that names a player and either a session or a season, not a payment.
+        var fallback = FallbackReference.Match(message);
+        if (fallback.Success)
+        {
+            var user = fallback.Groups["user"].Value.ToLowerInvariant();
+            var subject = fallback.Groups["subject"].Value.ToLowerInvariant();
+            var byPlayer = candidates
+                .Where(c => Head8(c.Payment.UserId) == user
+                            && ((c.Payment.SessionId is Guid sessionId && Head8(sessionId) == subject)
+                                || (c.Payment.SeasonId is Guid seasonId && Head8(seasonId) == subject)))
+                .ToList();
+            if (byPlayer.Count == 1)
+                return Decide(byPlayer[0].Payment, parsed, $"Reference {fallback.Value} names this player and what they are paying for");
+        }
+
+        // 3. The Interac reference the player typed into the app when they submitted the transfer.
         if (!string.IsNullOrWhiteSpace(parsed.ReferenceNumber))
         {
             var submitted = candidates
                 .Where(c => SubmittedInteracReference(c.Payment.Reference).Equals(parsed.ReferenceNumber, StringComparison.OrdinalIgnoreCase))
                 .ToList();
             if (submitted.Count == 1)
-            {
-                var match = submitted[0].Payment;
-                return match.Amount == parsed.Amount
-                    ? (match, InteracMatchConfidence.Exact, $"The player submitted reference {parsed.ReferenceNumber}, and the amount matches")
-                    : (match, InteracMatchConfidence.Likely, $"The player submitted reference {parsed.ReferenceNumber}, but the amounts differ");
-            }
+                return Decide(submitted[0].Payment, parsed, $"The player submitted reference {parsed.ReferenceNumber}");
         }
 
-        // 3. Nothing to go on but the name and the amount: a suggestion, never an automatic match.
+        // 4. Nothing to go on but the name and the amount: a suggestion, never an automatic match.
         var byName = candidates
             .Where(c => c.Payment.Amount == parsed.Amount && NamesMatch(c.PlayerName, parsed.SenderName))
             .ToList();
@@ -268,6 +281,16 @@ public class InteracDepositService : IInteracDepositService
 
         return (null, InteracMatchConfidence.None, string.Empty);
     }
+
+    /// A reference match becomes an automatic one only when the money agrees too.
+    private static (Payment? Payment, InteracMatchConfidence Confidence, string Reason) Decide(Payment payment, ParsedInteracDeposit parsed, string how) =>
+        payment.Amount == parsed.Amount
+            ? (payment, InteracMatchConfidence.Exact, $"{how} and the amount both match")
+            // Right player, wrong money: an admin decides whether it settles the payment.
+            : (payment, InteracMatchConfidence.Likely, $"{how} matches, but the deposit is {parsed.Amount:0.00} and the payment is {payment.Amount:0.00}");
+
+    /// The first 8 characters of an id, as the payment page prints them.
+    private static string Head8(Guid id) => id.ToString("N")[..8].ToLowerInvariant();
 
     /// The club's reference, before any submitted Interac reference was appended to it.
     private static string ReferenceHead(string? reference)

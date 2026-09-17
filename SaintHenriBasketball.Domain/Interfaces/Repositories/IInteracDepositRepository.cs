@@ -9,10 +9,13 @@ public interface IInteracDepositRepository
 {
     Task<InteracDeposit?> GetAsync(Guid id);
 
-    /// Null when this email has not been stored before.
-    Task<InteracDeposit?> FindDuplicateAsync(string fingerprint, string? messageId);
+    /// Null when this email has not been stored before. The bank's own reference is the strongest
+    /// key: it identifies one transfer, whatever the forwarding service does to the message.
+    Task<InteracDeposit?> FindDuplicateAsync(string fingerprint, string? messageId, string? referenceNumber);
 
-    Task AddAsync(InteracDeposit deposit);
+    /// Stores the deposit, or returns the one already stored when the database refuses it as a repeat.
+    /// Storing first is what makes two simultaneous deliveries of the same email safe.
+    Task<(bool Added, InteracDeposit? Existing)> TryAddAsync(InteracDeposit deposit);
 
     Task SaveAsync();
 

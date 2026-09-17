@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Domain.Entities;
+﻿using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
@@ -119,6 +119,9 @@ public class PaymentRepository : IPaymentRepository
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
     }
+
+    public async Task<bool> ReferenceExistsAsync(string reference) =>
+        await _context.Payments.AsNoTracking().AnyAsync(p => p.Reference != null && p.Reference.StartsWith(reference));
 
     public async Task<(Payment Payment, bool Created)> GetOrCreateSessionPaymentAsync(Guid userId, Guid sessionId, decimal amount)
     {

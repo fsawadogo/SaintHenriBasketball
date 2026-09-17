@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Filters;
@@ -72,7 +72,8 @@ public class InteracDepositsController : ControllerBase
 
 /// <summary>
 /// Where the club's mailbox forwards Interac confirmations. Not a browser endpoint: a forwarding
-/// service posts here with a shared token, because it cannot hold a person's sign-in.
+/// service posts here, so it proves itself with a shared token, an optional body signature, and an
+/// email that really came from Interac.
 /// </summary>
 [ApiVersion("1.0")]
 [ApiController]
@@ -81,7 +82,10 @@ public class InteracDepositsController : ControllerBase
 [RequireFeature(FeatureFlagKeys.InteracAutoMatch)]
 public class InteracWebhookController : ControllerBase
 {
-    public const string TokenHeader = "X-SHB-Webhook-Token";
+    public const string TokenHeader = InteracWebhookVerification.TokenHeader;
+    public const string SignatureHeader = InteracWebhookVerification.SignatureHeader;
+
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly IInteracDepositService _service;
     private readonly IConfiguration _configuration;
@@ -94,28 +98,72 @@ public class InteracWebhookController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Takes one forwarded confirmation.
+    /// </summary>
+    /// <remarks>
+    /// Answers 200 for every email it understands, including one already seen and one that is not a
+    /// deposit at all, so a forwarding service never retries an email it can never deliver. Only a
+    /// genuine failure answers 5xx, which is the case worth retrying.
+    /// </remarks>
     [HttpPost]
     [ProducesResponseType(typeof(IngestInteracEmailResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<IngestInteracEmailResultDto>> Receive([FromBody] IngestInteracEmailDto body)
+    public async Task<ActionResult<IngestInteracEmailResultDto>> Receive()
     {
-        var expected = _configuration["Payments:InteracWebhookToken"];
-        // With no token configured the door stays shut, rather than standing open.
-        if (string.IsNullOrWhiteSpace(expected)) return Unauthorized();
+        // The signature covers the bytes as sent, so the body is read raw rather than model-bound.
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        var rawBody = await reader.ReadToEndAsync();
 
-        var provided = Request.Headers[TokenHeader].ToString();
-        if (!FixedTimeEquals(provided, expected))
+        var token = _configuration["Payments:InteracWebhookToken"];
+        // With no token configured the door stays shut, rather than standing open.
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _logger.LogWarning("Interac webhook called while no token is configured");
+            return Unauthorized();
+        }
+
+        if (!InteracWebhookVerification.SecretMatches(Request.Headers[TokenHeader].ToString(), token))
         {
             _logger.LogWarning("Interac webhook called with a wrong token");
             return Unauthorized();
         }
 
+        // A signing secret is optional, but once set every call must carry a matching signature.
+        var signingSecret = _configuration["Payments:InteracWebhookSigningSecret"];
+        if (!string.IsNullOrWhiteSpace(signingSecret)
+            && !InteracWebhookVerification.SignatureMatches(Request.Headers[SignatureHeader].ToString(), rawBody, signingSecret))
+        {
+            _logger.LogWarning("Interac webhook called with a wrong body signature");
+            return Unauthorized();
+        }
+
+        IngestInteracEmailDto? body;
+        try
+        {
+            body = JsonSerializer.Deserialize<IngestInteracEmailDto>(rawBody, Json);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Interac webhook called with a body that is not JSON");
+            return BadRequest("The body must be JSON.");
+        }
+        if (body == null) return BadRequest("The body must be JSON.");
+
+        // A token can leak. The email must also look like one Interac sent, so a leaked token alone
+        // cannot mark money as received.
+        if (_configuration.GetValue("Payments:InteracRequireSender", true))
+        {
+            var sender = InteracWebhookVerification.OriginalSender(body.From, body.Body);
+            var allowed = InteracWebhookVerification.ParseDomains(_configuration["Payments:InteracSenderAllowlist"]);
+            if (!InteracWebhookVerification.SenderAllowed(sender, allowed))
+            {
+                _logger.LogWarning("Interac webhook refused an email from {Sender}", sender ?? "an unknown sender");
+                return BadRequest("The email does not come from Interac.");
+            }
+        }
+
         return Ok(await _service.IngestAsync(body));
     }
-
-    /// Constant-time compare, so a wrong token cannot be guessed one character at a time.
-    private static bool FixedTimeEquals(string? provided, string expected) =>
-        CryptographicOperations.FixedTimeEquals(
-            SHA256.HashData(Encoding.UTF8.GetBytes(provided ?? string.Empty)),
-            SHA256.HashData(Encoding.UTF8.GetBytes(expected)));
 }

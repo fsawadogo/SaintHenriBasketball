@@ -12,6 +12,9 @@ public class IngestInteracEmailDto
     public string? Body { get; set; }
     /// When the bank sent it. Defaults to now.
     public DateTimeOffset? ReceivedAt { get; set; }
+    /// Who the forwarding service says sent the message. A forward rewrites this, so the original
+    /// sender is also looked for in the forwarded text.
+    public string? From { get; set; }
 }
 
 public class IngestInteracEmailResultDto
