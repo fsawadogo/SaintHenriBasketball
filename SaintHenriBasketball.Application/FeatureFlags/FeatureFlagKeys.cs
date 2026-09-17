@@ -60,4 +60,10 @@ public static class FeatureFlagKeys
 
     // Redesigned admin seasons page — one hero for the open season, rows for the rest.
     public const string SeasonsPageRedesign = "seasons-page-redesign";
+
+    // Per-season plan choice: the after-login prompt, the season pass spot limit, and the admin reset.
+    public const string SeasonPlanChoice = "season-plan-choice";
+
+    // Reworked player dashboard: season block, balance owed, and a different layout on match day.
+    public const string PlayerDashboardV2 = "player-dashboard-v2";
 }

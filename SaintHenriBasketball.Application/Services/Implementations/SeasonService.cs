@@ -55,6 +55,7 @@ public class SeasonService : ISeasonService
             createSeasonDto.Notes
         );
         season.Name = createSeasonDto.Name.Trim();
+        season.SeasonPassCapacity = createSeasonDto.SeasonPassCapacity;
 
         await _seasonRepository.AddAsync(season);
         
@@ -167,6 +168,9 @@ public class SeasonService : ISeasonService
 
         if (updateSeasonDto.Notes != null)
             season.Notes = updateSeasonDto.Notes;
+
+        if (updateSeasonDto.SeasonPassCapacity.HasValue)
+            season.SeasonPassCapacity = updateSeasonDto.SeasonPassCapacity.Value;
 
         await _seasonRepository.UpdateAsync(season);
 

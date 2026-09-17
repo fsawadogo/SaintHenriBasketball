@@ -88,6 +88,7 @@ public class SeasonScheduleService : ISeasonScheduleService
         {
             Name = request.Name.Trim(),
             Status = openSeason is null ? SeasonStatus.Open : SeasonStatus.Closed,
+            SeasonPassCapacity = request.SeasonPassCapacity,
         };
         var sessions = toCreate
             .Select(p => new Session(p.Date, p.MaxCapacity, p.DropInPrice, p.StartTime, p.EndTime, p.Location))

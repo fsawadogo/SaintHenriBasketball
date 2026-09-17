@@ -28,6 +28,7 @@ public class PaymentService : IPaymentService
    private readonly IAccountCreditRepository _accountCreditRepository;
    private readonly IReferralService _referralService;
    private readonly IFeatureFlagService _featureFlagService;
+   private readonly ISeasonPlanChoiceRepository _seasonPlanChoiceRepository;
 
    public PaymentService(
        IPaymentRepository paymentRepository,
@@ -42,7 +43,8 @@ public class PaymentService : IPaymentService
        IPromoCodeRepository promoCodeRepository,
        IAccountCreditRepository accountCreditRepository,
        IReferralService referralService,
-       IFeatureFlagService featureFlagService)
+       IFeatureFlagService featureFlagService,
+       ISeasonPlanChoiceRepository seasonPlanChoiceRepository)
    {
        _paymentRepository = paymentRepository;
        _seasonRepository = seasonRepository;
@@ -57,6 +59,7 @@ public class PaymentService : IPaymentService
        _accountCreditRepository = accountCreditRepository;
        _referralService = referralService;
        _featureFlagService = featureFlagService;
+       _seasonPlanChoiceRepository = seasonPlanChoiceRepository;
    }
 
    public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto createPaymentDto)
@@ -739,9 +742,32 @@ public class PaymentService : IPaymentService
            return 0;
        }
 
+       // Per-season plan choice changes who is billable: the answer is no longer the player's one
+       // global plan but what they chose for the season this session belongs to. Loaded once per run.
+       var perSeasonPlans = await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.SeasonPlanChoice);
+       var allSeasons = perSeasonPlans ? await _seasonRepository.GetAllAsync() : new List<Season>();
+
        var created = 0;
        foreach (var session in todays)
        {
+           // Resolved ONCE per session, never per registration: this runs hourly, forever, and a
+           // lookup inside the inner loop would be a query per player per session.
+           Season? sessionSeason = null;
+           if (perSeasonPlans)
+           {
+               sessionSeason = SeasonForDate.Resolve(allSeasons, session.SessionDate);
+               if (sessionSeason is null)
+               {
+                   // Refuse rather than guess. Defaulting either way is silent and costs money:
+                   // treat-as-drop-in bills every pass holder through the off-season, and
+                   // treat-as-season quietly stops billing drop-ins for weeks.
+                   _logger.LogWarning(
+                       "DropInBilling: session {SessionId} on {SessionDate:yyyy-MM-dd} not billed — {Reason}",
+                       session.Id, session.SessionDate, SeasonForDate.Explain(allSeasons, session.SessionDate));
+                   continue;
+               }
+           }
+
            var registrations = await _registrationRepository.GetBySessionIdAsync(session.Id);
            if (registrations.Count == 0) continue;
 
@@ -752,7 +778,15 @@ public class PaymentService : IPaymentService
            foreach (var reg in registrations)
            {
                if (!users.TryGetValue(reg.UserId, out var user)) continue;
-               if (user.PaymentPlan != PaymentPlan.DropIn) continue;
+
+               if (perSeasonPlans)
+               {
+                   // No choice recorded means drop-in — the stated default for everyone, and the
+                   // safe direction: an unasked player gets billed rather than playing for free.
+                   var choice = await _seasonPlanChoiceRepository.GetAsync(sessionSeason!.Id, reg.UserId);
+                   if ((choice?.Plan ?? PaymentPlan.DropIn) != PaymentPlan.DropIn) continue;
+               }
+               else if (user.PaymentPlan != PaymentPlan.DropIn) continue;
 
                // Any payment at all — a refunded one included — means this player has already been billed
                // for this session. A session stays billable for up to 48 hours now, so without this the next

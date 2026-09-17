@@ -10,4 +10,6 @@ public class CreateSeasonDto
     public decimal Price { get; set; }
     public SeasonStatus Status { get; set; } = SeasonStatus.Open;
     public string? Notes { get; set; }
+    /// How many players may hold a season pass. Defaults to 15 when omitted.
+    public int SeasonPassCapacity { get; set; } = Domain.Entities.Season.DefaultSeasonPassCapacity;
 }

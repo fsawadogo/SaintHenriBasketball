@@ -56,6 +56,9 @@ public class CreateSeasonWithScheduleDto
     public DateTime EndDate { get; set; }
     public decimal Price { get; set; }
     public string? Notes { get; set; }
+    /// How many players may hold a season pass. The wizard is the main way seasons are created, so
+    /// capacity has to be settable here and not only on the plain create endpoint.
+    public int SeasonPassCapacity { get; set; } = Domain.Entities.Season.DefaultSeasonPassCapacity;
     public List<SeasonScheduleDayDto> Days { get; set; } = new();
     public List<SeasonScheduleSkipDto> Skip { get; set; } = new();
 }

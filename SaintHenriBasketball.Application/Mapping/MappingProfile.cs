@@ -95,6 +95,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
             .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn))
+            .ForMember(dest => dest.SeasonPassCapacity, opt => opt.MapFrom(src => src.SeasonPassCapacity))
             .ForMember(dest => dest.RegisteredUsersCount, opt => opt.MapFrom(src => src.Registrations.Count))
             .ForMember(dest => dest.RegisteredUsers, opt => opt.MapFrom(src => src.Registrations));
 

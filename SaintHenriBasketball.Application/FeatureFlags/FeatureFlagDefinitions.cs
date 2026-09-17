@@ -143,5 +143,13 @@ public static class FeatureFlagDefinitions
             "Redesigned seasons page: the season open now gets a hero with the club mark, the others become compact rows.",
             "Page des saisons repensée : la saison en cours est mise en vedette avec l'écusson du club, les autres deviennent des rangées compactes.",
             IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonPlanChoice,
+            "Ask each player how they want to pay for the season, cap season passes at the season's spot limit, and let admins reset a season's choices.",
+            "Demander à chaque joueur comment il souhaite payer la saison, limiter les laissez-passer au nombre de places de la saison, et permettre aux admins de réinitialiser les choix d'une saison.",
+            IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.PlayerDashboardV2,
+            "Reworked player dashboard: the season pass and its spots, the balance owed, and a match-day layout on session days.",
+            "Tableau de bord repensé : le laissez-passer et ses places, le solde à payer, et une mise en page spéciale les jours de séance.",
+            IsPublic: true),
     };
 }

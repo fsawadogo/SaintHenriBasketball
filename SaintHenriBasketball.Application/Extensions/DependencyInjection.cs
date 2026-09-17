@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<ISeasonService, SeasonService>();
+        services.AddScoped<ISeasonPlanService, SeasonPlanService>();
         services.AddScoped<IEmailAutomationService, EmailAutomationService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
         services.AddScoped<IStripeService, StripeService>();
