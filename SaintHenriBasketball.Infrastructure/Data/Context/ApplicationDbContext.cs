@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Domain.Entities;
+﻿using SaintHenriBasketball.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace SaintHenriBasketball.Infrastructure.Data.Context;
@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SessionRegistration> SessionRegistrations { get; set; }
     public DbSet<SeasonSubscription> SeasonSubscriptions { get; set; }
     public DbSet<Payment> Payments { get; set; }
+    public DbSet<InteracDeposit> InteracDeposits { get; set; }
     public DbSet<SessionAttendance> SessionAttendances { get; set; }
     public DbSet<Season> Seasons { get; set; }
     public DbSet<SeasonRegistration> SeasonRegistrations { get; set; }
@@ -211,6 +212,25 @@ public class ApplicationDbContext : DbContext
                 entity.HasOne(p => p.PromoCode).WithMany().HasForeignKey(p => p.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
                 entity.Property(p => p.RefundReason).HasMaxLength(500);
             });
+
+        modelBuilder.Entity<InteracDeposit>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.SenderName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ReferenceNumber).HasMaxLength(100);
+            entity.Property(e => e.Subject).HasMaxLength(500);
+            entity.Property(e => e.Body).HasMaxLength(8000);
+            entity.Property(e => e.MessageId).HasMaxLength(300);
+            entity.Property(e => e.Note).HasMaxLength(300);
+            entity.Property(e => e.Fingerprint).HasMaxLength(64).IsRequired();
+            // The same confirmation forwarded twice must not be counted twice.
+            entity.HasIndex(e => e.Fingerprint).IsUnique();
+            entity.HasIndex(e => e.MessageId);
+            entity.HasIndex(e => new { e.Status, e.ReceivedAt });
+            // Keep the deposit if its payment is ever removed: it is the bank's record, not ours.
+            entity.HasOne(e => e.MatchedPayment).WithMany().HasForeignKey(e => e.MatchedPaymentId).OnDelete(DeleteBehavior.SetNull);
+        });
 
         modelBuilder.Entity<AccountCredit>(entity =>
         {

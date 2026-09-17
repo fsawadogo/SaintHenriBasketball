@@ -56,6 +56,7 @@ public static class FeatureFlagKeys
     public const string VolunteerRoles = "volunteer-roles";
     public const string SeasonDashboard = "season-dashboard";
     public const string SignupFunnel = "signup-funnel";
+    public const string InteracAutoMatch = "interac-auto-match";
 
     // Season schedule wizard — create a season and all its sessions in one step.
     public const string SeasonScheduleWizard = "season-schedule-wizard";

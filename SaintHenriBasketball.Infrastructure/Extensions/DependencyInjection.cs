@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddOutstandingBalancesFeature();
         services.AddSeasonDashboardFeature();
         services.AddSignupFunnelFeature();
+        services.AddInteracAutoMatchFeature();
         services.AddCourtAttendanceFeature();
         services.AddTreasurerReportFeature();
         services.AddPlayerTimelineFeature();
