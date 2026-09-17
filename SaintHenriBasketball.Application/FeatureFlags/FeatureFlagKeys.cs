@@ -1,4 +1,4 @@
-namespace SaintHenriBasketball.Application.FeatureFlags;
+﻿namespace SaintHenriBasketball.Application.FeatureFlags;
 
 /// Central registry of every feature flag used in the app.
 /// Each key must be added to <see cref="FeatureFlagDefinitions.All"/> so it is seeded on startup.
@@ -54,6 +54,7 @@ public static class FeatureFlagKeys
     public const string WaitlistAdmin = "waitlist-admin";
     public const string PromoReferralReports = "promo-referral-reports";
     public const string VolunteerRoles = "volunteer-roles";
+    public const string SeasonDashboard = "season-dashboard";
 
     // Season schedule wizard — create a season and all its sessions in one step.
     public const string SeasonScheduleWizard = "season-schedule-wizard";

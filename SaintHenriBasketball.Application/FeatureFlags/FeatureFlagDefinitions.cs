@@ -1,4 +1,4 @@
-namespace SaintHenriBasketball.Application.FeatureFlags;
+﻿namespace SaintHenriBasketball.Application.FeatureFlags;
 
 public record FeatureFlagDefinition(string Key, string Description, string DescriptionFr, bool IsPublic = true);
 
@@ -118,6 +118,10 @@ public static class FeatureFlagDefinitions
         new FeatureFlagDefinition(FeatureFlagKeys.PlayerTimeline,
             "One timeline on the player page: payments, credits, referrals, waiver, attendance, messages and notes.",
             "Chronologie unique sur la fiche du joueur : paiements, crédits, parrainages, décharge, présences, messages et notes.",
+            IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.SeasonDashboard,
+            "One page per season for admins: passes sold against the cap, money collected and pending by age, and how each session filled.",
+            "Une page par saison pour les admins : laissez-passer vendus sur la capacité, sommes perçues et en attente par ancienneté, et le remplissage de chaque séance.",
             IsPublic: false),
         new FeatureFlagDefinition(FeatureFlagKeys.SeasonRollover,
             "Copy a season (dates, fee, Saturday sessions) into a draft and invite season players to renew.",

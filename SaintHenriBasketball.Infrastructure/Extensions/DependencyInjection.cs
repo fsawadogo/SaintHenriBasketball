@@ -44,6 +44,7 @@ public static class DependencyInjection
 
         // Admin-audit features: each registers its own services and repositories.
         services.AddOutstandingBalancesFeature();
+        services.AddSeasonDashboardFeature();
         services.AddCourtAttendanceFeature();
         services.AddTreasurerReportFeature();
         services.AddPlayerTimelineFeature();

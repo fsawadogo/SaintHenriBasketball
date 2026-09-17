@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Application.DTOs.AuditLog;
+﻿using SaintHenriBasketball.Application.DTOs.AuditLog;
 using System.Net;
 using System.IdentityModel.Tokens.Jwt;
 using AutoMapper;
@@ -1084,6 +1084,7 @@ await PromoReferralReportsChecks.RunAsync(Db, Assert);
 await VolunteerRolesChecks.RunAsync(Db, Assert);
 await SeasonScheduleWizardChecks.RunAsync(Db, Assert);
 await SeasonPlanChoiceChecks.RunAsync(Db, Assert);
+await SeasonDashboardChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
