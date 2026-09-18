@@ -80,6 +80,20 @@ public record TreasurerPaymentRow(
 
 public record TreasurerSeasonInfo(Guid Id, string Name, DateTime StartDate);
 
+/// <summary>
+/// What one session of a season took in drop-in fees. <paramref name="Collected"/> is money the club
+/// kept: completed payments, plus ones refunded as account credit (the cash never left), and not ones
+/// refunded back to a card or by hand. <paramref name="PlayersPaid"/> counts distinct players, so a
+/// player who somehow paid twice does not look like two.
+/// </summary>
+public record TreasurerDropInSessionRow(
+    Guid SessionId,
+    DateTime SessionDate,
+    string? StartTime,
+    string? Location,
+    decimal Collected,
+    int PlayersPaid);
+
 /// Read-only queries for the treasurer report. Sums run in SQL.
 public interface ITreasurerReportRepository
 {
@@ -93,4 +107,8 @@ public interface ITreasurerReportRepository
     Task<IReadOnlyList<TreasurerPaymentRow>> GetPaymentRowsAsync(TreasurerReportFilter filter);
 
     Task<IReadOnlyList<TreasurerSeasonInfo>> GetSeasonsAsync(IReadOnlyCollection<Guid> seasonIds);
+
+    /// Drop-in takings for each session of one season, oldest first. Sessions that took nothing are
+    /// included, so a blank Saturday is visible rather than missing.
+    Task<IReadOnlyList<TreasurerDropInSessionRow>> GetDropInBySessionAsync(Guid seasonId);
 }
