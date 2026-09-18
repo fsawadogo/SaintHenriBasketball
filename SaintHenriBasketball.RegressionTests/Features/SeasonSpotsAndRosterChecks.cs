@@ -83,6 +83,17 @@ internal static class SeasonSpotsAndRosterChecks
                 "season spots: a player who paid and also chose is one spot, not two");
         }
 
+        // Every surface that shows spots must agree. The public countdown had its own copy of the
+        // count and still used paid passes alone, so it advertised a full season as untouched.
+        await using (var context = db())
+        {
+            var choices = new SeasonPlanChoiceRepository(context, NullLogger<SeasonPlanChoiceRepository>.Instance);
+            var holders = await choices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan: true);
+            var paidOnly = await choices.CountPaidPassesAsync(season.Id);
+            assert(holders.Count > paidOnly,
+                "season spots: the shared count is not the paid-pass count — any surface using the latter under-reports");
+        }
+
         // --- Session roster ---
         await using (var context = db())
         {

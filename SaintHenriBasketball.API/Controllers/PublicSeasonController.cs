@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.DTOs.PublicSchedule;
 using SaintHenriBasketball.Application.FeatureFlags;
@@ -63,7 +63,9 @@ public class PublicSeasonController : ControllerBase
 
             if (spotsEnforced)
             {
-                var taken = await _choices.CountPaidPassesAsync(season.Id);
+                // The same definition of a taken spot as the dashboard and the plan page. Counting
+                // only paid passes here left the countdown advertising a full season as empty.
+                var taken = (await _choices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan: true)).Count;
                 cached.Capacity = season.SeasonPassCapacity;
                 cached.SpotsLeft = Math.Max(0, season.SeasonPassCapacity - taken);
             }
