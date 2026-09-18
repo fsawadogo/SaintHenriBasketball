@@ -38,6 +38,10 @@ public interface IEmailService
     /// so nobody is told their payment was handled when it was not.
     Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SessionCancellationEmailModel Model)> recipients);
 
+    /// Confirms back to a player the plan they just chose for a season. Transactional, like a
+    /// payment receipt, so it is not gated on the notification preference.
+    Task SendPlanChoiceConfirmationAsync(ApplicationUser user, PlanChoiceConfirmationEmailModel model);
+
     // Season Related Emails
     Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration);
     Task SendSeasonRegistrationCancelledEmailAsync(string? userEmail, Season season);

@@ -2,6 +2,7 @@
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Domain.Enums;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
@@ -18,6 +19,9 @@ public class SeasonPlanService : ISeasonPlanService
     private readonly ISeasonPlanChoiceRepository _choices;
     private readonly IUserRepository _users;
     private readonly IAuditLogService _audit;
+    private readonly IEmailService _email;
+    private readonly IFeatureFlagService _flags;
+    private readonly ISessionRepository _sessions;
     private readonly ILogger<SeasonPlanService> _logger;
 
     public SeasonPlanService(
@@ -25,12 +29,18 @@ public class SeasonPlanService : ISeasonPlanService
         ISeasonPlanChoiceRepository choices,
         IUserRepository users,
         IAuditLogService audit,
+        IEmailService email,
+        IFeatureFlagService flags,
+        ISessionRepository sessions,
         ILogger<SeasonPlanService> logger)
     {
         _seasons = seasons;
         _choices = choices;
         _users = users;
         _audit = audit;
+        _email = email;
+        _flags = flags;
+        _sessions = sessions;
         _logger = logger;
     }
 
@@ -63,6 +73,10 @@ public class SeasonPlanService : ISeasonPlanService
                 throw new ValidationException("The season pass is sold out for this season.");
         }
 
+        // Read before writing: an email only makes sense when the answer actually changed, and a
+        // player re-saving the same plan should not be told again.
+        var previous = (await _choices.GetAsync(season.Id, userId))?.Plan;
+
         await _choices.UpsertAsync(season.Id, userId, plan);
 
         // Keep the denormalised current plan coherent: everything else in the app still reads it.
@@ -74,6 +88,9 @@ public class SeasonPlanService : ISeasonPlanService
         }
 
         _logger.LogInformation("User {UserId} chose {Plan} for season {SeasonId}", userId, plan, season.Id);
+
+        if (previous != plan && user is not null)
+            await ConfirmByEmailAsync(user, season, plan);
 
         return await BuildStateAsync(season.Id, season.Name, season.StartDate, season.EndDate,
             season.Price, season.SeasonPassCapacity, userId);
@@ -137,6 +154,41 @@ public class SeasonPlanService : ISeasonPlanService
             Cleared = cleared,
             KeptPaid = paid,
         };
+    }
+
+    /// Tells the player what they just chose. Never lets a mail problem undo the choice: the plan is
+    /// already saved by this point, and failing here would report an error for work that succeeded.
+    private async Task ConfirmByEmailAsync(Domain.Entities.ApplicationUser user, Domain.Entities.Season season, PaymentPlan plan)
+    {
+        try
+        {
+            if (!await _flags.IsEnabledAsync(FeatureFlagKeys.PlanChoiceConfirmationEmail)) return;
+
+            var holders = await _choices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan: true);
+            var firstSession = (await _sessions.GetUpcomingSessionsAsync())
+                .Where(s => s.Status != SessionStatus.Cancelled
+                            && s.SessionDate.Date >= season.StartDate.Date
+                            && s.SessionDate.Date <= season.EndDate.Date)
+                .OrderBy(s => s.SessionDate).ThenBy(s => s.StartTime)
+                .FirstOrDefault();
+
+            await _email.SendPlanChoiceConfirmationAsync(user, new DTOs.Email.PlanChoiceConfirmationEmailModel
+            {
+                SeasonName = season.Name,
+                Plan = plan,
+                StartDate = season.StartDate,
+                EndDate = season.EndDate,
+                PassPrice = season.Price,
+                DropInPrice = firstSession?.DropInPrice,
+                AlreadyPaid = await _choices.HasPaidPassAsync(season.Id, user.Id),
+                SpotsLeft = Math.Max(0, season.SeasonPassCapacity - holders.Count),
+                AppUrl = "https://sainthenribasketball.com",
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Plan choice confirmation email failed for {UserId} and season {SeasonId}", user.Id, season.Id);
+        }
     }
 
     private async Task<SeasonPlanStateDto> BuildStateAsync(

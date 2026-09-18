@@ -365,6 +365,87 @@ public static class EmailTemplates
             return BuildEmailLayout("Choose how you will play this season", "Choisissez votre formule pour la saison", content, lang);
         }
 
+        /// <summary>
+        /// Confirms the plan a player just picked for a season.
+        ///
+        /// The two plans need opposite endings: a season pass is not a spot until it is paid for, so
+        /// that email asks for money and says what happens if it does not arrive; pay-per-session
+        /// needs nothing, so that one asks for nothing and says so plainly.
+        /// </summary>
+        public static string GetPlanChoiceConfirmationEmail(PlanChoiceConfirmationEmailModel model, EmailLanguage lang = EmailLanguage.French)
+        {
+            var culture = GetCulture(lang);
+            string Money(decimal amount) => amount.ToString("C", culture);
+            var app = model.AppUrl.TrimEnd('/');
+            var season = $"{model.SeasonName} · {model.StartDate.ToString("d MMM", culture)} – {model.EndDate.ToString("d MMM yyyy", culture)}";
+            var isSeason = model.Plan == PaymentPlan.Season;
+
+            var content = Greeting(model.FirstName, lang);
+
+            if (!isSeason)
+            {
+                content += P(L("You are paying per session this season. Nothing to pay up front — you are billed for the sessions you play, and only those.",
+                               "Vous payez à la séance cette saison. Rien à payer d'avance : vous êtes facturé pour les séances que vous jouez, et seulement celles-là.", lang));
+
+                content += BuildInfoBox(new Dictionary<string, string?>
+                {
+                    { L("Your plan", "Votre formule", lang), L("Pay per session", "Paiement à la séance", lang) },
+                    { L("Per session", "Par séance", lang), model.DropInPrice is decimal drop ? Money(drop) : null },
+                    { L("Season", "Saison", lang), season },
+                });
+
+                content += P(model.SpotsLeft > 0
+                    ? L($"Changed your mind? The season pass is {Money(model.PassPrice)} and {model.SpotsLeft} are still available.",
+                        $"Vous changez d'avis ? Le laissez-passer est à {Money(model.PassPrice)} et il en reste {model.SpotsLeft}.", lang)
+                    : L("The season pass is sold out, so pay-per-session is the way in for now.",
+                        "Le laissez-passer est complet : le paiement à la séance est donc la façon de jouer pour l'instant.", lang));
+
+                content += BuildButton("See my plan", "Voir ma formule", $"{app}/plan-selection", lang);
+
+                return BuildEmailLayout("You are paying per session", "Vous payez à la séance", content, lang,
+                    LSubject($"Pay-per-session confirmed for {model.SeasonName}. Nothing to pay now.",
+                             $"Paiement à la séance confirmé pour {model.SeasonName}. Rien à payer maintenant.", lang));
+            }
+
+            // Season pass.
+            content += P(model.AlreadyPaid
+                ? L("You are on the season pass, and it is paid for. Every session this season is covered — just turn up.",
+                    "Vous avez le laissez-passer de saison, et il est payé. Toutes les séances de la saison sont couvertes : venez jouer.", lang)
+                : L("You have chosen the season pass. Your spot is held once the payment reaches us.",
+                    "Vous avez choisi le laissez-passer de saison. Votre place est retenue dès que le paiement nous parvient.", lang));
+
+            content += BuildInfoBox(new Dictionary<string, string?>
+            {
+                { L("Your plan", "Votre formule", lang), L("Season pass", "Laissez-passer de saison", lang) },
+                { L("Price", "Prix", lang), Money(model.PassPrice) },
+                { L("Season", "Saison", lang), season },
+                { L("Status", "Statut", lang), model.AlreadyPaid
+                    ? L("Paid", "Payé", lang)
+                    : L("Awaiting payment", "En attente de paiement", lang) },
+            });
+
+            if (!model.AlreadyPaid)
+            {
+                content += BuildButton("Pay for my pass", "Payer mon laissez-passer", $"{app}/season-subscription", lang);
+                content += BuildAlertBox(L(
+                    "Until it is paid, the spot is held but not confirmed. If the season fills up, paid passes come first.",
+                    "Tant qu'il n'est pas payé, la place est retenue mais non confirmée. Si la saison se remplit, les laissez-passer payés passent en premier.", lang), "warning");
+            }
+
+            content += P(L("Reply to this email if anything looks wrong.",
+                           "Répondez à ce courriel si quelque chose ne va pas.", lang));
+
+            return BuildEmailLayout("Your season pass", "Votre laissez-passer de saison", content, lang,
+                LSubject(
+                    model.AlreadyPaid
+                        ? $"Season pass confirmed for {model.SeasonName}."
+                        : $"Season pass chosen for {model.SeasonName} — {Money(model.PassPrice)} to pay.",
+                    model.AlreadyPaid
+                        ? $"Laissez-passer confirmé pour {model.SeasonName}."
+                        : $"Laissez-passer choisi pour {model.SeasonName} — {Money(model.PassPrice)} à payer.",
+                    lang));
+        }
+
         public static string GetSeasonStatusUpdateEmail(string userName, string seasonName, string newStatus, string? reasonForChange = null, string? additionalInfo = null, EmailLanguage lang = EmailLanguage.French)
         {
             var content = Greeting(userName, lang) +

@@ -59,6 +59,9 @@ public static class FeatureFlagKeys
     public const string InteracAutoMatch = "interac-auto-match";
     public const string SeasonPlanChoiceEmail = "season-plan-choice-email";
 
+    // Emails a player back when they pick how they will pay for a season.
+    public const string PlanChoiceConfirmationEmail = "plan-choice-confirmation-email";
+
     // Lets the daily job send the plan-choice email by itself. Without this the email exists and an
     // admin can send it, but nothing goes out unattended.
     public const string SeasonPlanChoiceEmailAuto = "season-plan-choice-email-auto";
