@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Domain.Interfaces.Repositories;
+﻿using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -176,8 +176,13 @@ public class PaymentsController : ControllerBase
                 Email = user.Email,
                 Description = payment.Plan == PaymentPlan.Season ? "Forfait de saison" : "Forfait à la séance",
                 Amount = payment.Amount,
+                OriginalAmount = payment.OriginalAmount,
+                DiscountAmount = payment.DiscountAmount,
+                CreditApplied = payment.CreditApplied,
                 Reference = payment.Reference,
-                Date = payment.PaymentDate
+                Date = payment.PaymentDate,
+                // Only a completed payment is a receipt; anything else is still a bill.
+                PaidOn = payment.Status == PaymentStatus.Completed ? payment.PaymentDate : null
             };
 
             var pdfContent = billGenerator.GenerateBill(billDetails);
