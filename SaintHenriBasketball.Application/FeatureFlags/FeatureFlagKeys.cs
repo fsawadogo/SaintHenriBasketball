@@ -59,6 +59,10 @@ public static class FeatureFlagKeys
     public const string InteracAutoMatch = "interac-auto-match";
     public const string SeasonPlanChoiceEmail = "season-plan-choice-email";
 
+    // Lets the daily job send the plan-choice email by itself. Without this the email exists and an
+    // admin can send it, but nothing goes out unattended.
+    public const string SeasonPlanChoiceEmailAuto = "season-plan-choice-email-auto";
+
     // Season schedule wizard — create a season and all its sessions in one step.
     public const string SeasonScheduleWizard = "season-schedule-wizard";
 

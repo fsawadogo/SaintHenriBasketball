@@ -26,6 +26,7 @@ public class SeasonPlanChoiceEmailService : ISeasonPlanChoiceEmailService
 
     public const string NoSeasonOutcome = "No season starts on that day.";
     public const string FlagOffOutcome = "The season-plan-choice-email flag is off.";
+    public const string AutoSendOffOutcome = "Automatic sending is off; an admin sends this email by hand.";
 
     private readonly ISeasonRepository _seasons;
     private readonly IUserRepository _users;
@@ -57,6 +58,16 @@ public class SeasonPlanChoiceEmailService : ISeasonPlanChoiceEmailService
         _flags = flags;
         _configuration = configuration;
         _logger = logger;
+    }
+
+    public async Task<PlanChoiceSendResultDto> RunScheduledAsync()
+    {
+        // The daily job's only entry point. Sending unattended needs its own switch, so that turning
+        // the feature on to send by hand cannot also set the job loose on the next season.
+        if (!await _flags.IsEnabledAsync(FeatureFlagKeys.SeasonPlanChoiceEmailAuto))
+            return new PlanChoiceSendResultDto { Outcome = AutoSendOffOutcome };
+
+        return await RunForSeasonStartingInAsync(DefaultDaysAhead);
     }
 
     public async Task<PlanChoiceSendResultDto> RunForSeasonStartingInAsync(int daysAhead, bool dryRun = false)

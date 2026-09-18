@@ -159,6 +159,44 @@ internal static class SeasonPlanChoiceEmailChecks
             off = await Service(context).RunForSeasonStartingInAsync(7);
         assert(off.Outcome == SeasonPlanChoiceEmailService.FlagOffOutcome && off.Sent == 0,
             "plan choice: the flag stops the job before it looks at anything");
+
+        // --- The daily job will not send on its own unless it is told to ---
+        // The feature is on; automatic sending is not. A second season is a week out and untouched,
+        // so anything the job sent would show up here.
+        var untouched = new Season(today.AddDays(7), today.AddDays(90), 90m) { Name = $"Manual only {tag}", SeasonPassCapacity = 15 };
+        var waiting = new ApplicationUser($"pc_wait_{tag}", $"pc-wait-{tag}@example.test", "test-only", "Wes", $"Wait{tag}", PaymentPlan.DropIn) { EmailConfirmed = true };
+        await using (var context = db())
+        {
+            context.Seasons.Add(untouched);
+            context.Users.Add(waiting);
+            await context.SaveChangesAsync();
+        }
+
+        ((PlanChoiceFlags)(object)flags).Enabled = true;
+        ((PlanChoiceFlags)(object)flags).AutoEnabled = false;
+        var beforeScheduled = recorder.Sent.Count;
+
+        PlanChoiceSendResultDto scheduled;
+        await using (var context = db())
+            scheduled = await Service(context).RunScheduledAsync();
+        assert(scheduled.Outcome == SeasonPlanChoiceEmailService.AutoSendOffOutcome
+            && scheduled.Sent == 0 && recorder.Sent.Count == beforeScheduled,
+            "plan choice: the daily job sends nothing while automatic sending is off, even with a season a week out");
+
+        // The same email, sent by hand, still works — that is the whole point of the second switch.
+        PlanChoiceSendResultDto byHand;
+        await using (var context = db())
+            byHand = await Service(context).RunForSeasonAsync(untouched.Id);
+        assert(byHand.Sent >= 1 && recorder.Sent.Any(s => s.To == waiting.Email),
+            "plan choice: an admin can still send it by hand while the job is held back");
+
+        // And with automatic sending on, the job does its job.
+        ((PlanChoiceFlags)(object)flags).AutoEnabled = true;
+        PlanChoiceSendResultDto armed;
+        await using (var context = db())
+            armed = await Service(context).RunScheduledAsync();
+        assert(armed.Outcome != SeasonPlanChoiceEmailService.AutoSendOffOutcome,
+            "plan choice: switching automatic sending on lets the job through");
     }
 
     public class PlanChoiceEmailRecorder : DispatchProxy
@@ -179,10 +217,15 @@ internal static class SeasonPlanChoiceEmailChecks
     public class PlanChoiceFlags : DispatchProxy
     {
         public bool Enabled { get; set; }
+        public bool AutoEnabled { get; set; }
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
-            if (targetMethod?.Name == nameof(IFeatureFlagService.IsEnabledAsync)) return Task.FromResult(Enabled);
+            if (targetMethod?.Name == nameof(IFeatureFlagService.IsEnabledAsync))
+            {
+                var key = args?[0] as string;
+                return Task.FromResult(key == FeatureFlagKeys.SeasonPlanChoiceEmailAuto ? AutoEnabled : Enabled);
+            }
             throw new NotSupportedException($"Unexpected flag call: {targetMethod?.Name}");
         }
     }

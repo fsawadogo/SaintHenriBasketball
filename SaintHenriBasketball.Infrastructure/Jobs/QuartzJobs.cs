@@ -68,7 +68,7 @@ public class SeasonPlanChoiceEmailJob(IServiceProvider sp, ILogger<SeasonPlanCho
     {
         using var scope = sp.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISeasonPlanChoiceEmailService>();
-        var result = await service.RunForSeasonStartingInAsync(SeasonPlanChoiceEmailService.DefaultDaysAhead);
+        var result = await service.RunScheduledAsync();
         if (result.Outcome != null)
             logger.LogInformation("Season plan choice email: {Outcome}", result.Outcome);
         else

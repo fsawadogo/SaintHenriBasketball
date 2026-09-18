@@ -23,6 +23,10 @@ public class PlanChoiceSendResultDto
 
 public interface ISeasonPlanChoiceEmailService
 {
+    /// What the daily job calls. Does nothing unless automatic sending is switched on, separately
+    /// from the feature itself — so an admin can send this email by hand without arming the job.
+    Task<PlanChoiceSendResultDto> RunScheduledAsync();
+
     /// Sends the plan-choice email for a season starting exactly <paramref name="daysAhead"/> days from
     /// today (Montreal). Safe to call repeatedly: a player who already has it is never sent it twice.
     Task<PlanChoiceSendResultDto> RunForSeasonStartingInAsync(int daysAhead, bool dryRun = false);
