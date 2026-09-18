@@ -183,6 +183,22 @@ public class TreasurerReportService : ITreasurerReportService
         if (noSeason != null)
             seasonRows.Add(new TreasurerSeasonDto { SeasonId = null, SeasonName = NoSeasonName, Totals = noSeason.ToDto() });
 
+        // Only a season has sessions to break down. A date range can cut across seasons and part-way
+        // through one, so per-session rows under it would not add up to anything the reader expects.
+        var dropInBySession = scope.Season is Season inSeason
+            ? (await _repository.GetDropInBySessionAsync(inSeason.Id))
+                .Select(r => new TreasurerDropInSessionDto
+                {
+                    SessionId = r.SessionId,
+                    SessionDate = r.SessionDate,
+                    StartTime = r.StartTime,
+                    Location = r.Location,
+                    Collected = r.Collected,
+                    PlayersPaid = r.PlayersPaid,
+                })
+                .ToList()
+            : new List<TreasurerDropInSessionDto>();
+
         return new TreasurerReportDto
         {
             Scope = new TreasurerReportScopeDto
@@ -210,6 +226,7 @@ public class TreasurerReportService : ITreasurerReportService
                 };
             }).ToList(),
             BySeason = seasonRows,
+            DropInBySession = dropInBySession,
         };
     }
 

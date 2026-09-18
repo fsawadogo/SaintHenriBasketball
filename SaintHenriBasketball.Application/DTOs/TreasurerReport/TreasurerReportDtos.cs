@@ -21,6 +21,22 @@ public class TreasurerReportDto
     public List<TreasurerMonthDto> ByMonth { get; set; } = new();
     /// Seasons by start date, then "No season" (drop-ins and payments not tied to a season).
     public List<TreasurerSeasonDto> BySeason { get; set; } = new();
+    /// Drop-in takings per session, oldest first. Only filled when the report is scoped to one
+    /// season; empty for a date range, where "which sessions" has no answer.
+    public List<TreasurerDropInSessionDto> DropInBySession { get; set; } = new();
+}
+
+/// <summary>What one session took in drop-in fees.</summary>
+public class TreasurerDropInSessionDto
+{
+    public Guid SessionId { get; set; }
+    public DateTime SessionDate { get; set; }
+    public string? StartTime { get; set; }
+    public string? Location { get; set; }
+    /// Money the club kept for this session: completed payments, and ones refunded as account credit.
+    public decimal Collected { get; set; }
+    /// Distinct players who paid.
+    public int PlayersPaid { get; set; }
 }
 
 public class TreasurerReportScopeDto

@@ -39,12 +39,31 @@ public class TreasurerReportRepository : ITreasurerReportRepository
         public string? Reference { get; set; }
     }
 
-    private static readonly Expression<Func<Payment, PaymentFact>> ToFact = p => new PaymentFact
+    /// <summary>
+    /// The season a payment counts towards.
+    ///
+    /// A season payment carries its own SeasonId. A drop-in never does — it is created against a
+    /// session (PaymentRepository.GetOrCreateSessionPaymentAsync), and neither Payment nor Session
+    /// stores a season. So the season is the one whose dates contain the session's date, which is
+    /// how the rest of the app already decides which sessions belong to a season.
+    ///
+    /// Resolved on read rather than stored, so editing a season's dates re-attributes its money
+    /// instead of leaving stale rows behind. Earliest start wins if two seasons ever overlap, so
+    /// the answer is at least stable.
+    /// </summary>
+    private Expression<Func<Payment, PaymentFact>> ToFact => p => new PaymentFact
     {
         Id = p.Id,
         Status = p.Status,
         Plan = p.Plan,
-        SeasonId = p.SeasonId,
+        SeasonId = p.SeasonId ?? _context.Sessions
+            .Where(s => s.Id == p.SessionId)
+            .SelectMany(s => _context.Seasons
+                .Where(se => se.StartDate <= s.SessionDate && se.EndDate >= s.SessionDate)
+                .OrderBy(se => se.StartDate)
+                .Take(1))
+            .Select(se => (Guid?)se.Id)
+            .FirstOrDefault(),
         // Card is checked first; the two flows refuse each other, so a reference never carries both markers.
         Method = p.Reference != null && p.Reference.StartsWith(CardReferencePrefix) ? TreasurerPaymentMethod.Card
             : p.Reference != null && p.Reference.Contains(InteracReferenceMarker) ? TreasurerPaymentMethod.Interac
@@ -169,5 +188,54 @@ public class TreasurerReportRepository : ITreasurerReportRepository
             .Select(s => new { s.Id, s.Name, s.StartDate })
             .ToListAsync();
         return seasons.Select(s => new TreasurerSeasonInfo(s.Id, s.Name, s.StartDate)).ToList();
+    }
+
+    public async Task<IReadOnlyList<TreasurerDropInSessionRow>> GetDropInBySessionAsync(Guid seasonId)
+    {
+        var season = await _context.Seasons.AsNoTracking()
+            .Where(s => s.Id == seasonId)
+            .Select(s => new { s.StartDate, s.EndDate })
+            .FirstOrDefaultAsync();
+        if (season == null) return Array.Empty<TreasurerDropInSessionRow>();
+
+        // Every session of the season, so one that took nothing still shows as a zero row rather
+        // than vanishing from the list.
+        var sessions = await _context.Sessions.AsNoTracking()
+            .Where(s => s.SessionDate >= season.StartDate && s.SessionDate <= season.EndDate)
+            .Select(s => new { s.Id, s.SessionDate, s.StartTime, s.Location })
+            .ToListAsync();
+        if (sessions.Count == 0) return Array.Empty<TreasurerDropInSessionRow>();
+
+        var sessionIds = sessions.Select(s => s.Id).ToList();
+
+        // Money the club kept: completed, plus refunded as account credit. A card or manual refund
+        // left the club, so it is not takings.
+        var takings = await _context.Payments.AsNoTracking()
+            .Where(p => p.Plan == PaymentPlan.DropIn
+                        && p.SessionId != null
+                        && sessionIds.Contains(p.SessionId.Value)
+                        && (p.Status == PaymentStatus.Completed
+                            || (p.Status == PaymentStatus.Refunded && p.RefundMethod == RefundMethod.AccountCredit)))
+            .GroupBy(p => p.SessionId!.Value)
+            .Select(g => new
+            {
+                SessionId = g.Key,
+                Collected = g.Sum(p => p.Amount),
+                PlayersPaid = g.Select(p => p.UserId).Distinct().Count(),
+            })
+            .ToListAsync();
+
+        var bySession = takings.ToDictionary(t => t.SessionId);
+
+        return sessions
+            .OrderBy(s => s.SessionDate).ThenBy(s => s.StartTime)
+            .Select(s =>
+            {
+                bySession.TryGetValue(s.Id, out var t);
+                return new TreasurerDropInSessionRow(
+                    s.Id, s.SessionDate, s.StartTime, s.Location,
+                    t?.Collected ?? 0m, t?.PlayersPaid ?? 0);
+            })
+            .ToList();
     }
 }
