@@ -59,6 +59,9 @@ public static class FeatureFlagKeys
     public const string InteracAutoMatch = "interac-auto-match";
     public const string SeasonPlanChoiceEmail = "season-plan-choice-email";
 
+    // Emails a player their booking confirmation when they reserve a place.
+    public const string BookingConfirmationEmail = "booking-confirmation-email";
+
     // Emails a player back when they pick how they will pay for a season.
     public const string PlanChoiceConfirmationEmail = "plan-choice-confirmation-email";
 

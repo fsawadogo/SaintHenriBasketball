@@ -1,7 +1,8 @@
-using SaintHenriBasketball.Application.Helpers;
+﻿using SaintHenriBasketball.Application.Helpers;
 using AutoMapper;
 using SaintHenriBasketball.Application.DTOs;
 using SaintHenriBasketball.Application.Exceptions;
+using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
@@ -22,6 +23,8 @@ public class SessionService : ISessionService
     private readonly ICacheService _cacheService;
     private readonly IParticipationRepository _participation;
     private readonly IWaiverService _waiverService;
+    private readonly IEmailService _email;
+    private readonly IFeatureFlagService _flags;
 
     // Cache keys
     private const string UpcomingSessionsCacheKey = "UpcomingSessions";
@@ -35,8 +38,11 @@ public class SessionService : ISessionService
         IWaitlistService waitlistService,
         IMapper mapper,
         ILogger<SessionService> logger,
-        ICacheService cacheService, IParticipationRepository participation, IWaiverService waiverService)
+        ICacheService cacheService, IParticipationRepository participation, IWaiverService waiverService,
+        IEmailService email, IFeatureFlagService flags)
     {
+        _email = email;
+        _flags = flags;
         _waiverService = waiverService;
         _sessionRepository = sessionRepository;
         _registrationRepository = registrationRepository;
@@ -210,7 +216,30 @@ public class SessionService : ISessionService
         await _cacheService.RemoveAsync(UpcomingSessionsCacheKey);
         await _cacheService.RemoveAsync(AvailableSessionsCacheKey);
         await _cacheService.RemoveAsync($"{SessionKeyPrefix}{sessionId}");
+        await ConfirmBookingAsync(registration.Id, sessionId, userId);
         return _mapper.Map<SessionRegistrationResponseDto>(registration);
+    }
+
+    /// Confirms a booking by email and records that it went out, so it is never sent twice and the
+    /// ones that never went out stay findable. A mail failure leaves the place booked: the player has
+    /// their spot either way, and failing here would report an error for work that succeeded.
+    private async Task ConfirmBookingAsync(Guid registrationId, Guid sessionId, Guid userId)
+    {
+        try
+        {
+            if (!await _flags.IsEnabledAsync(FeatureFlagKeys.BookingConfirmationEmail)) return;
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            var session = await _sessionRepository.GetByIdAsync(sessionId);
+            if (user is null || session is null) return;
+
+            await _email.SendBookingConfirmationAsync(user, session);
+            await _registrationRepository.MarkConfirmationSentAsync(registrationId, DateTime.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Booking confirmation email failed for {UserId} and session {SessionId}", userId, sessionId);
+        }
     }
 
     public async Task UnregisterFromSessionAsync(Guid sessionId, Guid userId)

@@ -86,4 +86,26 @@ public class SessionRegistrationRepository : ISessionRegistrationRepository
     {
         return await ExistsAsync(userId, sessionId);
     }
+
+    public async Task MarkConfirmationSentAsync(Guid registrationId, DateTime sentOnUtc)
+    {
+        await _context.SessionRegistrations
+            .Where(r => r.Id == registrationId && r.ConfirmationSentOn == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(r => r.ConfirmationSentOn, sentOnUtc));
+    }
+
+    public async Task<IReadOnlyList<SessionRegistration>> GetAwaitingConfirmationAsync(Guid? sessionId, DateTime notBeforeUtc)
+    {
+        var query = _context.SessionRegistrations.AsNoTracking()
+            .Include(r => r.User)
+            .Include(r => r.Session)
+            // Only sessions still to come: nobody needs confirming for a Saturday that has passed.
+            .Where(r => r.ConfirmationSentOn == null && r.Session.SessionDate >= notBeforeUtc);
+
+        if (sessionId is Guid id) query = query.Where(r => r.SessionId == id);
+
+        return await query
+            .OrderBy(r => r.Session.SessionDate).ThenBy(r => r.RegistrationDate)
+            .ToListAsync();
+    }
 }

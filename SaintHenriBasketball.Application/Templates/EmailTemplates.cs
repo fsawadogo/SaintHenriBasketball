@@ -636,6 +636,48 @@ public static class EmailTemplates
         }
 
         /// <summary>
+        /// Confirms a place a player just booked for one session.
+        ///
+        /// What it costs depends on their plan, so the email says which applies rather than quoting a
+        /// price at someone whose pass already covers it. It also says how to give the place back,
+        /// because a place nobody releases is a place nobody else can take.
+        /// </summary>
+        public static string GetBookingConfirmationEmail(
+            string firstName, DateTime sessionDate, string startTime, string? endTime, string? location,
+            PaymentPlan plan, decimal? dropInPrice, string appUrl, EmailLanguage lang = EmailLanguage.French)
+        {
+            var culture = GetCulture(lang);
+            var app = appUrl.TrimEnd('/');
+            var time = string.IsNullOrWhiteSpace(endTime) ? startTime : $"{startTime}–{endTime}";
+            var day = sessionDate.ToString("dddd d MMMM yyyy", culture);
+
+            var cost = plan == PaymentPlan.Season
+                ? L("Covered by your season pass", "Couvert par votre laissez-passer", lang)
+                : dropInPrice is decimal price
+                    ? price.ToString("C", culture)
+                    : L("Charged per session", "Facturé à la séance", lang);
+
+            var content = Greeting(firstName, lang) +
+                P(L("Your place is booked. Here are the details.",
+                    "Votre place est réservée. Voici les détails.", lang)) +
+                BuildInfoBox(new Dictionary<string, string?>
+                {
+                    { "Date", day },
+                    { L("Time", "Heure", lang), time },
+                    { L("Where", "Où", lang), location ?? "717 Saint-Ferdinand" },
+                    { L("Cost", "Coût", lang), cost },
+                }) +
+                P(L("Bring a water bottle and clean indoor shoes.",
+                    "Apportez une bouteille d'eau et des souliers d'intérieur propres.", lang)) +
+                BuildButton("See my sessions", "Voir mes séances", $"{app}/my-sessions", lang) +
+                P(L("Can't make it after all? Release your place from that page — someone on the waiting list takes it.",
+                    "Vous ne pouvez plus venir ? Libérez votre place depuis cette page : quelqu'un sur la liste d'attente la prendra.", lang));
+
+            return BuildEmailLayout("Your place is booked", "Votre place est réservée", content, lang,
+                LSubject($"{day}, {time}. Your place is booked.", $"{day}, {time}. Votre place est réservée.", lang));
+        }
+
+        /// <summary>
         /// A place has come free and is held for this player until a deadline.
         ///
         /// This one is read in a hurry, on a phone, against a clock — so the deadline is stated in

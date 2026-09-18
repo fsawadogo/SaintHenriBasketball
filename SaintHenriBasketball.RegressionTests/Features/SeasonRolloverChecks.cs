@@ -29,7 +29,7 @@ internal static class SeasonRolloverChecks
         {
             var cache = new MemoryCacheService(new MemoryCache(new MemoryCacheOptions()), NullLogger<MemoryCacheService>.Instance);
             // Session generation only uses the session repository and the cache.
-            var sessions = new SessionService(new SessionRepository(context), null!, null!, null!, null!, NullLogger<SessionService>.Instance, cache, null!, null!);
+            var sessions = new SessionService(new SessionRepository(context), null!, null!, null!, null!, NullLogger<SessionService>.Instance, cache, null!, null!, null!, null!);
             return new SeasonRolloverService(new SeasonRepository(context, NullLogger<SeasonRepository>.Instance), new SeasonRolloverRepository(context),
                 sessions, new AuditLogService(new AuditLogRepository(context)), new AuditLogRepository(context), emailService,
                 new UnsubscribeLinks(config), config, cache, NullLogger<SeasonRolloverService>.Instance);

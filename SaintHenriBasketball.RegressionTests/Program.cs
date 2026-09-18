@@ -1088,6 +1088,7 @@ await SeasonDashboardChecks.RunAsync(Db, Assert);
 await SignupFunnelChecks.RunAsync(Db, Assert);
 await InteracAutoMatchChecks.RunAsync(Db, Assert);
 await SessionCancellationEmailChecks.RunAsync(Db, Assert);
+await BookingConfirmationChecks.RunAsync(Db, Assert);
 await PlanChoiceConfirmationEmailChecks.RunAsync(Db, Assert);
 await SeasonSpotsAndRosterChecks.RunAsync(Db, Assert);
 await TreasurerDropInBySeasonChecks.RunAsync(Db, Assert);
