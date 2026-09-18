@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Resend;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -628,24 +628,17 @@ public class EmailService : IEmailService
     #endregion
 
     #region Session Emails
-    public async Task SendSessionCancellationEmailAsync(Session session, List<ApplicationUser> registeredUsers, string? cancellationReason = null, Session? alternativeSession = null)
+    /// A cancellation is not marketing: someone who turned reminders off still needs to know the gym
+    /// is shut. It goes to everyone with an address, the way a receipt does.
+    public async Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SessionCancellationEmailModel Model)> recipients)
     {
-        foreach (var user in registeredUsers)
+        foreach (var (user, model) in recipients)
         {
             if (string.IsNullOrEmpty(user.Email)) continue;
             try
             {
                 var lang = user.PreferredLanguage;
-                var content = EmailTemplates.Sessions.GetSessionCancellationEmail(
-                    user.FirstName,
-                    session.SessionDate,
-                    session.StartTime,
-                    session.Location,
-                    cancellationReason,
-                    alternativeSession?.Id,
-                    lang
-                );
-
+                var content = EmailTemplates.Sessions.GetSessionCancellationEmail(model, lang);
                 var subject = EmailTemplateHelper.LSubject(
                     "Session cancelled - Saint-Henri Basketball",
                     "Séance annulée - Saint-Henri Basketball",

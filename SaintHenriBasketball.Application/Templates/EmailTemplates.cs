@@ -1,4 +1,5 @@
-using SaintHenriBasketball.Application.Helpers;
+﻿using SaintHenriBasketball.Application.Helpers;
+using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Domain.Enums;
 using static SaintHenriBasketball.Application.Helpers.EmailTemplateHelper;
 
@@ -375,33 +376,76 @@ public static class EmailTemplates
     #region Sessions
     public static class Sessions
     {
-        public static string GetSessionCancellationEmail(string userName, DateTime sessionDate, string startTime, string? location = null, string? cancellationReason = null, Guid? alternativeSessionId = null, EmailLanguage lang = EmailLanguage.French)
+        /// <summary>
+        /// Tells a player their session is off.
+        ///
+        /// The old version promised that a paid drop-in "will be applied to a future session", which is
+        /// not always what happens: an unpaid one is cancelled, a paid one becomes account credit only
+        /// when the admin asked for that, and otherwise the club still holds the money. Money is now
+        /// described per player, from what actually happened, and the email offers the next session
+        /// rather than ending on an apology.
+        /// </summary>
+        public static string GetSessionCancellationEmail(SessionCancellationEmailModel model, EmailLanguage lang = EmailLanguage.French)
         {
-            var content = Greeting(userName, lang) +
-                P(L(
-                    "We're sorry to let you know that the upcoming Saint-Henri Basketball session has been cancelled.",
-                    "Nous sommes désolés de vous informer que la prochaine séance de basketball Saint-Henri a été annulée.",
-                    lang)) +
-                BuildAlertBox(L("Session cancelled", "Séance annulée", lang), "danger") +
-                BuildInfoBox(new Dictionary<string, string?> {
-                    { "Date", sessionDate.ToString("dddd dd MMMM yyyy", GetCulture(lang)) },
-                    { L("Time", "Heure", lang), startTime },
-                    { L("Location", "Lieu", lang), location ?? "717 Saint-Ferdinand Street" }
-                });
+            var culture = GetCulture(lang);
+            var money = culture.NumberFormat;
+            string Money(decimal amount) => amount.ToString("C", culture);
 
-            if (!string.IsNullOrEmpty(cancellationReason))
-                content += P($"<strong>{L("Reason", "Raison", lang)}:</strong> {cancellationReason}");
+            var when = model.SessionDate.ToString("dddd d MMMM yyyy", culture);
+            var time = string.IsNullOrWhiteSpace(model.EndTime) ? model.StartTime : $"{model.StartTime}–{model.EndTime}";
 
-            if (alternativeSessionId.HasValue)
-                content += BuildAlertBox(L("An alternative session is available — tap below to register.", "Une séance alternative est disponible — réservez votre place ci-dessous.", lang), "info") +
-                    BuildButton("View Alternative", "Voir l'alternative", $"https://sainthenribasketball.com/session/{alternativeSessionId}/register", lang);
+            var content = Greeting(model.FirstName, lang) +
+                P(model.WasWaiting
+                    ? L("You were waiting for a place at this session, so here is the news first: it has been cancelled, and no place will come free.",
+                        "Vous attendiez une place à cette séance : elle est annulée, et aucune place ne se libérera.",
+                        lang)
+                    : L("This session will not go ahead. Nothing is expected of you — here is where that leaves your place and your money.",
+                        "Cette séance n’aura pas lieu. Rien n’est attendu de vous — voici ce qu’il advient de votre place et de votre argent.",
+                        lang)) +
+                BuildAlertBox($"<strong>{L("Cancelled", "Annulée", lang)}:</strong> {when} · {time}" +
+                    (string.IsNullOrWhiteSpace(model.Location) ? "" : $" · {model.Location}"), "danger");
 
-            content += P(L(
-                "If you had paid for this drop-in, your payment will be applied to a future session — no action needed on your end.",
-                "Si vous aviez payé une séance à la pièce, votre paiement sera reporté à une séance future — aucune action requise de votre part.",
-                lang));
+            if (!string.IsNullOrWhiteSpace(model.Reason))
+                content += P($"<strong>{L("Reason", "Raison", lang)}:</strong> {model.Reason}");
 
-            return BuildEmailLayout("Session Cancelled", "Séance annulée", content, lang);
+            // Say exactly what happened to this player's money, or say nothing was owed.
+            content += model.Money switch
+            {
+                CancellationMoney.Cancelled => BuildAlertBox(
+                    L($"The {Money(model.Amount)} owed for this session has been cancelled. There is nothing to pay.",
+                      $"Le montant de {Money(model.Amount)} dû pour cette séance a été annulé. Il n’y a rien à payer.", lang), "info"),
+                CancellationMoney.Credited => BuildAlertBox(
+                    L($"The {Money(model.Amount)} you paid is now credit on your account, and comes off your next session automatically.",
+                      $"Les {Money(model.Amount)} que vous avez payés sont maintenant un crédit à votre compte, appliqué automatiquement à votre prochaine séance.", lang), "success"),
+                CancellationMoney.StillHeld => BuildAlertBox(
+                    L($"You paid {Money(model.Amount)} for this session and it has not been returned yet. Reply to this email and the club will sort it out with you.",
+                      $"Vous avez payé {Money(model.Amount)} pour cette séance et ce montant n’a pas encore été remis. Répondez à ce courriel et le club s’en occupera avec vous.", lang), "warning"),
+                CancellationMoney.CoveredByPass => P(
+                    L("Your season pass covers every session, so this one costs you nothing.",
+                      "Votre laissez-passer couvre toutes les séances : celle-ci ne vous coûte rien.", lang)),
+                _ => P(L("You had not paid for this session, so there is nothing to settle.",
+                         "Vous n’aviez pas payé cette séance : il n’y a rien à régler.", lang)),
+            };
+
+            // Somewhere to go next, rather than an apology and a dead end.
+            if (model.NextSessionId is Guid nextId && model.NextSessionDate is DateTime nextDate)
+            {
+                var nextTime = string.IsNullOrWhiteSpace(model.NextEndTime) ? model.NextStartTime : $"{model.NextStartTime}–{model.NextEndTime}";
+                content += BuildInfoBox(new Dictionary<string, string?> {
+                    { L("Next session", "Prochaine séance", lang), $"{nextDate.ToString("dddd d MMMM", culture)} · {nextTime}" },
+                    { L("Places left", "Places restantes", lang), model.NextSpotsLeft?.ToString(culture) },
+                }) + BuildButton("Take a place at the next session", "Prendre une place à la prochaine séance",
+                    $"{model.AppUrl.TrimEnd('/')}/sessions/{nextId}/book", lang);
+            }
+            else
+            {
+                content += BuildButton("See the schedule", "Voir le calendrier", $"{model.AppUrl.TrimEnd('/')}/schedule", lang);
+            }
+
+            content += P(L("Sorry for the change of plan. Reply to this email if anything looks wrong.",
+                           "Désolé pour ce changement. Répondez à ce courriel si quelque chose ne va pas.", lang));
+
+            return BuildEmailLayout("Session cancelled", "Séance annulée", content, lang);
         }
     }
     #endregion

@@ -1,4 +1,4 @@
-namespace SaintHenriBasketball.Application.DTOs.Session;
+﻿namespace SaintHenriBasketball.Application.DTOs.Session;
 
 public class CancelSessionRequest
 {
@@ -30,6 +30,8 @@ public class SessionCancellationResultDto
 {
     public Guid SessionId { get; set; }
     public int PlayersNotified { get; set; }
+    /// Players who were waiting for a place rather than holding one; they are told too.
+    public int WaitingPlayersNotified { get; set; }
     public int PaymentsVoided { get; set; }
     public int PaymentsRefunded { get; set; }
     public decimal RefundedAmount { get; set; }
