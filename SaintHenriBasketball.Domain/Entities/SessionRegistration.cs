@@ -9,6 +9,9 @@ public class SessionRegistration
     public Guid SessionId { get; set; }
     public DateTime RegistrationDate { get; set; }
     public PaymentPlan PaymentPlan { get; set; }
+    /// When the "your spot is booked" email went out, or null if it never did. Lets a confirmation
+    /// be sent once and only once, and makes the ones that were missed findable afterwards.
+    public DateTime? ConfirmationSentOn { get; set; }
     public ApplicationUser User { get; set; }
     public Session Session { get; set; }
 

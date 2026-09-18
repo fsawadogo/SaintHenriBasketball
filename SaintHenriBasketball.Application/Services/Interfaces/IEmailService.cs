@@ -38,6 +38,10 @@ public interface IEmailService
     /// so nobody is told their payment was handled when it was not.
     Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SessionCancellationEmailModel Model)> recipients);
 
+    /// Confirms a place a player just booked. Transactional, like a receipt, so it is not gated on
+    /// the notification preference.
+    Task SendBookingConfirmationAsync(ApplicationUser user, Session session);
+
     /// Confirms back to a player the plan they just chose for a season. Transactional, like a
     /// payment receipt, so it is not gated on the notification preference.
     Task SendPlanChoiceConfirmationAsync(ApplicationUser user, PlanChoiceConfirmationEmailModel model);

@@ -680,6 +680,22 @@ public class EmailService : IEmailService
         await SendEmailAsync(user.Email, subject, html);
     }
 
+    public async Task SendBookingConfirmationAsync(ApplicationUser user, Session session)
+    {
+        if (string.IsNullOrWhiteSpace(user.Email)) return;
+
+        var html = EmailTemplates.Sessions.GetBookingConfirmationEmail(
+            user.FirstName, session.SessionDate, session.StartTime, session.EndTime, session.Location,
+            user.PaymentPlan, session.DropInPrice, "https://sainthenribasketball.com", user.PreferredLanguage);
+
+        var subject = EmailTemplateHelper.LSubject(
+            "Your place is booked - Saint Henri Basketball",
+            "Votre place est reservee - Saint Henri Basketball",
+            user.PreferredLanguage);
+
+        await SendEmailAsync(user.Email, subject, html);
+    }
+
     public async Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SessionCancellationEmailModel Model)> recipients)
     {
         foreach (var (user, model) in recipients)

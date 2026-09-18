@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<ISeasonService, SeasonService>();
         services.AddScoped<ISeasonPlanService, SeasonPlanService>();
+        services.AddScoped<IBookingConfirmationBackfillService, BookingConfirmationBackfillService>();
         services.AddScoped<IEmailAutomationService, EmailAutomationService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
         services.AddScoped<IStripeService, StripeService>();

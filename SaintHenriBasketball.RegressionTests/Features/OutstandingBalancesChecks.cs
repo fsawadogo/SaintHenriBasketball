@@ -236,6 +236,7 @@ internal static class OutstandingBalancesChecks
         public Task SendLowAttendanceWarningEmailAsync(SessionDto session, List<UserDto> registeredUsers) => throw Unexpected();
         public Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SaintHenriBasketball.Application.DTOs.Email.SessionCancellationEmailModel Model)> recipients) => throw Unexpected();
         public Task SendPlanChoiceConfirmationAsync(ApplicationUser user, SaintHenriBasketball.Application.DTOs.Email.PlanChoiceConfirmationEmailModel model) => throw Unexpected();
+        public Task SendBookingConfirmationAsync(ApplicationUser user, Session session) => throw Unexpected();
         public Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration) => throw Unexpected();
         public Task SendSeasonRegistrationCancelledEmailAsync(string? userEmail, Season season) => throw Unexpected();
         public Task SendSeasonRegistrationReminderEmailAsync(string? userEmail, Season season, string? customMessage = null) => throw Unexpected();
