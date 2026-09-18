@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using SaintHenriBasketball.Application.Helpers;
 
@@ -56,6 +56,16 @@ public static class QuartzExtensions
                 .WithIdentity("CapacityCheck-evening-trigger")
                 .WithDescription("Session capacity check at 6 PM ET")
                 .WithCronSchedule("0 0 18 * * ?", x => x.InTimeZone(montreal)));
+
+            // Runs daily and only acts on the day a season is exactly a week away; the service keeps
+            // a record per player, so a second run that day sends nothing.
+            var planChoiceJobKey = new JobKey("SeasonPlanChoiceEmail");
+            q.AddJob<SeasonPlanChoiceEmailJob>(opts => opts.WithIdentity(planChoiceJobKey).StoreDurably());
+            q.AddTrigger(opts => opts
+                .ForJob(planChoiceJobKey)
+                .WithIdentity("SeasonPlanChoiceEmail-trigger")
+                .WithDescription("Ask players to choose a plan, 7 days before a season starts, at 10 AM ET")
+                .WithCronSchedule("0 0 10 * * ?", x => x.InTimeZone(montreal)));
 
             // ScheduledEmailJob has no trigger — instances are scheduled dynamically by
             // EmailAutomationService for one-off sends.

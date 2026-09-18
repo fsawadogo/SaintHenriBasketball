@@ -1,6 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
+using SaintHenriBasketball.Application.Services.Implementations;
 using SaintHenriBasketball.Application.Services.Interfaces;
 
 namespace SaintHenriBasketball.Infrastructure.Jobs;
@@ -52,6 +53,28 @@ public class OneDayReminderJob(IServiceProvider sp, ILogger<OneDayReminderJob> l
 {
     protected override string JobName => "OneDayReminder";
     protected override Task RunAsync(IEmailAutomationService svc) => svc.SendOneDayAheadRemindersAsync();
+}
+
+/// <summary>
+/// Asks players to choose a plan a week before a season starts.
+///
+/// Runs every day and does nothing on the days no season is a week away, which is almost all of them.
+/// The service records who it emailed, so running daily — or twice after a restart — cannot repeat it.
+/// </summary>
+[DisallowConcurrentExecution]
+public class SeasonPlanChoiceEmailJob(IServiceProvider sp, ILogger<SeasonPlanChoiceEmailJob> logger) : IJob
+{
+    public async Task Execute(IJobExecutionContext context)
+    {
+        using var scope = sp.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<ISeasonPlanChoiceEmailService>();
+        var result = await service.RunForSeasonStartingInAsync(SeasonPlanChoiceEmailService.DefaultDaysAhead);
+        if (result.Outcome != null)
+            logger.LogInformation("Season plan choice email: {Outcome}", result.Outcome);
+        else
+            logger.LogInformation("Season plan choice email for {Season}: {Sent} sent, {Already} already had it, {Failed} failed",
+                result.SeasonName, result.Sent, result.AlreadySent, result.Failed);
+    }
 }
 
 /// <summary>One-off job for sending scheduled emails.</summary>
