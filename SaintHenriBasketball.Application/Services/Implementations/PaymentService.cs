@@ -15,6 +15,14 @@ public class PaymentService : IPaymentService
 {
    private const string InteracReferenceRequiredMessage = "Enter a bank confirmation number of up to 80 characters";
 
+   /// <summary>
+   /// Recorded in place of a bank confirmation number when a player simply says they sent the
+   /// transfer. Autodeposit gives them no number to copy, so the claim is all there is. Everything
+   /// that looks for a submitted transfer reads the "|INTERAC:" suffix, so the marker keeps such a
+   /// payment in the admin's Interac queue exactly as a typed reference would.
+   /// </summary>
+   public const string TransferSentMarker = "SENT";
+
    private readonly IPaymentRepository _paymentRepository;
    private readonly ISeasonRepository _seasonRepository;
    private readonly IUserRepository _userRepository;
@@ -419,12 +427,6 @@ public class PaymentService : IPaymentService
        {
            if (interacReference?.Length > 80)
                throw new ValidationException(InteracReferenceRequiredMessage);
-           // Credit or a promo can bring the total to zero, in which case there is nothing to transfer.
-           if (string.IsNullOrEmpty(interacReference))
-           {
-               var existing = await _paymentRepository.GetByUserAndSessionAsync(userId, request.SessionId);
-               await EnsureNothingToTransferAsync(userId, PaymentPlan.DropIn, existing, session.DropInPrice, request.PromoCode, InteracReferenceRequiredMessage);
-           }
        }
        else
        {
@@ -447,9 +449,9 @@ public class PaymentService : IPaymentService
 
        if (request.PaymentMethod == 0)
        {
-           if (string.IsNullOrEmpty(interacReference))
-               throw new ValidationException(InteracReferenceRequiredMessage);
-           return await ConfirmInteracPaymentAsync(payment.Id, interacReference);
+           // Neither payment page asks for a bank confirmation number any more: autodeposit gives
+           // the player nothing to copy, and the club reads the deposit from its own mailbox.
+           return await ConfirmInteracPaymentAsync(payment.Id, string.IsNullOrEmpty(interacReference) ? TransferSentMarker : interacReference);
        }
        if (payment.Reference?.Contains("|INTERAC:") == true)
            throw new ValidationException("Your Interac transfer is awaiting verification. Do not pay twice.");
@@ -479,11 +481,6 @@ public class PaymentService : IPaymentService
            if (PaymentPricing.IsBelowCardMinimum(quote.Total))
                throw new ValidationException(PaymentPricing.BelowCardMinimumMessage);
        }
-       else if (string.IsNullOrEmpty(interacReference))
-       {
-           var existing = await _paymentRepository.GetByUserAndSeasonAsync(userId, request.SeasonId);
-           await EnsureNothingToTransferAsync(userId, PaymentPlan.Season, existing, season.Price, request.PromoCode, seasonReferenceMessage);
-       }
 
        var (payment, _) = await _paymentRepository.GetOrCreateSeasonPaymentAsync(userId, request.SeasonId, season.Price);
        // Runs before the Completed short-circuit so a promo code sent for a settled payment is refused.
@@ -501,8 +498,9 @@ public class PaymentService : IPaymentService
                throw new ValidationException("Your Interac transfer is awaiting verification. Do not pay twice.");
            return _mapper.Map<PaymentDto>(await _paymentRepository.GetByIdAsync(payment.Id));
        }
-       if (string.IsNullOrEmpty(interacReference)) throw new ValidationException(seasonReferenceMessage);
-       return await ConfirmInteracPaymentAsync(payment.Id, interacReference);
+       // The season page no longer asks for a bank confirmation number: with autodeposit the bank
+       // hands the player nothing to copy, and the club reads the deposit from its own mailbox.
+       return await ConfirmInteracPaymentAsync(payment.Id, string.IsNullOrEmpty(interacReference) ? TransferSentMarker : interacReference);
    }
 
    public async Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference)
@@ -667,14 +665,6 @@ public class PaymentService : IPaymentService
        _logger.LogInformation(
            "Payment {PaymentId} adjusted: original {Original}, discount {Discount} (promo {PromoCode}), credit {Credit}, total {Total}",
            payment.Id, pricing.OriginalAmount, pricing.DiscountAmount, pricing.AppliedCode, pricing.CreditApplied, pricing.Total);
-   }
-
-   /// Rejects a request without an Interac reference unless the discount and credit cover the whole price.
-   private async Task EnsureNothingToTransferAsync(Guid userId, PaymentPlan plan, Payment? existing, decimal listPrice, string? promoCode, string referenceMessage)
-   {
-       var pricing = await PriceAsync(userId, plan, existing, listPrice, promoCode);
-       if (pricing.PromoError != null) throw new ValidationException(pricing.PromoError);
-       if (pricing.Total > 0) throw new ValidationException(referenceMessage);
    }
 
    /// A Pending payment that the promo discount and/or credit fully cover; it completes without Interac or Stripe.
