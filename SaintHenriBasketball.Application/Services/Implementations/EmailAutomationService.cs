@@ -1,3 +1,4 @@
+﻿using SaintHenriBasketball.Application.DTOs.Email;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Users;
@@ -392,11 +393,25 @@ public class EmailAutomationService : IEmailAutomationService
                 return;
             }
 
+            // A cancelled session is not marketing, so the email preference does not gate it.
             var allUsers = (await _userRepository.GetAllUsersAsync())
-                .Where(u => u.EmailConfirmed && u.EmailNotificationsEnabled && !string.IsNullOrEmpty(u.Email))
+                .Where(u => u.EmailConfirmed && !string.IsNullOrEmpty(u.Email))
                 .ToList();
 
-            await _emailService.SendSessionCancellationEmailAsync(sessionEntity, allUsers, cancellationReason);
+            var recipients = allUsers
+                .Select(u => (User: u, Model: new SessionCancellationEmailModel
+                {
+                    FirstName = u.FirstName,
+                    SessionDate = sessionEntity.SessionDate,
+                    StartTime = sessionEntity.StartTime,
+                    EndTime = sessionEntity.EndTime,
+                    Location = sessionEntity.Location,
+                    Reason = cancellationReason,
+                    Money = u.PaymentPlan == PaymentPlan.Season ? CancellationMoney.CoveredByPass : CancellationMoney.Nothing,
+                }))
+                .ToList();
+
+            await _emailService.SendSessionCancellationEmailsAsync(recipients);
 
             _logger.LogInformation(
                 "Cancellation emails dispatched: session {SessionId}, audience {Count} user(s)",

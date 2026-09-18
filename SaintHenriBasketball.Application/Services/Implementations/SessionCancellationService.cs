@@ -1,4 +1,6 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Payment;
 using SaintHenriBasketball.Application.DTOs.Session;
 using SaintHenriBasketball.Application.Exceptions;
@@ -23,6 +25,8 @@ public class SessionCancellationService : ISessionCancellationService
     private readonly IStripeService _stripe;
     private readonly IEmailService _email;
     private readonly INotificationService _notifications;
+    private readonly IWaitlistRepository _waitlist;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SessionCancellationService> _logger;
 
     public SessionCancellationService(
@@ -35,6 +39,8 @@ public class SessionCancellationService : ISessionCancellationService
         IStripeService stripe,
         IEmailService email,
         INotificationService notifications,
+        IWaitlistRepository waitlist,
+        IConfiguration configuration,
         ILogger<SessionCancellationService> logger)
     {
         _sessions = sessions;
@@ -46,6 +52,8 @@ public class SessionCancellationService : ISessionCancellationService
         _stripe = stripe;
         _email = email;
         _notifications = notifications;
+        _waitlist = waitlist;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -82,11 +90,17 @@ public class SessionCancellationService : ISessionCancellationService
         await _sessionService.CancelSessionAsync(sessionId);
 
         var result = new SessionCancellationResultDto { SessionId = sessionId };
+        // What each player is owed, or no longer owes, keyed by player.
+        var outcomes = new Dictionary<Guid, (CancellationMoney Money, decimal Amount)>();
+
         foreach (var payment in payments.Where(p => p.Status == PaymentStatus.Pending))
         {
             await CloseOpenCardCheckoutAsync(payment);
             if (await _paymentService.VoidForCancelledSessionAsync(payment.Id))
+            {
                 result.PaymentsVoided++;
+                outcomes[payment.UserId] = (CancellationMoney.Cancelled, payment.Amount);
+            }
         }
 
         foreach (var payment in payments.Where(p => p.Status == PaymentStatus.Completed))
@@ -94,6 +108,8 @@ public class SessionCancellationService : ISessionCancellationService
             if (!request.RefundPaidToCredit)
             {
                 result.PaidNotRefunded++;
+                // The club keeps the money for now, so the email says exactly that.
+                outcomes[payment.UserId] = (CancellationMoney.StillHeld, payment.Amount);
                 continue;
             }
             try
@@ -105,11 +121,13 @@ public class SessionCancellationService : ISessionCancellationService
                 });
                 result.PaymentsRefunded++;
                 result.RefundedAmount += payment.Amount;
+                outcomes[payment.UserId] = (CancellationMoney.Credited, payment.Amount);
             }
             catch (Exception ex) when (ex is ValidationException or NotFoundException)
             {
                 _logger.LogWarning(ex, "Could not refund payment {PaymentId} for cancelled session {SessionId}", payment.Id, sessionId);
                 result.PaidNotRefunded++;
+                outcomes[payment.UserId] = (CancellationMoney.StillHeld, payment.Amount);
             }
         }
 
@@ -120,22 +138,60 @@ public class SessionCancellationService : ISessionCancellationService
             .ToList();
         result.PlayersNotified = players.Count;
 
+        // Anyone waiting for a place was waiting for nothing: tell them, and close their entry.
+        var waiting = await ClearWaitlistAsync(sessionId);
+        result.WaitingPlayersNotified = waiting.Count;
+
+        var next = await FindNextSessionAsync(session);
+        var appUrl = _configuration["AppUrl"] ?? "https://sainthenribasketball.com";
+
+        SessionCancellationEmailModel Model(ApplicationUser player, bool waitingForPlace) => new()
+        {
+            FirstName = player.FirstName,
+            SessionDate = session.SessionDate,
+            StartTime = session.StartTime,
+            EndTime = session.EndTime,
+            Location = session.Location,
+            Reason = reason,
+            WasWaiting = waitingForPlace,
+            Money = waitingForPlace
+                ? CancellationMoney.Nothing
+                : outcomes.TryGetValue(player.Id, out var outcome)
+                    ? outcome.Money
+                    : player.PaymentPlan == PaymentPlan.Season ? CancellationMoney.CoveredByPass : CancellationMoney.Nothing,
+            Amount = outcomes.TryGetValue(player.Id, out var paid) ? paid.Amount : 0m,
+            NextSessionId = next?.Id,
+            NextSessionDate = next?.SessionDate,
+            NextStartTime = next?.StartTime,
+            NextEndTime = next?.EndTime,
+            NextSpotsLeft = next == null ? null : Math.Max(0, next.MaxCapacity - next.RegisteredPlayersCount),
+            AppUrl = appUrl,
+        };
+
+        var recipients = players.Select(p => (User: p, Model: Model(p, false)))
+            .Concat(waiting.Select(p => (User: p, Model: Model(p, true))))
+            .ToList();
+
         try
         {
-            await _email.SendSessionCancellationEmailAsync(session, players.Where(u => u.EmailNotificationsEnabled).ToList(), reason);
+            // Sent whatever the player's email preference says: a cancelled session is not marketing.
+            await _email.SendSessionCancellationEmailsAsync(recipients);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Cancellation emails failed for session {SessionId}", sessionId);
         }
 
-        foreach (var player in players)
+        foreach (var (player, waitingForPlace) in players.Select(p => (p, false)).Concat(waiting.Select(p => (p, true))))
         {
             try
             {
                 await _notifications.CreateAsync(player.Id, NotificationType.SessionCancelled,
                     title: "Session cancelled",
-                    body: $"The {session.SessionDate:MMMM d} session is cancelled." + (reason == null ? "" : $" {reason}"),
+                    body: (waitingForPlace
+                            ? $"The {session.SessionDate:MMMM d} session you were waiting for is cancelled."
+                            : $"The {session.SessionDate:MMMM d} session is cancelled.")
+                        + (reason == null ? "" : $" {reason}"),
                     url: "/schedule");
             }
             catch (Exception ex)
@@ -145,6 +201,47 @@ public class SessionCancellationService : ISessionCancellationService
         }
 
         return result;
+    }
+
+    /// Closes every open waitlist entry for a cancelled session and returns the players who were waiting.
+    /// Left open, they would sit in a queue for a session that will never run.
+    private async Task<List<ApplicationUser>> ClearWaitlistAsync(Guid sessionId)
+    {
+        var waiting = new List<ApplicationUser>();
+        try
+        {
+            var entries = await _waitlist.GetBySessionAsync(sessionId);
+            foreach (var entry in entries.Where(e => e.Status is WaitlistStatus.Waiting or WaitlistStatus.Offered))
+            {
+                entry.Status = WaitlistStatus.Cancelled;
+                entry.OfferExpiresAt = null;
+                await _waitlist.UpdateAsync(entry);
+                if (entry.User is { IsDeactivated: false }) waiting.Add(entry.User);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not clear the waitlist for cancelled session {SessionId}", sessionId);
+        }
+        return waiting.DistinctBy(u => u.Id).ToList();
+    }
+
+    /// The next session still going ahead after this one, so the email has somewhere to send people.
+    private async Task<Session?> FindNextSessionAsync(Session cancelled)
+    {
+        try
+        {
+            var upcoming = await _sessions.GetUpcomingSessionsAsync();
+            return upcoming
+                .Where(s => s.Id != cancelled.Id && s.Status != SessionStatus.Cancelled && s.SessionDate >= cancelled.SessionDate)
+                .OrderBy(s => s.SessionDate).ThenBy(s => s.StartTime)
+                .FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not find a session to suggest after {SessionId}", cancelled.Id);
+            return null;
+        }
     }
 
     /// An unpaid card checkout would otherwise still accept money for a session that no longer happens.

@@ -1,3 +1,4 @@
+﻿using SaintHenriBasketball.Application.DTOs.Email;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.DTOs.Session;
 using SaintHenriBasketball.Application.DTOs.Users;
@@ -33,7 +34,9 @@ public interface IEmailService
     Task SendLowAttendanceWarningEmailAsync(SessionDto session, List<UserDto> registeredUsers);
 
     // Session Related Emails
-    Task SendSessionCancellationEmailAsync(Session session, List<ApplicationUser> registeredUsers, string? cancellationReason = null, Session? alternativeSession = null);
+    /// Sends one cancellation email per recipient. Each model carries that player's own money outcome,
+    /// so nobody is told their payment was handled when it was not.
+    Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SessionCancellationEmailModel Model)> recipients);
 
     // Season Related Emails
     Task SendSeasonRegistrationConfirmationEmailAsync(SeasonRegistration registration);
