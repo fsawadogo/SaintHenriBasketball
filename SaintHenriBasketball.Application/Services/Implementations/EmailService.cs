@@ -661,6 +661,25 @@ public class EmailService : IEmailService
     #region Session Emails
     /// A cancellation is not marketing: someone who turned reminders off still needs to know the gym
     /// is shut. It goes to everyone with an address, the way a receipt does.
+    public async Task SendPlanChoiceConfirmationAsync(ApplicationUser user, PlanChoiceConfirmationEmailModel model)
+    {
+        if (string.IsNullOrWhiteSpace(user.Email)) return;
+
+        model.FirstName = user.FirstName;
+        var html = EmailTemplates.Season.GetPlanChoiceConfirmationEmail(model, user.PreferredLanguage);
+        var subject = model.Plan == PaymentPlan.Season
+            ? EmailTemplateHelper.LSubject(
+                $"Your season pass - {model.SeasonName}",
+                $"Votre laissez-passer de saison - {model.SeasonName}",
+                user.PreferredLanguage)
+            : EmailTemplateHelper.LSubject(
+                $"You are paying per session - {model.SeasonName}",
+                $"Vous payez a la seance - {model.SeasonName}",
+                user.PreferredLanguage);
+
+        await SendEmailAsync(user.Email, subject, html);
+    }
+
     public async Task SendSessionCancellationEmailsAsync(IReadOnlyList<(ApplicationUser User, SessionCancellationEmailModel Model)> recipients)
     {
         foreach (var (user, model) in recipients)
