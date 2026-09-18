@@ -203,7 +203,7 @@ public class AttendanceController : BaseApiController
     }
 
     /// <summary>
-    /// Get the privacy-safe list of players who confirmed they are attending.
+    /// Get the privacy-safe list of players registered for a session, with who has confirmed.
     /// </summary>
     [HttpGet("sessions/{sessionId}/players")]
     [RequireFeature(FeatureFlagKeys.SessionAttendees)]
@@ -214,9 +214,10 @@ public class AttendanceController : BaseApiController
         try
         {
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var attendees = await _attendanceService.GetSessionAttendeesAsync(sessionId);
-            var players = attendees
-                .Where(attendee => attendee.IsAttending)
+            // Everyone who took a place, not only those who answered a reminder: confirming is
+            // optional, so a list filtered to confirmations hid most of the people playing.
+            var roster = await _attendanceService.GetSessionRosterAsync(sessionId);
+            var players = roster
                 .Select(attendee =>
                 {
                     var firstName = attendee.FirstName.Trim();
@@ -230,7 +231,8 @@ public class AttendanceController : BaseApiController
                     return new SessionPlayerDto(
                         displayName,
                         string.IsNullOrWhiteSpace(initials) ? "P" : initials,
-                        attendee.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
+                        attendee.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase),
+                        attendee.Confirmed);
                 })
                 .OrderBy(player => player.DisplayName)
                 .ToList();
@@ -243,7 +245,7 @@ public class AttendanceController : BaseApiController
         }
     }
 
-    public record SessionPlayerDto(string DisplayName, string Initials, bool IsCurrentUser);
+    public record SessionPlayerDto(string DisplayName, string Initials, bool IsCurrentUser, bool Confirmed);
 
     /// <summary>
     /// Confirm attendance from email link

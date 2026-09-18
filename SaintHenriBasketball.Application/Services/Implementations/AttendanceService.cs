@@ -141,6 +141,13 @@ public class AttendanceService : IAttendanceService
         }
     }
 
+    public async Task<IReadOnlyList<Domain.Interfaces.Repositories.SessionRosterEntry>> GetSessionRosterAsync(Guid sessionId)
+    {
+        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        if (session == null) throw new NotFoundException($"Session with ID {sessionId} not found");
+        return await _sessionRepository.GetRosterAsync(sessionId);
+    }
+
     public async Task<IEnumerable<AttendanceUserDto>> GetSessionAttendeesAsync(Guid sessionId)
     {
         try

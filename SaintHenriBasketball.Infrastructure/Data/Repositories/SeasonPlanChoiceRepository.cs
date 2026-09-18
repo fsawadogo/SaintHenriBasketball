@@ -57,6 +57,27 @@ public class SeasonPlanChoiceRepository : ISeasonPlanChoiceRepository
     public async Task<int> CountPaidPassesAsync(Guid seasonId) =>
         await PaidPassUserIds(seasonId).CountAsync();
 
+    public async Task<IReadOnlyList<Guid>> GetSpotHolderIdsAsync(Guid seasonId, bool includeProfilePlan)
+    {
+        // Union, not a sum: the same player usually appears in more than one of these, and a paid
+        // pass holder almost always has a choice row too.
+        var ids = PaidPassUserIds(seasonId)
+            .Union(_context.SeasonPlanChoices
+                .Where(c => c.SeasonId == seasonId && c.Plan == PaymentPlan.Season)
+                .Select(c => c.UserId));
+
+        if (includeProfilePlan)
+        {
+            // The denormalised plan on the user is the only trace left when an admin switches
+            // someone to the season plan without them choosing it in the app.
+            ids = ids.Union(_context.Users
+                .Where(u => u.PaymentPlan == PaymentPlan.Season && !u.IsDeactivated && !u.IsAdmin)
+                .Select(u => u.Id));
+        }
+
+        return await ids.Distinct().ToListAsync();
+    }
+
     public async Task<bool> HasPaidPassAsync(Guid seasonId, Guid userId) =>
         await _context.Payments.AnyAsync(p => p.SeasonId == seasonId
                                               && p.UserId == userId
