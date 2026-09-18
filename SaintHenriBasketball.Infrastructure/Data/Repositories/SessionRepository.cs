@@ -187,4 +187,23 @@ public class SessionRepository : ISessionRepository
         return true;
     }
 
+    public async Task<IReadOnlyList<SessionRosterEntry>> GetRosterAsync(Guid sessionId)
+    {
+        var rows = await _context.SessionRegistrations.AsNoTracking()
+            .Where(r => r.SessionId == sessionId)
+            .Select(r => new
+            {
+                r.UserId,
+                r.User.FirstName,
+                r.User.LastName,
+                // Their own answer to a reminder, not whether they turned up.
+                Confirmed = _context.SessionAttendances
+                    .Any(a => a.SessionId == sessionId && a.UserId == r.UserId && a.IsAttending),
+            })
+            .ToListAsync();
+
+        return rows
+            .Select(r => new SessionRosterEntry(r.UserId, r.FirstName ?? string.Empty, r.LastName ?? string.Empty, r.Confirmed))
+            .ToList();
+    }
 }

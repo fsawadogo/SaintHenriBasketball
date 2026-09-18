@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.DTOs.Season;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -57,7 +57,8 @@ public class SeasonPlanService : ISeasonPlanService
             // A player who has already paid may always re-affirm their own pass, even at capacity —
             // otherwise a second click, or a reset, could lock someone out of something they bought.
             var alreadyPaid = await _choices.HasPaidPassAsync(season.Id, userId);
-            var taken = await _choices.CountPaidPassesAsync(season.Id);
+            // The same count the page shows, so a season that reads as full cannot still be joined.
+            var taken = (await _choices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan: true)).Count;
             if (!alreadyPaid && taken >= season.SeasonPassCapacity)
                 throw new ValidationException("The season pass is sold out for this season.");
         }
@@ -142,7 +143,11 @@ public class SeasonPlanService : ISeasonPlanService
         Guid seasonId, string name, DateTime start, DateTime end,
         decimal price, int capacity, Guid userId)
     {
-        var taken = await _choices.CountPaidPassesAsync(seasonId);
+        // Both callers build state for the season the club is currently selling, so a profile still
+        // set to the season plan counts here — see GetSpotHolderIdsAsync.
+        var holders = await _choices.GetSpotHolderIdsAsync(seasonId, includeProfilePlan: true);
+        var taken = holders.Count;
+        var paid = await _choices.CountPaidPassesAsync(seasonId);
         var mine = await _choices.GetAsync(seasonId, userId);
         var minePaid = await _choices.HasPaidPassAsync(seasonId, userId);
 
@@ -158,6 +163,9 @@ public class SeasonPlanService : ISeasonPlanService
             // Never negative: capacity can be lowered below the number already sold.
             SpotsLeft = Math.Max(0, capacity - taken),
             SoldOut = taken >= capacity,
+            SpotsPaid = paid,
+            // Spots held by someone who has not paid yet. An admin reset is what frees these.
+            SpotsAwaitingPayment = Math.Max(0, taken - paid),
             MyPlan = mine?.Plan,
             MyPlanPaid = minePaid,
         };

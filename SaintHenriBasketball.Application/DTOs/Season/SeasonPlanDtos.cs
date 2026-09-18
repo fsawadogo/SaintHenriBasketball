@@ -13,10 +13,14 @@ public class SeasonPlanStateDto
     public decimal Price { get; set; }
 
     public int Capacity { get; set; }
-    /// Distinct players holding a completed season payment. A spot is held by money, not by a choice.
+    /// Distinct players on the season plan: paid, chosen, or switched by an admin.
     public int SpotsTaken { get; set; }
     public int SpotsLeft { get; set; }
     public bool SoldOut { get; set; }
+    /// Of SpotsTaken, how many are paid for.
+    public int SpotsPaid { get; set; }
+    /// Of SpotsTaken, how many are held by someone who has not paid yet.
+    public int SpotsAwaitingPayment { get; set; }
 
     /// The plan this player chose for THIS season, or null if they have not chosen yet.
     /// Null is what makes the prompt appear; either value silences it.
