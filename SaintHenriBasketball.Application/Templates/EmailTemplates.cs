@@ -259,6 +259,79 @@ public static class EmailTemplates
             return BuildEmailLayout("Season Registration Reminder", "Rappel d'inscription à la saison", content, lang);
         }
 
+        /// <summary>
+        /// A week before a season starts: pick a season pass, or pay per session.
+        ///
+        /// Prices and the number of passes left are read from the season, never typed in here, so the
+        /// email cannot promise a price the club has since changed. It says what happens if the player
+        /// does nothing, because an email that threatens nothing is easier to trust.
+        /// </summary>
+        public static string GetSeasonPlanChoiceEmail(SeasonPlanChoiceEmailModel model, EmailLanguage lang = EmailLanguage.French)
+        {
+            var culture = GetCulture(lang);
+            string Money(decimal amount) => amount.ToString("C", culture);
+            var app = model.AppUrl.TrimEnd('/');
+
+            var days = model.DaysUntilStart;
+            var intro = days <= 0
+                ? L("The season starts today. Tell us how you would like to pay, and your place is ready.",
+                    "La saison commence aujourd’hui. Dites-nous comment vous souhaitez payer et votre place est prête.", lang)
+                : days == 1
+                    ? L("The season starts tomorrow. Tell us how you would like to pay, so your place is ready for the first session.",
+                        "La saison commence demain. Dites-nous comment vous souhaitez payer, pour que votre place soit prête dès la première séance.", lang)
+                    : L($"The season starts in {days} days. Tell us how you would like to pay, so your place is ready for the first session.",
+                        $"La saison commence dans {days} jours. Dites-nous comment vous souhaitez payer, pour que votre place soit prête dès la première séance.", lang);
+
+            var content = Greeting(model.FirstName, lang) + P(intro);
+
+            // The two plans, side by side, priced from the season.
+            var passesLine = model.PassCapacity <= 0
+                ? L("Unlimited", "Illimité", lang)
+                : model.PassesLeft <= 0
+                    ? L("Sold out", "Complet", lang)
+                    : L($"{model.PassesLeft} of {model.PassCapacity} left", $"{model.PassesLeft} sur {model.PassCapacity}", lang);
+
+            var dropInPrice = model.DropInPrice is decimal drop
+                ? Money(drop)
+                : L("set per session", "fixé par séance", lang);
+
+            content += BuildInfoBox(new Dictionary<string, string?>
+            {
+                { L("Season pass", "Laissez-passer", lang), $"{Money(model.PassPrice)} — {L("every session, paid once", "toutes les séances, payées une fois", lang)} ({passesLine})" },
+                { L("Pay per session", "À la séance", lang), $"{dropInPrice} — {L("pay only the days you play", "payez seulement les jours où vous jouez", lang)}" },
+            });
+
+            content += BuildButton("Choose my plan", "Choisir ma formule", $"{app}/plan-selection", lang);
+
+            content += P(L(
+                "Nothing chosen by the first session? You stay on pay-per-session, and can still switch while passes last.",
+                "Rien de choisi avant la première séance ? Vous restez à la séance, et pouvez changer tant qu’il reste des laissez-passer.",
+                lang));
+
+            // What the season actually is, so nobody has to open the site to decide.
+            var facts = new Dictionary<string, string?>
+            {
+                { L("Season", "Saison", lang), $"{model.SeasonName} · {model.StartDate.ToString("d MMM", culture)} – {model.EndDate.ToString("d MMM yyyy", culture)}" },
+            };
+            if (model.FirstSessionDate is DateTime first)
+            {
+                var time = string.IsNullOrWhiteSpace(model.FirstSessionEnd)
+                    ? model.FirstSessionStart
+                    : $"{model.FirstSessionStart}–{model.FirstSessionEnd}";
+                facts[L("First session", "Première séance", lang)] = $"{first.ToString("dddd d MMMM", culture)} · {time}";
+            }
+            if (!string.IsNullOrWhiteSpace(model.Location)) facts[L("Where", "Où", lang)] = model.Location;
+            if (model.SessionCount > 0) facts[L("Sessions this season", "Séances cette saison", lang)] = model.SessionCount.ToString(culture);
+            content += BuildInfoBox(facts);
+
+            content += P(L(
+                "Passes are limited, and the count above is live. Reply to this email if you have a question.",
+                "Les laissez-passer sont limités, et le compte ci-dessus est à jour. Répondez à ce courriel si vous avez une question.",
+                lang));
+
+            return BuildEmailLayout("Choose how you will play this season", "Choisissez votre formule pour la saison", content, lang);
+        }
+
         public static string GetSeasonStatusUpdateEmail(string userName, string seasonName, string newStatus, string? reasonForChange = null, string? additionalInfo = null, EmailLanguage lang = EmailLanguage.French)
         {
             var content = Greeting(userName, lang) +
