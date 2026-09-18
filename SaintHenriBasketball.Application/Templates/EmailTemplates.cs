@@ -18,7 +18,8 @@ public static class EmailTemplates
                 BuildButton("Confirm Email", "Confirmer le courriel", confirmationLink, lang) +
                 P(L($"Or copy and paste this link in your browser:<br/><span style='font-size:12px;color:#637369;word-break:break-all;'>{confirmationLink}</span>",
                      $"Ou copiez et collez ce lien dans votre navigateur:<br/><span style='font-size:12px;color:#637369;word-break:break-all;'>{confirmationLink}</span>", lang)),
-            lang);
+            lang,
+            LSubject("One click and your account is ready.", "Un clic et votre compte est prêt.", lang));
 
         public static string GetPasswordResetEmail(string userName, string resetLink, EmailLanguage lang = EmailLanguage.French) =>
             BuildEmailLayout("Reset Your Password", "Réinitialisation du mot de passe",
@@ -27,7 +28,9 @@ public static class EmailTemplates
                 BuildButton("Reset Password", "Réinitialiser le mot de passe", resetLink, lang) +
                 BuildAlertBox(L("This link expires in 1 hour. If you didn't request this, you can safely ignore this email.",
                                  "Ce lien expire dans 1 heure. Si vous n'avez pas fait cette demande, vous pouvez ignorer ce courriel.", lang), "warning"),
-            lang);
+            lang,
+            LSubject("The link works for one hour. Ignore this if it wasn't you.",
+                     "Le lien est valide une heure. Ignorez ce courriel si ce n'était pas vous.", lang));
 
         public static string GetAccountCreatedEmail(string userName, string password, string loginLink, EmailLanguage lang = EmailLanguage.French) =>
             BuildEmailLayout("Your Account Has Been Created", "Votre compte a été créé",
@@ -41,7 +44,11 @@ public static class EmailTemplates
                 BuildAlertBox(L("Please change your password after your first login.",
                                  "Veuillez changer votre mot de passe après votre première connexion.", lang), "info") +
                 BuildButton("Log In", "Se connecter", loginLink, lang),
-            lang);
+            lang,
+            // Deliberately says nothing about the password — a preheader is visible in the inbox
+            // list, over the shoulder of anyone nearby.
+            LSubject("Sign in and set a password of your own.",
+                     "Connectez-vous et choisissez votre propre mot de passe.", lang));
     }
     #endregion
 
@@ -81,27 +88,43 @@ public static class EmailTemplates
                 ? L("Season Pass", "Forfait de saison", lang)
                 : L("Drop-in", "Forfait à la séance", lang);
 
+            // L() embeds markup for Bilingual, which an inbox preview would show raw.
+            var planNamePlain = plan == PaymentPlan.Season
+                ? LSubject("Season Pass", "Forfait de saison", lang)
+                : LSubject("Drop-in", "Forfait à la séance", lang);
+
             var content = Greeting(userName, lang) +
                 P(L($"This is a reminder that your payment for the <strong>{planName}</strong> is due.",
                      $"Ceci est un rappel que votre paiement pour le <strong>{planName}</strong> est dû.", lang)) +
                 BuildInfoBox(new Dictionary<string, string?> {
                     { L("Plan", "Forfait", lang), planName },
-                    { L("Amount", "Montant", lang), $"${amount:F2}" }
+                    { L("Amount", "Montant", lang), $"${amount:F2}" },
+                    // Without the reference an Interac transfer arrives anonymous and sits in the
+                    // admin queue until someone guesses who sent it.
+                    { L("Reference", "Référence", lang), reference }
                 });
 
             if (!string.IsNullOrEmpty(customMessage))
                 content += BuildAlertBox(customMessage, "info");
 
-            // Stripe payment buttons
-            var stripeUrl = plan == PaymentPlan.Season
-                ? "https://buy.stripe.com/28o6pW5ANh1q4VOdQQ"
-                : "https://buy.stripe.com/14k15C6EReTi5ZS7st";
+            // The app's own payment page, which opens a checkout tied to this player's payment row.
+            // It used to be a fixed buy.stripe.com link that knew nothing about who was paying or
+            // how much, so anything paid through it landed in Stripe unattributable.
+            var payUrl = plan == PaymentPlan.Season
+                ? $"{SiteUrl}/season-subscription"
+                : $"{SiteUrl}/drop-in-payment";
 
-            content += BuildButton("Pay Online", "Payer en ligne", stripeUrl, lang) +
-                P(L("Or send an Interac e-Transfer to <strong>pay@sainthenribasketball.com</strong>",
-                     "Ou envoyez un virement Interac à <strong>pay@sainthenribasketball.com</strong>", lang));
+            content += BuildButton("Pay online", "Payer en ligne", payUrl, lang);
 
-            return BuildEmailLayout("Payment Reminder", "Rappel de paiement", content, lang);
+            content += P(string.IsNullOrWhiteSpace(reference)
+                ? L("Or send an Interac e-Transfer to <strong>pay@sainthenribasketball.com</strong>.",
+                    "Ou envoyez un virement Interac à <strong>pay@sainthenribasketball.com</strong>.", lang)
+                : L($"Or send an Interac e-Transfer to <strong>pay@sainthenribasketball.com</strong>, putting <strong>{reference}</strong> in the message so we can match it to you.",
+                    $"Ou envoyez un virement Interac à <strong>pay@sainthenribasketball.com</strong>, en inscrivant <strong>{reference}</strong> dans le message pour qu'on puisse l'associer à votre compte.", lang));
+
+            return BuildEmailLayout("Payment Reminder", "Rappel de paiement", content, lang,
+                LSubject($"${amount:F2} is outstanding for your {planNamePlain}.",
+                         $"Il reste ${amount:F2} à payer pour votre {planNamePlain}.", lang));
         }
 
         public static string GetPaymentFailedEmail(string userName, decimal amount, string? reference = null, string? reason = null, EmailLanguage lang = EmailLanguage.French)
@@ -187,10 +210,20 @@ public static class EmailTemplates
 
             content += P(L("What to bring: water bottle, clean indoor shoes, towel",
                            "À apporter: bouteille d'eau, souliers d'intérieur propres, serviette", lang)) +
-                BuildButton("I'll Be There!", "J'y serai!", confirmUrl, lang) +
-                BuildButton("Cancel my place", "Annuler ma place", cancellationUrl ?? confirmUrl, lang);
+                BuildButton("I'll be there", "J'y serai", confirmUrl, lang);
 
-            return BuildEmailLayout("Session Reminder", "Rappel de session", content, lang);
+            // Declining is offered only when there is a real link to decline with. It used to fall
+            // back to the confirmation URL, so "Cancel my place" booked the place instead.
+            if (!string.IsNullOrWhiteSpace(cancellationUrl))
+                content += BuildSecondaryButton(
+                    LSubject("I can't make it", "Je ne peux pas y être", lang), cancellationUrl);
+
+            content += P(L("Telling us either way helps — a place you release goes to whoever is waiting for one.",
+                           "Nous le dire dans un cas comme dans l'autre aide : une place que vous libérez revient à quelqu'un qui attend.", lang));
+
+            return BuildEmailLayout("Session Reminder", "Rappel de session", content, lang,
+                LSubject($"{sessionDate.ToString("dddd d MMMM", GetCulture(lang))}, {startTime}–{endTime}. Let us know if you're coming.",
+                         $"{sessionDate.ToString("dddd d MMMM", GetCulture(lang))}, {startTime}–{endTime}. Dites-nous si vous venez.", lang));
         }
 
         public static string GetAttendanceUpdateEmail(string userName, DateTime sessionDate, string startTime, string endTime, string? location, bool previousStatus, bool newStatus, string? reason = null, EmailLanguage lang = EmailLanguage.French)
@@ -519,6 +552,38 @@ public static class EmailTemplates
                            "Désolé pour ce changement. Répondez à ce courriel si quelque chose ne va pas.", lang));
 
             return BuildEmailLayout("Session cancelled", "Séance annulée", content, lang);
+        }
+
+        /// <summary>
+        /// A place has come free and is held for this player until a deadline.
+        ///
+        /// This one is read in a hurry, on a phone, against a clock — so the deadline is stated in
+        /// plain words and again as a date, and there is exactly one thing to press.
+        /// </summary>
+        public static string GetWaitlistOfferEmail(
+            string firstName, DateTime sessionDate, string startTime, string? endTime, string? location,
+            DateTime offerExpiresLocal, string claimUrl, EmailLanguage lang = EmailLanguage.French)
+        {
+            var culture = GetCulture(lang);
+            var deadline = offerExpiresLocal.ToString("dddd d MMMM, HH:mm", culture);
+            var time = string.IsNullOrWhiteSpace(endTime) ? startTime : $"{startTime}–{endTime}";
+
+            var content = Greeting(firstName, lang) +
+                P(L("A place has come free at the session you were waiting for, and it is yours if you want it.",
+                    "Une place s'est libérée pour la séance que vous attendiez, et elle est à vous si vous la voulez.", lang)) +
+                BuildInfoBox(new Dictionary<string, string?> {
+                    { "Date", sessionDate.ToString("dddd d MMMM yyyy", culture) },
+                    { L("Time", "Heure", lang), time },
+                    { L("Where", "Où", lang), location ?? "717 Saint-Ferdinand" },
+                }) +
+                BuildAlertBox(L($"The place is held for you until <strong>{deadline}</strong> (Montreal). After that it goes to the next person waiting.",
+                                $"La place vous est réservée jusqu'au <strong>{deadline}</strong> (Montréal). Passé ce délai, elle ira à la personne suivante.", lang), "warning") +
+                BuildButton("Claim my place", "Réserver ma place", claimUrl, lang) +
+                P(L("Nothing to do if you would rather not — the place simply passes on when the time runs out.",
+                    "Rien à faire si vous préférez la laisser : la place passera simplement à quelqu'un d'autre à l'échéance.", lang));
+
+            return BuildEmailLayout("A place is waiting for you", "Une place vous attend", content, lang,
+                LSubject($"Held until {deadline} (Montreal).", $"Réservée jusqu'au {deadline} (Montréal).", lang));
         }
     }
     #endregion

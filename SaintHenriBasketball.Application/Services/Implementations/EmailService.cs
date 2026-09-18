@@ -149,10 +149,14 @@ public class EmailService : IEmailService
 
             var content = EmailTemplates.Authentication.GetConfirmationEmail(
                 $"{user.FirstName}",
-                confirmationLink
+                confirmationLink,
+                user.PreferredLanguage
             );
 
-            await SendEmailAsync(to, "Confirmez votre email - Saint Henri Basketball", content);
+            await SendEmailAsync(to, EmailTemplateHelper.LSubject(
+                "Confirm your email - Saint Henri Basketball",
+                "Confirmez votre email - Saint Henri Basketball",
+                user.PreferredLanguage), content);
         }
         catch (Exception ex)
         {
@@ -170,10 +174,14 @@ public class EmailService : IEmailService
 
             var content = EmailTemplates.Authentication.GetPasswordResetEmail(
                 $"{user.FirstName}",
-                resetLink
+                resetLink,
+                user.PreferredLanguage
             );
 
-            await SendEmailAsync(to, "Réinitialisation du mot de passe - Saint Henri Basketball", content);
+            await SendEmailAsync(to, EmailTemplateHelper.LSubject(
+                "Reset your password - Saint Henri Basketball",
+                "Réinitialisation du mot de passe - Saint Henri Basketball",
+                user.PreferredLanguage), content);
         }
         catch (Exception ex)
         {
@@ -192,10 +200,14 @@ public class EmailService : IEmailService
             var content = EmailTemplates.Authentication.GetAccountCreatedEmail(
                 $"{user.FirstName}",
                 password,
-                loginLink
+                loginLink,
+                user.PreferredLanguage
             );
 
-            await SendEmailAsync(to, "Votre compte a été créé - Saint Henri Basketball", content);
+            await SendEmailAsync(to, EmailTemplateHelper.LSubject(
+                "Your account has been created - Saint Henri Basketball",
+                "Votre compte a été créé - Saint Henri Basketball",
+                user.PreferredLanguage), content);
         }
         catch (Exception ex)
         {
@@ -269,11 +281,27 @@ public class EmailService : IEmailService
         try
         {
             var amount = GetPaymentAmount(paymentPlan);
-            var content = EmailTemplates.Payments.GetPaymentReminderEmail(user.FirstName, amount, user.PaymentPlan, customMessage);
+
+            // The reference the player must quote on an Interac transfer for it to be matched to
+            // them. Their newest still-owing payment on this plan is the one being chased.
+            var reference = (await _paymentRepository.GetPaymentsByUserAsync(user.Id))
+                .Where(p => p.Plan == paymentPlan
+                            && p.Status != PaymentStatus.Completed
+                            && p.Status != PaymentStatus.Refunded
+                            && !string.IsNullOrWhiteSpace(p.Reference))
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => p.Reference)
+                .FirstOrDefault();
+
+            var content = EmailTemplates.Payments.GetPaymentReminderEmail(
+                user.FirstName, amount, user.PaymentPlan, customMessage, reference, user.PreferredLanguage);
 
             await SendEmailAsync(
                 user.Email,
-                "Rappel de paiement - Saint Henri Basketball",
+                EmailTemplateHelper.LSubject(
+                    "Payment reminder - Saint Henri Basketball",
+                    "Rappel de paiement - Saint Henri Basketball",
+                    user.PreferredLanguage),
                 content
             );
         }
@@ -590,7 +618,10 @@ public class EmailService : IEmailService
 
             await SendEmailAsync(
                 user.Email,
-                "Rappel de présence - Saint Henri Basketball",
+                EmailTemplateHelper.LSubject(
+                    "Session reminder - Saint Henri Basketball",
+                    "Rappel de présence - Saint Henri Basketball",
+                    user.PreferredLanguage),
                 content
             );
         }

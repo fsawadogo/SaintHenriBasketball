@@ -19,6 +19,7 @@ public static class EmailTemplateHelper
     private const string ColorSuccess = "#22c55e";
     private const string ColorWarning = "#eab308";
     private const string ColorDanger = "#ef4444";
+    public const string SiteUrl = "https://sainthenribasketball.com";
     private const string LogoUrl = "https://sainthenribasketball.com/brand/club-mark-192.png";
     private const string WhatsAppGroupUrl = "https://chat.whatsapp.com/JGAbUroUK9B6feJ6uDlwwD";
     private const string InstagramProfileUrl = "https://www.instagram.com/sainthenribasketball";
@@ -52,8 +53,12 @@ public static class EmailTemplateHelper
 
     /// <summary>Builds the full email HTML layout with dark header, white content, signature
     /// + WhatsApp link, and dark footer. Every template flows through here so the
-    /// signature and chat link stay in lockstep across the app.</summary>
-    public static string BuildEmailLayout(string titleEn, string titleFr, string content, EmailLanguage language = EmailLanguage.French)
+    /// signature and chat link stay in lockstep across the app.
+    ///
+    /// <paramref name="preheader"/> is the line inboxes show beside the subject. Without one they
+    /// scrape the first visible text, which here is the club name in every email — so every email
+    /// previews identically. Pass the one sentence that says why this one arrived.</summary>
+    public static string BuildEmailLayout(string titleEn, string titleFr, string content, EmailLanguage language = EmailLanguage.French, string? preheader = null)
     {
         var title = LSubject(titleEn, titleFr, language);
         var lang = language == EmailLanguage.English ? "en" : "fr";
@@ -61,6 +66,13 @@ public static class EmailTemplateHelper
         var whatsappAria = LSubject("WhatsApp group", "Groupe WhatsApp", language);
         var instagramAria = LSubject("Instagram profile", "Profil Instagram", language);
         var signoff = L("See you on the court,", "À bientôt sur le terrain,", language);
+        var prefsText = LSubject("Email preferences", "Préférences de courriel", language);
+
+        // Hidden from the rendered email, read by the inbox for its preview line. The trailing
+        // filler stops the client from running on into the header text after a short preheader.
+        var preheaderBlock = string.IsNullOrWhiteSpace(preheader)
+            ? string.Empty
+            : $@"<div style='display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:{ColorBg};opacity:0;'>{preheader}{string.Concat(Enumerable.Repeat("&#847;&zwnj;&nbsp;", 40))}</div>";
 
         return $@"<!DOCTYPE html>
 <html lang='{lang}'>
@@ -70,6 +82,7 @@ public static class EmailTemplateHelper
     <title>{title}</title>
 </head>
 <body style='margin:0;padding:0;background-color:{ColorBg};font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;'>
+    {preheaderBlock}
     <table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background-color:{ColorBg};'>
         <tr>
             <td align='center' style='padding:24px 16px;'>
@@ -118,7 +131,8 @@ public static class EmailTemplateHelper
                         <td style='background-color:{ColorDark};border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;'>
                             <p style='margin:0 0 4px;color:#ecc382;font-size:12px;'>Saint-Henri Basketball</p>
                             <p style='margin:0 0 4px;color:#c5d9c8;font-size:11px;'>717 Saint-Ferdinand Street, Montreal, QC H4C 3L7</p>
-                            <p style='margin:0;color:#c5d9c8;font-size:11px;'>(438) 935-8129 &middot; info@sainthenribasketball.com</p>
+                            <p style='margin:0 0 8px;color:#c5d9c8;font-size:11px;'>info@sainthenribasketball.com</p>
+                            <p style='margin:0;color:#c5d9c8;font-size:11px;'><a href='{SiteUrl}/profile' style='color:#c5d9c8;text-decoration:underline;'>{prefsText}</a></p>
                         </td>
                     </tr>
                 </table>

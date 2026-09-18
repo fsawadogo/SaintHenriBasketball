@@ -176,13 +176,27 @@ public class WaitlistService : IWaitlistService
 
             {
 
+                var session = await _sessionRepository.GetByIdAsync(sessionId);
+                var expiresLocal = Application.Helpers.SessionTimeHelper.ToLocal(next.OfferExpiresAt!.Value);
+
                 await _emailService.SendEmailAsync(
 
                     user.Email,
 
-                    "Your waitlist place / Votre place sur la liste",
+                    Application.Helpers.EmailTemplateHelper.LSubject(
+                        "A place is waiting for you - Saint Henri Basketball",
+                        "Une place vous attend - Saint Henri Basketball",
+                        user.PreferredLanguage),
 
-                    $"A place is reserved for you until {deadline} (Montreal). Claim it: {url} . Une place est réservée jusqu’au {deadline} (Montréal). Réservez : {url}");
+                    Templates.EmailTemplates.Sessions.GetWaitlistOfferEmail(
+                        user.FirstName,
+                        session?.SessionDate ?? expiresLocal.Date,
+                        session?.StartTime ?? "10:00",
+                        session?.EndTime,
+                        session?.Location,
+                        expiresLocal,
+                        url,
+                        user.PreferredLanguage));
 
             }
 
