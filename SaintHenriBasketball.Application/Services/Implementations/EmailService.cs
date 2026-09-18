@@ -366,14 +366,23 @@ public class EmailService : IEmailService
                     ? "Forfait de saison"
                     : "Forfait à la séance";
 
+                // The payment row carries the discount and credit that made up this figure. Without
+                // it the receipt shows only the net, leaving the reader to wonder where the rest went.
+                var paid = (await _paymentRepository.GetPaymentsByUserAsync(user.Id))
+                    .FirstOrDefault(p => p.Reference == reference);
+
                 var billDetails = new BillDetails
                 {
                     Name = userName,
                     Email = user.Email,
                     Description = description,
                     Amount = amount,
+                    OriginalAmount = paid?.OriginalAmount,
+                    DiscountAmount = paid?.DiscountAmount ?? 0m,
+                    CreditApplied = paid?.CreditApplied ?? 0m,
                     Reference = reference,
-                    Date = DateTime.UtcNow
+                    Date = paid?.PaymentDate ?? DateTime.UtcNow,
+                    PaidOn = paid?.PaymentDate ?? DateTime.UtcNow
                 };
 
                 var pdfContent = billGenerator.GenerateBill(billDetails);
