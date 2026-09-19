@@ -1,4 +1,4 @@
-using SaintHenriBasketball.Domain.Entities;
+﻿using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Domain.Interfaces.Repositories;
@@ -30,6 +30,15 @@ public interface ISeasonPlanChoiceRepository
     /// caller needs to tell paid from unpaid without asking twice.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetSpotHolderIdsAsync(Guid seasonId, bool includeProfilePlan);
+
+    /// <summary>
+    /// Takes a season pass spot for this player, or reports that the season is full.
+    ///
+    /// Counting and claiming happen under one lock on the season, because doing them apart lets two
+    /// players both read the last spot as free and both take it. A player who already holds a spot
+    /// always succeeds: re-affirming a pass they hold must never be refused.
+    /// </summary>
+    Task<bool> TryTakeSeasonSpotAsync(Guid seasonId, Guid userId, int capacity);
 
     /// True when this player already has a Completed season payment for this season. Used to let a
     /// player who has paid keep their pass even when the season is otherwise sold out.

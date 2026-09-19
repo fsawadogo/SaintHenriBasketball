@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Domain.Entities;
 using SaintHenriBasketball.Domain.Enums;
@@ -21,6 +21,40 @@ public class SeasonPlanChoiceRepository : ISeasonPlanChoiceRepository
     public async Task<SeasonPlanChoice?> GetAsync(Guid seasonId, Guid userId) =>
         await _context.SeasonPlanChoices
             .FirstOrDefaultAsync(c => c.SeasonId == seasonId && c.UserId == userId);
+
+    public async Task<bool> TryTakeSeasonSpotAsync(Guid seasonId, Guid userId, int capacity)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        // The same lock the season payment path takes, for the same reason: everything that decides
+        // whether a spot is free must queue behind one row.
+        await _context.Seasons
+            .FromSqlInterpolated($"SELECT * FROM Seasons WITH (UPDLOCK, HOLDLOCK) WHERE Id = {seasonId}")
+            .SingleAsync();
+
+        var holders = await SpotHolderIds(seasonId, includeProfilePlan: true).ToListAsync();
+        var alreadyHolds = holders.Contains(userId);
+
+        if (!alreadyHolds && holders.Count >= capacity)
+        {
+            await transaction.RollbackAsync();
+            return false;
+        }
+
+        await UpsertAsync(seasonId, userId, PaymentPlan.Season);
+
+        // The denormalised plan is part of the count, so it is set inside the same lock; leaving it
+        // to the caller would reopen the gap this method exists to close.
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is not null && user.PaymentPlan != PaymentPlan.Season)
+        {
+            user.PaymentPlan = PaymentPlan.Season;
+            await _context.SaveChangesAsync();
+        }
+
+        await transaction.CommitAsync();
+        return true;
+    }
 
     public async Task<SeasonPlanChoice> UpsertAsync(Guid seasonId, Guid userId, PaymentPlan plan)
     {
@@ -57,10 +91,12 @@ public class SeasonPlanChoiceRepository : ISeasonPlanChoiceRepository
     public async Task<int> CountPaidPassesAsync(Guid seasonId) =>
         await PaidPassUserIds(seasonId).CountAsync();
 
-    public async Task<IReadOnlyList<Guid>> GetSpotHolderIdsAsync(Guid seasonId, bool includeProfilePlan)
+    /// Everyone holding a spot, as a query so the capacity check and the reads share one definition.
+    ///
+    /// Union, not a sum: the same player usually appears in more than one of these, and a paid pass
+    /// holder almost always has a choice row too.
+    private IQueryable<Guid> SpotHolderIds(Guid seasonId, bool includeProfilePlan)
     {
-        // Union, not a sum: the same player usually appears in more than one of these, and a paid
-        // pass holder almost always has a choice row too.
         var ids = PaidPassUserIds(seasonId)
             .Union(_context.SeasonPlanChoices
                 .Where(c => c.SeasonId == seasonId && c.Plan == PaymentPlan.Season)
@@ -75,8 +111,11 @@ public class SeasonPlanChoiceRepository : ISeasonPlanChoiceRepository
                 .Select(u => u.Id));
         }
 
-        return await ids.Distinct().ToListAsync();
+        return ids.Distinct();
     }
+
+    public async Task<IReadOnlyList<Guid>> GetSpotHolderIdsAsync(Guid seasonId, bool includeProfilePlan) =>
+        await SpotHolderIds(seasonId, includeProfilePlan).ToListAsync();
 
     public async Task<bool> HasPaidPassAsync(Guid seasonId, Guid userId) =>
         await _context.Payments.AnyAsync(p => p.SeasonId == seasonId

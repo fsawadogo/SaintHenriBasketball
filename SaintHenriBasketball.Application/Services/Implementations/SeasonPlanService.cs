@@ -15,6 +15,8 @@ namespace SaintHenriBasketball.Application.Services.Implementations;
 /// turns on: an unpaid choice reserves nothing and is exactly what a reset clears.
 public class SeasonPlanService : ISeasonPlanService
 {
+    public const string SoldOutMessage = "The season pass is sold out for this season.";
+
     private readonly ISeasonRepository _seasons;
     private readonly ISeasonPlanChoiceRepository _choices;
     private readonly IUserRepository _users;
@@ -62,29 +64,30 @@ public class SeasonPlanService : ISeasonPlanService
         var season = await _seasons.GetCurrentSeasonAsync()
             ?? throw new ValidationException("No season is open right now.");
 
-        if (plan == PaymentPlan.Season)
-        {
-            // A player who has already paid may always re-affirm their own pass, even at capacity —
-            // otherwise a second click, or a reset, could lock someone out of something they bought.
-            var alreadyPaid = await _choices.HasPaidPassAsync(season.Id, userId);
-            // The same count the page shows, so a season that reads as full cannot still be joined.
-            var taken = (await _choices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan: true)).Count;
-            if (!alreadyPaid && taken >= season.SeasonPassCapacity)
-                throw new ValidationException("The season pass is sold out for this season.");
-        }
-
         // Read before writing: an email only makes sense when the answer actually changed, and a
         // player re-saving the same plan should not be told again.
         var previous = (await _choices.GetAsync(season.Id, userId))?.Plan;
-
-        await _choices.UpsertAsync(season.Id, userId, plan);
-
-        // Keep the denormalised current plan coherent: everything else in the app still reads it.
         var user = await _users.GetByIdAsync(userId);
-        if (user is not null && user.PaymentPlan != plan)
+
+        if (plan == PaymentPlan.Season)
         {
-            user.PaymentPlan = plan;
-            await _users.UpdateAsync(user);
+            // Counting the spots and claiming one happen together under a lock on the season, so two
+            // players cannot both read the last spot as free. A player who already holds one is
+            // always let through: re-affirming a pass they hold must never be refused.
+            if (!await _choices.TryTakeSeasonSpotAsync(season.Id, userId, season.SeasonPassCapacity))
+                throw new ValidationException(SoldOutMessage);
+        }
+        else
+        {
+            await _choices.UpsertAsync(season.Id, userId, plan);
+
+            // Keep the denormalised current plan coherent: everything else in the app reads it. The
+            // season branch sets it inside the lock, as part of taking the spot.
+            if (user is not null && user.PaymentPlan != plan)
+            {
+                user.PaymentPlan = plan;
+                await _users.UpdateAsync(user);
+            }
         }
 
         _logger.LogInformation("User {UserId} chose {Plan} for season {SeasonId}", userId, plan, season.Id);

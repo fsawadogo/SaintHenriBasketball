@@ -85,6 +85,12 @@ public class UserService : IUserService
         // Generate and set email confirmation token
         user.EmailConfirmationToken = Guid.NewGuid().ToString("N");
 
+        // A new signup never starts on the season plan, whatever the request body said.
+        // PaymentPlan.Season is 0, so an omitted field bound to it — and because a season-plan
+        // profile counts as a pass spot, anonymous signups could quietly sell the season out.
+        // Taking a pass goes through SeasonPlanService, which counts and claims under a lock.
+        user.PaymentPlan = PaymentPlan.DropIn;
+
         if (referralCode is null)
         {
             await _userRepository.AddAsync(user);
