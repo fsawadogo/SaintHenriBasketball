@@ -95,7 +95,21 @@ public class SessionCancellationService : ISessionCancellationService
 
         foreach (var payment in payments.Where(p => p.Status == PaymentStatus.Pending))
         {
-            await CloseOpenCardCheckoutAsync(payment);
+            // A checkout that has already completed means the player's money is on its way, even
+            // though the payment still reads Pending. Writing it off here would leave the club
+            // holding money its own records call Failed — and a failed payment cannot be refunded.
+            // Leave it Pending: the Stripe webhook completes it, and the player is told the money
+            // is still with the club.
+            if (!await CloseOpenCardCheckoutAsync(payment))
+            {
+                result.PaidNotRefunded++;
+                outcomes[payment.UserId] = (CancellationMoney.StillHeld, payment.Amount);
+                _logger.LogWarning(
+                    "Payment {PaymentId} left pending on cancellation of {SessionId}: its checkout has already completed",
+                    payment.Id, sessionId);
+                continue;
+            }
+
             if (await _paymentService.VoidForCancelledSessionAsync(payment.Id))
             {
                 result.PaymentsVoided++;
@@ -245,16 +259,22 @@ public class SessionCancellationService : ISessionCancellationService
     }
 
     /// An unpaid card checkout would otherwise still accept money for a session that no longer happens.
-    private async Task CloseOpenCardCheckoutAsync(Payment payment)
+    /// <summary>
+    /// Shuts an open card checkout. Returns whether the payment is safe to write off: false when
+    /// the checkout has already completed, or when we could not find out.
+    /// </summary>
+    private async Task<bool> CloseOpenCardCheckoutAsync(Payment payment)
     {
-        if (payment.Reference?.StartsWith("cs_", StringComparison.Ordinal) != true) return;
+        if (payment.Reference?.StartsWith("cs_", StringComparison.Ordinal) != true) return true;
         try
         {
-            await _stripe.ExpireCheckoutAsync(payment.Reference);
+            return await _stripe.ExpireCheckoutAsync(payment.Reference);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not expire Stripe checkout for payment {PaymentId}", payment.Id);
+            // Not knowing is not the same as knowing nothing was paid. Keep the payment.
+            _logger.LogWarning(ex, "Could not expire Stripe checkout for payment {PaymentId}; leaving it pending", payment.Id);
+            return false;
         }
     }
 }

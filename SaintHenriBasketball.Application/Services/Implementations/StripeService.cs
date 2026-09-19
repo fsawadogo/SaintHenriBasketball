@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Helpers;
@@ -127,13 +127,30 @@ public class StripeService : IStripeService
         return checkoutSession.Url;
     }
 
-    public async Task ExpireCheckoutAsync(string checkoutSessionId)
+    public async Task<bool> ExpireCheckoutAsync(string checkoutSessionId)
     {
         var service = new StripeCheckout.SessionService();
         var checkout = await service.GetAsync(checkoutSessionId);
-        if (checkout.Status != "open") return;
-        await service.ExpireAsync(checkoutSessionId);
-        _logger.LogInformation("Stripe Checkout Session {CheckoutSessionId} expired", checkoutSessionId);
+
+        // "complete" covers both a card already charged and an async method (bank debit) still
+        // settling — its webhook can land days later. Either way money is on its way to us, and
+        // writing the payment off would leave the club holding it with no record.
+        if (checkout.Status == "complete")
+        {
+            _logger.LogWarning(
+                "Stripe Checkout Session {CheckoutSessionId} is already complete; leaving the payment alone",
+                checkoutSessionId);
+            return false;
+        }
+
+        if (checkout.Status == "open")
+        {
+            await service.ExpireAsync(checkoutSessionId);
+            _logger.LogInformation("Stripe Checkout Session {CheckoutSessionId} expired", checkoutSessionId);
+        }
+
+        // Open-and-now-expired, or already expired: nothing can arrive through it.
+        return true;
     }
 
     public async Task<string> RefundCheckoutAsync(string checkoutSessionId, long amountInCents, Guid paymentId)
