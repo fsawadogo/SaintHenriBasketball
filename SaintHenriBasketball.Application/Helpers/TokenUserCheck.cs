@@ -1,9 +1,9 @@
-using SaintHenriBasketball.Domain.Enums;
+﻿using SaintHenriBasketball.Domain.Enums;
 
 namespace SaintHenriBasketball.Application.Helpers;
 
 /// What the API needs to know about a token's user on every request.
-public sealed record AuthUserSnapshot(bool IsDeactivated, bool IsAdmin, StaffRole StaffRole);
+public sealed record AuthUserSnapshot(bool IsDeactivated, bool IsAdmin, StaffRole StaffRole, bool EmailConfirmed);
 
 public static class TokenUserCheck
 {
@@ -18,6 +18,11 @@ public static class TokenUserCheck
     {
         null => "Account not found",
         { IsDeactivated: true } => "Account deactivated",
+        // Registration hands back a signed token before the address is confirmed, and LoginAsync is
+        // the only other place that ever looked at EmailConfirmed — so that token was a working
+        // session, and the confirmation step was decorative. Someone could register under another
+        // person's address and act as them while that person received the confirmation mail.
+        { EmailConfirmed: false } => "Email not confirmed",
         { IsAdmin: false } when tokenClaimsAdmin => "Admin access was removed",
         _ when StaffAccess.RoleFromClaim(tokenStaffRole) != user.StaffRole => "Staff role changed",
         _ => null,
