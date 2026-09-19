@@ -27,7 +27,8 @@ public class UsersController(
     IAuditLogService auditLogService,
     IMemoryCache memoryCache,
     IUserDirectoryService userDirectory,
-    IStaffRoleService staffRoles)
+    IStaffRoleService staffRoles,
+    ISeasonPlanService seasonPlan)
     : ControllerBase
 {
     private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -223,6 +224,16 @@ public class UsersController(
                 return BadRequest(ModelState);
 
             var userId = Guid.Parse(userIdClaim.Value);
+
+            // Taking a season pass goes through the plan service, which counts the spots and claims
+            // one under a lock. This endpoint used to assign the plan directly, which is a way round
+            // a sold-out season and a way to oversell it.
+            if (updatePaymentPlanDto.PaymentPlan == Domain.Enums.PaymentPlan.Season)
+            {
+                await seasonPlan.ChooseAsync(userId, Domain.Enums.PaymentPlan.Season);
+                return NoContent();
+            }
+
             var before = await _userService.GetUserAsync(userId);
             await _userService.UpdateUserPaymentPlanAsync(userId, updatePaymentPlanDto.PaymentPlan);
             _logger.LogInformation("User updated their payment plan successfully: {UserId}", userId);
