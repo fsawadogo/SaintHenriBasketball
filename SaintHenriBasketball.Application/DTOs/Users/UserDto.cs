@@ -14,6 +14,9 @@ public class UserDto
     public PaymentPlan PaymentPlan { get; set; }
     public DateTime CreatedOn { get; set; }
     public EmailLanguage PreferredLanguage { get; set; }
+    /// False for a signup that never followed its confirmation link. Such a player cannot sign in,
+    /// but looked identical to everyone else on the roster until this was surfaced.
+    public bool EmailConfirmed { get; set; }
     public bool TwoFactorEnabled { get; set; }
     public bool IsDeactivated { get; set; }
     public DateTime? DeactivatedOn { get; set; }
