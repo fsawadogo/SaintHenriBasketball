@@ -57,7 +57,7 @@ internal static class RegistrationAbuseChecks
 
         // --- The preview ---
         UnconfirmedPurgeResultDto preview;
-        await using (var context = db()) preview = await Service(context).RunAsync(olderThanDays: 7, dryRun: true);
+        await using (var context = db()) preview = await Service(context).RunAsync(olderThanDays: 7, createdAfter: null, dryRun: true);
 
         assert(preview.Accounts.Any(a => a.Contains($"ab-litter-{tag}", StringComparison.Ordinal)),
             "registration abuse: a never-confirmed account with no history is listed for removal");
@@ -78,7 +78,7 @@ internal static class RegistrationAbuseChecks
 
         // --- The purge ---
         UnconfirmedPurgeResultDto purged;
-        await using (var context = db()) purged = await Service(context).RunAsync(olderThanDays: 7, dryRun: false);
+        await using (var context = db()) purged = await Service(context).RunAsync(olderThanDays: 7, createdAfter: null, dryRun: false);
 
         assert(purged.Deleted >= 2, "registration abuse: the litter is removed");
         assert(purged.KeptWithHistory >= 1, "registration abuse: and it reports what it kept, not only what it took");
@@ -95,10 +95,42 @@ internal static class RegistrationAbuseChecks
                 "registration abuse: so is the admin");
         }
 
+        // --- Clearing a burst without touching the people who came before it ---
+        // Age alone takes the oldest first, which during a flood is precisely backwards: the litter
+        // is new and the genuine half-finished signups are old.
+        var longAgo = Account("longago", confirmed: false, created: DateTime.UtcNow.AddDays(-200));
+        var inBurst = Account("burst", confirmed: false, created: DateTime.UtcNow.AddDays(-10));
+
+        await using (var context = db())
+        {
+            context.Users.AddRange(longAgo, inBurst);
+            foreach (var user in new[] { longAgo, inBurst })
+                context.Entry(user).Property(nameof(ApplicationUser.CreatedOn)).CurrentValue = ages[user];
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = db())
+        {
+            var windowed = await Service(context).RunAsync(
+                olderThanDays: 7, createdAfter: DateTime.UtcNow.AddDays(-20), dryRun: true);
+
+            assert(windowed.Accounts.Any(a => a.Contains($"ab-burst-{tag}", StringComparison.Ordinal)),
+                "purge window: an account inside the window is listed");
+            assert(!windowed.Accounts.Any(a => a.Contains($"ab-longago-{tag}", StringComparison.Ordinal)),
+                "purge window: someone who signed up long before the window is spared — age alone would have taken them first");
+        }
+
+        await using (var context = db())
+        {
+            var unbounded = await Service(context).RunAsync(olderThanDays: 7, createdAfter: null, dryRun: true);
+            assert(unbounded.Accounts.Any(a => a.Contains($"ab-longago-{tag}", StringComparison.Ordinal)),
+                "purge window: with no window given the old account is a candidate again, so the bound is opt-in");
+        }
+
         // A floor on the age, so nobody can sweep the last hour's signups by passing zero.
         await using (var context = db())
         {
-            var aggressive = await Service(context).RunAsync(olderThanDays: 0, dryRun: true);
+            var aggressive = await Service(context).RunAsync(olderThanDays: 0, createdAfter: null, dryRun: true);
             assert(!aggressive.Accounts.Any(a => a.Contains($"ab-recent-{tag}", StringComparison.Ordinal)),
                 "registration abuse: asking for everything still spares accounts younger than the floor");
         }

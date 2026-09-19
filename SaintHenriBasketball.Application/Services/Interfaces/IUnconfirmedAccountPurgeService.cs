@@ -1,4 +1,4 @@
-namespace SaintHenriBasketball.Application.Services.Interfaces;
+﻿namespace SaintHenriBasketball.Application.Services.Interfaces;
 
 /// What one purge run removed, or would remove.
 public class UnconfirmedPurgeResultDto
@@ -21,5 +21,7 @@ public class UnconfirmedPurgeResultDto
 /// </summary>
 public interface IUnconfirmedAccountPurgeService
 {
-    Task<UnconfirmedPurgeResultDto> RunAsync(int olderThanDays, bool dryRun = true);
+    /// <paramref name="createdAfter"/> bounds the window from below, so a burst of new signups can
+    /// be cleared without touching people who signed up long ago and simply never finished.
+    Task<UnconfirmedPurgeResultDto> RunAsync(int olderThanDays, DateTime? createdAfter = null, bool dryRun = true);
 }

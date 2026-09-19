@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
@@ -21,12 +21,12 @@ public class UnconfirmedAccountPurgeService : IUnconfirmedAccountPurgeService
         _logger = logger;
     }
 
-    public async Task<UnconfirmedPurgeResultDto> RunAsync(int olderThanDays, bool dryRun = true)
+    public async Task<UnconfirmedPurgeResultDto> RunAsync(int olderThanDays, DateTime? createdAfter = null, bool dryRun = true)
     {
         var age = Math.Max(MinimumAgeDays, olderThanDays);
         var cutoff = DateTime.UtcNow.AddDays(-age);
 
-        var candidates = await _accounts.GetPurgeableAsync(cutoff);
+        var candidates = await _accounts.GetPurgeableAsync(cutoff, createdAfter);
         var result = new UnconfirmedPurgeResultDto { DryRun = dryRun, Matched = candidates.Count };
 
         foreach (var account in candidates)
@@ -45,8 +45,8 @@ public class UnconfirmedAccountPurgeService : IUnconfirmedAccountPurgeService
         }
 
         _logger.LogInformation(
-            "Unconfirmed purge ({Mode}): {Matched} matched, {Deleted} removed, {Kept} kept for having history",
-            dryRun ? "dry run" : "live", result.Matched, result.Deleted, result.KeptWithHistory);
+            "Unconfirmed purge ({Mode}) over {From}..{To}: {Matched} matched, {Deleted} removed, {Kept} kept for having history",
+            dryRun ? "dry run" : "live", createdAfter, cutoff, result.Matched, result.Deleted, result.KeptWithHistory);
 
         return result;
     }
