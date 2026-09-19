@@ -36,6 +36,7 @@ internal static class RegistrationAbuseChecks
         var recent = Account("recent", confirmed: false, created: DateTime.UtcNow.AddHours(-3));
         var real = Account("real", confirmed: true, created: old);
         var stuckButPlaying = Account("stuck", confirmed: false, created: old);
+        var holdsCredit = Account("credit", confirmed: false, created: old);
         var boss = Account("boss", confirmed: false, created: old);
         boss.IsAdmin = true;
 
@@ -43,10 +44,13 @@ internal static class RegistrationAbuseChecks
 
         await using (var context = db())
         {
-            context.Users.AddRange(litter, alsoLitter, recent, real, stuckButPlaying, boss);
+            context.Users.AddRange(litter, alsoLitter, recent, real, stuckButPlaying, holdsCredit, boss);
             context.Sessions.Add(session);
             // This one never confirmed either, but they booked a place: a person, not litter.
             context.SessionRegistrations.Add(new SessionRegistration(stuckButPlaying.Id, session.Id, PaymentPlan.DropIn));
+            // And this one holds money. The model refuses to cascade a delete through the credit
+            // ledger, so an account the purge claims it can take is one the database will not let go.
+            context.AccountCredits.Add(new AccountCredit(holdsCredit.Id, 20m, AccountCreditKind.ManualAdjustment, note: "test-only"));
             foreach (var (user, created) in ages)
                 context.Entry(user).Property(nameof(ApplicationUser.CreatedOn)).CurrentValue = created;
             await context.SaveChangesAsync();
@@ -67,6 +71,8 @@ internal static class RegistrationAbuseChecks
             "registration abuse: a confirmed player is never a candidate");
         assert(!preview.Accounts.Any(a => a.Contains($"ab-stuck-{tag}", StringComparison.Ordinal)),
             "registration abuse: an unconfirmed player who booked a session is kept — that is a person, not litter");
+        assert(!preview.Accounts.Any(a => a.Contains($"ab-credit-{tag}", StringComparison.Ordinal)),
+            "registration abuse: an unconfirmed account holding credit is kept — the ledger is a financial record, and the delete would fail on it anyway");
         assert(!preview.Accounts.Any(a => a.Contains($"ab-boss-{tag}", StringComparison.Ordinal)),
             "registration abuse: an admin is never swept up, whatever their confirmation state");
 
@@ -93,6 +99,11 @@ internal static class RegistrationAbuseChecks
                 "registration abuse: so is this morning's signup");
             assert(await context.Users.CountAsync(u => u.Id == boss.Id) == 1,
                 "registration abuse: so is the admin");
+            // The real point of the check above: the purge ran to completion. Before the credit
+            // ledger was counted as history, this account reached the delete and the foreign key
+            // stopped it there, partway through the sweep.
+            assert(await context.Users.CountAsync(u => u.Id == holdsCredit.Id) == 1,
+                "registration abuse: the account holding credit survived the live purge");
         }
 
         // --- Clearing a burst without touching the people who came before it ---
