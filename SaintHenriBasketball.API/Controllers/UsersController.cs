@@ -34,13 +34,15 @@ public class UsersController(
     private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
     private readonly ILogger<UsersController> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+    public const string RegistrationRefusedMessage = "Registration could not be completed.";
+
     #region Authentication
     /// <summary>
     /// Register a new user
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("register")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserResponseDto>> Register([FromBody] RegisterUserDto registerDto)
@@ -49,6 +51,15 @@ public class UsersController(
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // A field the form keeps hidden, so a person never fills it and a bot that posts every
+            // field does. Refused before any account is made or any mail sent, and the reason given
+            // is deliberately the same generic one as every other refusal here.
+            if (!string.IsNullOrWhiteSpace(registerDto.Website))
+            {
+                _logger.LogWarning("Registration refused as automated: honeypot filled for {Email}", registerDto.Email);
+                return BadRequest(RegistrationRefusedMessage);
+            }
 
             if (!new EmailAddressAttribute().IsValid(registerDto.Email))
                 return BadRequest("Invalid email format");

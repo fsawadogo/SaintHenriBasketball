@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<ISeasonService, SeasonService>();
         services.AddScoped<ISeasonPlanService, SeasonPlanService>();
+        services.AddScoped<IUnconfirmedAccountPurgeService, UnconfirmedAccountPurgeService>();
         services.AddScoped<IBookingConfirmationBackfillService, BookingConfirmationBackfillService>();
         services.AddScoped<IEmailAutomationService, EmailAutomationService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
