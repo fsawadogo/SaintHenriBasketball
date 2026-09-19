@@ -15,6 +15,7 @@ using SaintHenriBasketball.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 using Google.Apis.Auth;
 using SaintHenriBasketball.Application.FeatureFlags;
+using SaintHenriBasketball.Application.Helpers;
 using ValidationException = SaintHenriBasketball.Application.Exceptions.ValidationException;
 
 namespace SaintHenriBasketball.Application.Services.Implementations;
@@ -40,8 +41,10 @@ public class UserService : IUserService
         ILogger<UserService> logger,
         IFeatureFlagService featureFlagService,
         IReferralRepository referralRepository,
+        IEmailSendBudgetRepository emailBudget,
         IHttpClientFactory httpClientFactory)
     {
+        _emailBudget = emailBudget;
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _mapper = mapper;
@@ -55,11 +58,61 @@ public class UserService : IUserService
     /// Through a factory rather than `new HttpClient()`: it makes the Google checks testable, and
     /// avoids a fresh socket per sign-in.
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IEmailSendBudgetRepository _emailBudget;
+
+    /// What the club will spend on confirmation emails in an hour. Set above any plausible burst
+    /// of real signups — a club of a hundred does not gain twenty members in an hour — and far
+    /// below what a script can ask for. September's flood sent roughly a hundred in two days.
+    public const int ConfirmationEmailsPerHour = 20;
+
+    /// Whether this address reaches a mailbox that already has an account.
+    private async Task<bool> MailboxAlreadyRegisteredAsync(string? email)
+    {
+        var canonical = EmailCanonicalizer.Canonicalize(email);
+
+        var at = canonical.LastIndexOf('@');
+        if (at <= 0) return false;
+
+        // Only addresses at the same mailbox can collide, and the domain is never rewritten to
+        // something else — so this asks the database for a handful of rows, not the whole table.
+        var domain = canonical[(at + 1)..];
+        var domains = domain is "gmail.com"
+            ? new List<string> { "gmail.com", "googlemail.com" }
+            : new List<string> { domain };
+
+        var existing = await _userRepository.GetEmailsAtDomainsAsync(domains);
+        return existing.Any(e => EmailCanonicalizer.Canonicalize(e) == canonical);
+    }
+
+    /// False once the hour's confirmation emails are spent. Off unless the flag is on, so the
+    /// budget cannot quietly swallow a real signup on a club that never asked for it.
+    private async Task<bool> HasConfirmationBudgetAsync()
+    {
+        if (!await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.RegistrationHardening))
+            return true;
+
+        var sent = await _emailBudget.CountSentSinceAsync(
+            EmailType.EmailConfirmation, DateTime.UtcNow.AddHours(-1));
+
+        return sent < ConfirmationEmailsPerHour;
+    }
 
     public async Task<UserResponseDto> RegisterAsync(RegisterUserDto registerDto)
     {
         if (await _userRepository.EmailExistsAsync(registerDto.Email))
         {
+            throw new ValidationException("Email is already registered");
+        }
+
+        // The same check again, against the mailbox rather than the spelling. Gmail ignores dots,
+        // so one inbox can wear a hundred different-looking addresses — which is how September's
+        // flood turned a single mailbox into a hundred accounts, each one sending a stranger a
+        // confirmation email from the club's domain.
+        if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.RegistrationHardening)
+            && await MailboxAlreadyRegisteredAsync(registerDto.Email))
+        {
+            // Deliberately the message above, word for word. Telling the difference apart is
+            // telling an operator which spellings are already spent.
             throw new ValidationException("Email is already registered");
         }
 
@@ -114,9 +167,20 @@ public class UserService : IUserService
 
         try
         {
-            // Send confirmation email
-            var confirmationLink = $"{_configuration["AppUrl"]}/confirm-email?token={user.EmailConfirmationToken}&email={user.Email}";
-            await _emailService.SendConfirmationEmailAsync(user.Email, confirmationLink);
+            if (!await HasConfirmationBudgetAsync())
+            {
+                // The account is real enough to keep; what is rationed is the club's standing with
+                // the receiving mail servers. An admin can send this by hand from the Players page.
+                _logger.LogWarning(
+                    "Confirmation email for {UserId} withheld: the hourly budget of {Budget} is spent",
+                    user.Id, ConfirmationEmailsPerHour);
+            }
+            else
+            {
+                // Send confirmation email
+                var confirmationLink = $"{_configuration["AppUrl"]}/confirm-email?token={user.EmailConfirmationToken}&email={user.Email}";
+                await _emailService.SendConfirmationEmailAsync(user.Email, confirmationLink);
+            }
         }
         catch (Exception ex)
         {

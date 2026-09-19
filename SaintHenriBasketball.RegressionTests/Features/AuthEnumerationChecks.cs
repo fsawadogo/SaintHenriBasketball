@@ -55,6 +55,7 @@ internal static class AuthEnumerationChecks
                 NullLogger<UserService>.Instance,
                 DispatchProxy.Create<IFeatureFlagService, EnumOffFlags>(),
                 new ReferralRepository(context),
+                new EmailSendBudgetRepository(context),
                 new StubHttpClientFactory());
         }
 

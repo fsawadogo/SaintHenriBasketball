@@ -80,4 +80,8 @@ public static class FeatureFlagKeys
 
     // Reworked player dashboard: season block, balance owed, and a different layout on match day.
     public const string PlayerDashboardV2 = "player-dashboard-v2";
+
+    // Registration hardening: one account per mailbox however the address is spelled, and a cap
+    // on how many confirmation emails the club will send in an hour.
+    public const string RegistrationHardening = "registration-hardening";
 }

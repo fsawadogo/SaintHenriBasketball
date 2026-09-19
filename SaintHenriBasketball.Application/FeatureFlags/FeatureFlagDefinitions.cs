@@ -179,5 +179,9 @@ public static class FeatureFlagDefinitions
             "Reworked player dashboard: the season pass and its spots, the balance owed, and a match-day layout on session days.",
             "Tableau de bord repensé : le laissez-passer et ses places, le solde à payer, et une mise en page spéciale les jours de séance.",
             IsPublic: true),
+        new FeatureFlagDefinition(FeatureFlagKeys.RegistrationHardening,
+            "Treat one mailbox as one account however the address is spelled, and stop sending confirmation emails once an hour's worth have gone out.",
+            "Traiter une boîte de réception comme un seul compte, quelle que soit l'écriture de l'adresse, et cesser d'envoyer des courriels de confirmation une fois le quota horaire atteint.",
+            IsPublic: false),
     };
 }

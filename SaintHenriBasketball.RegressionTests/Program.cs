@@ -331,7 +331,7 @@ PaymentService PaymentsFor(ApplicationDbContext db) => new(new PaymentRepository
     new SeasonRepository(db, NullLogger<SeasonRepository>.Instance), new PromoCodeRepository(db), new AccountCreditRepository(db), ReferralsFor(db), CreditFlags(db),
     new SeasonPlanChoiceRepository(db, NullLogger<SeasonPlanChoiceRepository>.Instance));
 UserService UsersFor(ApplicationDbContext db) => new(creditConfig, creditMapper, new UserRepository(db, NullLogger<UserRepository>.Instance), null!,
-    NullLogger<UserService>.Instance, CreditFlags(db), new ReferralRepository(db), new StubHttpClientFactory());
+    NullLogger<UserService>.Instance, CreditFlags(db), new ReferralRepository(db), new EmailSendBudgetRepository(db), new StubHttpClientFactory());
 async Task<string?> TryPayAsync(Guid userId, Guid sessionId, string? promoCode, int method = 1, string? reference = null)
 {
     await using var db = Db();
@@ -1093,6 +1093,7 @@ await SignupFunnelChecks.RunAsync(Db, Assert);
 await InteracAutoMatchChecks.RunAsync(Db, Assert);
 await SessionCancellationEmailChecks.RunAsync(Db, Assert);
 await RegistrationAbuseChecks.RunAsync(Db, Assert);
+RegistrationHardeningChecks.Run(Assert);
 await HuntRemainderChecks.RunAsync(Db, Assert);
 await AuthEnumerationChecks.RunAsync(Db, Assert);
 await CancelledSessionPaymentChecks.RunAsync(Db, Assert);
