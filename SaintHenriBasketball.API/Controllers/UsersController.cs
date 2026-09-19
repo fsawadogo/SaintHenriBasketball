@@ -479,6 +479,7 @@ public class UsersController(
     /// Confirm user's email
     /// </summary>
     [HttpPost("confirm-email")]
+    [EnableRateLimiting("auth")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -499,6 +500,7 @@ public class UsersController(
     /// Request password reset
     /// </summary>
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -520,6 +522,7 @@ public class UsersController(
     /// Reset password
     /// </summary>
     [HttpPost("reset-password")]
+    [EnableRateLimiting("auth")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

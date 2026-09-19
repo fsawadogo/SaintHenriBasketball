@@ -180,6 +180,8 @@ public class UserService : IUserService
     }
 
     public const string InvalidGoogleTokenMessage = "Invalid Google token";
+    public const string InvalidConfirmationMessage = "This confirmation link is invalid or has already been used.";
+    public const string InvalidResetLinkMessage = "This reset link is invalid or has expired. Request a new one.";
     public const string GoogleNotConfiguredMessage = "Google sign-in is not configured.";
 
     public async Task<UserResponseDto> GoogleLoginAsync(string accessToken)
@@ -365,14 +367,13 @@ public class UserService : IUserService
     public async Task ConfirmEmailAsync(string? email, string token)
     {
         var user = await _userRepository.GetByEmailAsync(email);
-        if (user == null)
-        {
-            throw new ValidationException("Invalid email");
-        }
 
-        if (user.EmailConfirmationToken != token)
+        // One answer for "no such account" and "wrong token". Two answers let anyone test addresses
+        // against the club roster at will — the same leak SendPasswordLinkAsync goes out of its way
+        // to avoid, undone here.
+        if (user == null || user.EmailConfirmationToken != token)
         {
-            throw new ValidationException("Invalid confirmation token");
+            throw new ValidationException(InvalidConfirmationMessage);
         }
 
         if (user.EmailConfirmed)
@@ -412,19 +413,15 @@ public class UserService : IUserService
     public async Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
     {
         var user = await _userRepository.GetByEmailAsync(resetPasswordDto.Email);
-        if (user == null)
-        {
-            throw new ValidationException("Invalid email");
-        }
 
-        if (user.PasswordResetToken != resetPasswordDto.Token)
+        // One answer for an unknown address, a wrong token and an expired one: telling them apart
+        // is what turns this endpoint into a membership oracle. The player retries from the email
+        // either way, and a genuinely expired link is covered by the same wording.
+        if (user == null
+            || user.PasswordResetToken != resetPasswordDto.Token
+            || user.PasswordResetTokenExpiry < DateTime.UtcNow)
         {
-            throw new ValidationException("Invalid reset token");
-        }
-
-        if (user.PasswordResetTokenExpiry < DateTime.UtcNow)
-        {
-            throw new ValidationException("Reset token has expired");
+            throw new ValidationException(InvalidResetLinkMessage);
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.NewPassword);
