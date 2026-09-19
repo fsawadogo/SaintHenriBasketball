@@ -52,7 +52,7 @@ internal static class VolunteerRolesChecks
             "volunteer roles: no claim for None, and each role only receives the flags its screens need");
 
         // ---- Tokens: a staff role that no longer matches the account is refused ----
-        AuthUserSnapshot Snap(StaffRole role, bool admin = false, bool deactivated = false) => new(deactivated, admin, role);
+        AuthUserSnapshot Snap(StaffRole role, bool admin = false, bool deactivated = false) => new(deactivated, admin, role, EmailConfirmed: true);
         assert(TokenUserCheck.Evaluate(Snap(StaffRole.None), false, null) == null
             && TokenUserCheck.Evaluate(Snap(StaffRole.Treasurer), false, "Treasurer") == null
             && TokenUserCheck.Evaluate(Snap(StaffRole.CourtCaptain), false, "CourtCaptain") == null

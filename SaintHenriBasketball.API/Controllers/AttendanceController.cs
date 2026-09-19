@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.API.Filters;
@@ -255,10 +255,23 @@ public class AttendanceController : BaseApiController
     public async Task<IActionResult> PreviewAttendanceLink([FromQuery] string? token)
     {
         var data = _links.Validate(token);
-        if (data == null) return BadRequest("This link is invalid or expired. Sign in to manage your booking.");
-        var session = await _sessionService.GetSessionAsync(data.SessionId);
-        return Ok(new { session = new { session.Id, session.SessionDate, session.StartTime, session.EndTime, session.Location, session.DropInPrice }, data.Attending });
+        if (data == null) return BadRequest(InvalidLinkMessage);
+
+        // The signature says the link is genuine; it says nothing about the session still existing.
+        // An admin can delete one after the reminder went out, and this used to answer a bare 500
+        // rather than the message the line above was written to give.
+        try
+        {
+            var session = await _sessionService.GetSessionAsync(data.SessionId);
+            return Ok(new { session = new { session.Id, session.SessionDate, session.StartTime, session.EndTime, session.Location, session.DropInPrice }, data.Attending });
+        }
+        catch (NotFoundException)
+        {
+            return BadRequest(InvalidLinkMessage);
+        }
     }
+
+    private const string InvalidLinkMessage = "This link is invalid or expired. Sign in to manage your booking.";
 
     public record ConfirmLinkRequest(string Token);
 
