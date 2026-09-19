@@ -12,4 +12,10 @@ public class RegisterUserDto
     public PaymentPlan PaymentPlan { get; set; }
     /// Optional; honoured only while the referrals flag is on.
     public string? ReferralCode { get; set; }
+
+    /// <summary>
+    /// A decoy. The form renders it hidden and no person ever fills it, so anything here means the
+    /// request came from something filling in every field it found.
+    /// </summary>
+    public string? Website { get; set; }
 }

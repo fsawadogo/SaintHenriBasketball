@@ -35,6 +35,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+    // Signing up is not something a person does repeatedly. The shared "auth" budget of ten a
+    // minute let a bot create a hundred accounts in a few days, each one sending a confirmation
+    // email from the club's domain to an address the bot chose — the club's mail reputation is
+    // the thing being spent here, so the budget is per hour, not per minute.
+    options.AddPolicy("register", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            }));
+
     // The second factor needs a tighter budget than a password does. A TOTP code has a million
     // values and about three are live at once, so with the pending token valid for 15 minutes the
     // "auth" allowance of 10 a minute leaves the factor guessable. This does not.
