@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -30,19 +30,23 @@ public class UnconfirmedAccountsController : ControllerBase
     /// <summary>Who would be removed. Removes nothing.</summary>
     [HttpGet("purgeable")]
     [ProducesResponseType(typeof(UnconfirmedPurgeResultDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<UnconfirmedPurgeResultDto>> Purgeable([FromQuery] int olderThanDays = 7) =>
-        Ok(await _purge.RunAsync(olderThanDays, dryRun: true));
+    public async Task<ActionResult<UnconfirmedPurgeResultDto>> Purgeable(
+        [FromQuery] int olderThanDays = 7, [FromQuery] DateTime? createdAfter = null) =>
+        Ok(await _purge.RunAsync(olderThanDays, createdAfter, dryRun: true));
 
     /// <summary>Removes them. Audited with the count, because it deletes accounts.</summary>
     [HttpPost("purge")]
     [ProducesResponseType(typeof(UnconfirmedPurgeResultDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<UnconfirmedPurgeResultDto>> Purge([FromQuery] int olderThanDays = 7)
+    public async Task<ActionResult<UnconfirmedPurgeResultDto>> Purge(
+        [FromQuery] int olderThanDays = 7, [FromQuery] DateTime? createdAfter = null)
     {
-        var result = await _purge.RunAsync(olderThanDays, dryRun: false);
+        var result = await _purge.RunAsync(olderThanDays, createdAfter, dryRun: false);
 
         await _audit.LogAsync(
             "UnconfirmedAccountsPurged", "User", null,
-            $"Removed {result.Deleted} never-confirmed account(s) older than {olderThanDays} day(s); {result.KeptWithHistory} kept for having history",
+            $"Removed {result.Deleted} never-confirmed account(s) older than {olderThanDays} day(s)"
+                + (createdAfter is DateTime from ? $", created on or after {from:yyyy-MM-dd}" : "")
+                + $"; {result.KeptWithHistory} kept for having history",
             User.AuditUserId(), User.AuditUserName());
 
         return Ok(result);

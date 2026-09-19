@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 using SaintHenriBasketball.Infrastructure.Data.Context;
 
@@ -13,10 +13,11 @@ public class UnconfirmedAccountRepository : IUnconfirmedAccountRepository
         _context = context;
     }
 
-    public async Task<IReadOnlyList<PurgeableAccount>> GetPurgeableAsync(DateTime cutoff)
+    public async Task<IReadOnlyList<PurgeableAccount>> GetPurgeableAsync(DateTime cutoff, DateTime? createdAfter = null)
     {
         return await _context.Users.AsNoTracking()
             .Where(u => !u.EmailConfirmed && !u.IsAdmin && u.CreatedOn < cutoff)
+            .Where(u => createdAfter == null || u.CreatedOn >= createdAfter)
             .OrderBy(u => u.CreatedOn)
             .Select(u => new PurgeableAccount(
                 u.Id,
