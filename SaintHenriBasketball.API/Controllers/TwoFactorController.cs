@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SaintHenriBasketball.API.Extensions;
 using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.Application.DTOs.TwoFactor;
@@ -72,6 +73,7 @@ public class TwoFactorController : BaseApiController
     }
 
     [HttpPost("verify")]
+    [EnableRateLimiting("2fa")]
     [SkipTwoFactorPendingCheck]
     [ProducesResponseType(typeof(TwoFactorVerifyResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

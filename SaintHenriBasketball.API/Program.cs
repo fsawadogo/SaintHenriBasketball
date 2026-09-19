@@ -1,4 +1,4 @@
-using SaintHenriBasketball.API.Filters;
+﻿using SaintHenriBasketball.API.Filters;
 using SaintHenriBasketball.API.Authorization;
 using System.Threading.RateLimiting;
 using Resend;
@@ -35,6 +35,19 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+    // The second factor needs a tighter budget than a password does. A TOTP code has a million
+    // values and about three are live at once, so with the pending token valid for 15 minutes the
+    // "auth" allowance of 10 a minute leaves the factor guessable. This does not.
+    options.AddPolicy("2fa", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
     options.RejectionStatusCode = 429;
 });
 

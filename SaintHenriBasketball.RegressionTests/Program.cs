@@ -1092,6 +1092,7 @@ await SeasonDashboardChecks.RunAsync(Db, Assert);
 await SignupFunnelChecks.RunAsync(Db, Assert);
 await InteracAutoMatchChecks.RunAsync(Db, Assert);
 await SessionCancellationEmailChecks.RunAsync(Db, Assert);
+await AuthEnumerationChecks.RunAsync(Db, Assert);
 await CancelledSessionPaymentChecks.RunAsync(Db, Assert);
 await GoogleLoginAudienceChecks.RunAsync(Db, Assert);
 await SeasonCapacityEnforcementChecks.RunAsync(Db, Assert);
