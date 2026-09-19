@@ -9,6 +9,10 @@ public interface IUserRepository
     Task<ApplicationUser> GetByEmailAsync(string? email);
     Task<ApplicationUser> GetByUsernameAsync(string username);
     Task<bool> EmailExistsAsync(string? email);
+
+    /// Every address already registered at these domains, for comparing mailboxes rather than
+    /// spellings. See EmailCanonicalizer.
+    Task<IReadOnlyList<string>> GetEmailsAtDomainsAsync(IReadOnlyList<string> domains);
     Task<bool> UsernameExistsAsync(string? username);
     Task<IEnumerable<ApplicationUser>> GetAllUsersAsync();
     Task AddAsync(ApplicationUser user);

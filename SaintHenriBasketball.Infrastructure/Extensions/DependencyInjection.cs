@@ -22,6 +22,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUnconfirmedAccountRepository, UnconfirmedAccountRepository>();
+        services.AddScoped<IEmailSendBudgetRepository, EmailSendBudgetRepository>();
         services.AddScoped<ISessionRepository, SessionRepository>();
         services.AddScoped<ISessionRegistrationRepository, SessionRegistrationRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();

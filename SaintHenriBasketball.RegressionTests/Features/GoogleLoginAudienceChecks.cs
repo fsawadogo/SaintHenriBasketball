@@ -52,7 +52,7 @@ internal static class GoogleLoginAudienceChecks
 
             return new UserService(config, mapper,
                 new UserRepository(context, NullLogger<UserRepository>.Instance), null!,
-                NullLogger<UserService>.Instance, System.Reflection.DispatchProxy.Create<SaintHenriBasketball.Application.Services.Interfaces.IFeatureFlagService, AlwaysOffFlags>(), new ReferralRepository(context), http);
+                NullLogger<UserService>.Instance, System.Reflection.DispatchProxy.Create<SaintHenriBasketball.Application.Services.Interfaces.IFeatureFlagService, AlwaysOffFlags>(), new ReferralRepository(context), new EmailSendBudgetRepository(context), http);
         }
 
         static async Task<Exception?> FailureAsync(Func<Task> action)

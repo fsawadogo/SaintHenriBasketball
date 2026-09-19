@@ -1,4 +1,5 @@
 ﻿using SaintHenriBasketball.Application.DTOs.Users;
+using SaintHenriBasketball.Application.Helpers;
 using FluentValidation;
 
 namespace SaintHenriBasketball.Application.Validators;
@@ -10,6 +11,9 @@ public class RegisterUserDtoValidator : AbstractValidator<RegisterUserDto>
         RuleFor(x => x.Email)
             .NotEmpty()
             .EmailAddress()
+            // EmailAddress() asks little more than whether there is an @ in there, and lets
+            // through runs of dots that no mail server would accept. See EmailAddressRules.
+            .Must(EmailAddressRules.IsWellFormed).WithMessage("Enter a valid email address")
             .MaximumLength(100);
 
         RuleFor(x => x.Username)

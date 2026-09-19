@@ -57,6 +57,21 @@ public class UserRepository : IUserRepository
             .AnyAsync(u => u.Email != null && email != null && u.Email.ToLower() == email.ToLower());
     }
 
+    /// Every address already registered at these domains, so the caller can compare the mailboxes
+    /// they reach rather than the way they are spelled. Narrowed by domain because that part is
+    /// not rewritten: only the local side of a Gmail address is noise.
+    public async Task<IReadOnlyList<string>> GetEmailsAtDomainsAsync(IReadOnlyList<string> domains)
+    {
+        if (domains.Count == 0) return Array.Empty<string>();
+
+        var suffixes = domains.Select(d => "@" + d.ToLowerInvariant()).ToList();
+
+        return await _context.Users.AsNoTracking()
+            .Where(u => u.Email != null && suffixes.Any(s => u.Email.ToLower().EndsWith(s)))
+            .Select(u => u.Email!)
+            .ToListAsync();
+    }
+
     public async Task<bool> UsernameExistsAsync(string? username)
     {
         return await _context.Users

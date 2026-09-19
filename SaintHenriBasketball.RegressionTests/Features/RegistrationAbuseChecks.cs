@@ -138,6 +138,30 @@ internal static class RegistrationAbuseChecks
                 "purge window: with no window given the old account is a candidate again, so the bound is opt-in");
         }
 
+        // --- The mailbox lookup runs on the database, not in memory ---
+        // A query over a local list of suffixes is the kind EF Core refuses to translate, and it
+        // refuses at runtime on the first registration rather than at build time. Worth asking a
+        // real database rather than assuming.
+        var gmailUser = new ApplicationUser(
+            $"ab_gm_{tag}", $"ab.gm.{tag}@gmail.com", "test-only", "Gmail", $"Abuse{tag}", PaymentPlan.DropIn);
+
+        await using (var context = db())
+        {
+            context.Users.Add(gmailUser);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = db())
+        {
+            var repository = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var found = await repository.GetEmailsAtDomainsAsync(new[] { "gmail.com", "googlemail.com" });
+
+            assert(found.Any(e => string.Equals(e, $"ab.gm.{tag}@gmail.com", StringComparison.OrdinalIgnoreCase)),
+                "registration hardening: the mailbox lookup translates to SQL and finds addresses at the domain");
+            assert(!found.Any(e => e.EndsWith("@example.test", StringComparison.OrdinalIgnoreCase)),
+                "registration hardening: and leaves other domains out, so it is narrowing rather than scanning");
+        }
+
         // A floor on the age, so nobody can sweep the last hour's signups by passing zero.
         await using (var context = db())
         {
