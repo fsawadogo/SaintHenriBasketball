@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -64,6 +64,12 @@ public class CalendarSyncService : ICalendarSyncService
 
         var user = await _userRepository.GetByCalendarFeedTokenAsync(token);
         if (user is null)
+            return null;
+
+        // Deactivation only clears the feed token when the account is also anonymised, so a plain
+        // deactivation used to leave the calendar subscription answering forever — still serving
+        // the club's schedule, and still carrying the player's first name in the calendar title.
+        if (user.IsDeactivated)
             return null;
 
         var now = DateTime.UtcNow;

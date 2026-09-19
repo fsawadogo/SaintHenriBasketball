@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
 using SaintHenriBasketball.Application.Helpers;
 using SaintHenriBasketball.Domain.Interfaces.Repositories;
 
@@ -16,7 +16,7 @@ public static class AuthUserCache
     {
         if (cache.TryGetValue(Key(userId), out AuthUserSnapshot? snapshot)) return snapshot;
         var user = await users.GetByIdAsync(userId);
-        snapshot = user is null ? null : new AuthUserSnapshot(user.IsDeactivated, user.IsAdmin, user.StaffRole);
+        snapshot = user is null ? null : new AuthUserSnapshot(user.IsDeactivated, user.IsAdmin, user.StaffRole, user.EmailConfirmed);
         cache.Set(Key(userId), snapshot, Lifetime);
         return snapshot;
     }

@@ -587,9 +587,9 @@ catch (ValidationException) { negativeAmountRefused = true; }
 await using (var db = Db())
     Assert(completedEditRefused && negativeAmountRefused && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == coveredPaymentId)).Amount == 0m,
         "a completed payment's amount is locked and amounts can't be negative");
-Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true, StaffRole.None), true, null) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None), false, null) == null
-    && TokenUserCheck.Evaluate(null, false, null) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false, StaffRole.None), false, null) != null
-    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None), true, null) != null,
+Assert(TokenUserCheck.Evaluate(new AuthUserSnapshot(false, true, StaffRole.None, EmailConfirmed: true), true, null) == null && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None, EmailConfirmed: true), false, null) == null
+    && TokenUserCheck.Evaluate(null, false, null) != null && TokenUserCheck.Evaluate(new AuthUserSnapshot(true, false, StaffRole.None, EmailConfirmed: true), false, null) != null
+    && TokenUserCheck.Evaluate(new AuthUserSnapshot(false, false, StaffRole.None, EmailConfirmed: true), true, null) != null,
     "tokens stop working for missing, deactivated or demoted accounts");
 
 RegisterUserDto Signup(string name, string? code) => new() {
@@ -1092,6 +1092,7 @@ await SeasonDashboardChecks.RunAsync(Db, Assert);
 await SignupFunnelChecks.RunAsync(Db, Assert);
 await InteracAutoMatchChecks.RunAsync(Db, Assert);
 await SessionCancellationEmailChecks.RunAsync(Db, Assert);
+await HuntRemainderChecks.RunAsync(Db, Assert);
 await AuthEnumerationChecks.RunAsync(Db, Assert);
 await CancelledSessionPaymentChecks.RunAsync(Db, Assert);
 await GoogleLoginAudienceChecks.RunAsync(Db, Assert);
