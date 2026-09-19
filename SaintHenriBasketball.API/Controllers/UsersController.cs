@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SaintHenriBasketball.Application.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
@@ -377,6 +377,50 @@ public class UsersController(
             await accountLifecycle.ReactivateAsync(userId);
             await ForgetUserAsync(userId);
             await auditLogService.LogAsync("Reactivated", "User", userId, null, User.AuditUserId(), User.AuditUserName());
+            return NoContent();
+        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+    }
+
+    /// <summary>
+    /// Mark a player's email confirmed without them following the link (Admin only).
+    ///
+    /// This vouches for the address on the player's behalf, so it is audited by name. Where the
+    /// player can still receive mail, resend the confirmation instead and let them prove it.
+    /// </summary>
+    [HttpPost("{userId}/confirm-email")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ConfirmUserEmail(Guid userId)
+    {
+        try
+        {
+            var changed = await accountLifecycle.ConfirmEmailAsync(userId);
+            if (!changed) return NoContent();
+
+            await ForgetUserAsync(userId);
+            await auditLogService.LogAsync("EmailConfirmedByAdmin", "User", userId, null, User.AuditUserId(), User.AuditUserName());
+            return NoContent();
+        }
+        catch (NotFoundException ex) { return NotFound(ex.Message); }
+        catch (ValidationException ex) { return BadRequest(ex.Message); }
+    }
+
+    /// <summary>Send a player a fresh confirmation link (Admin only).</summary>
+    [HttpPost("{userId}/resend-confirmation")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResendConfirmation(Guid userId)
+    {
+        try
+        {
+            var sent = await accountLifecycle.ResendConfirmationAsync(userId);
+            if (sent)
+                await auditLogService.LogAsync("ConfirmationEmailResent", "User", userId, null, User.AuditUserId(), User.AuditUserName());
             return NoContent();
         }
         catch (NotFoundException ex) { return NotFound(ex.Message); }

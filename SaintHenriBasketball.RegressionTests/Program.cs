@@ -829,8 +829,12 @@ await using (var db = Db())
         && (await db.Payments.AsNoTracking().SingleAsync(p => p.Id == plainPendingPayment.Id)).Status == PaymentStatus.Pending
         && await db.AuditLogs.CountAsync(a => a.EntityId == notReceivedPayment.Id && a.Action == "Payment.InteracNotReceived" && a.Details!.Contains("Tangerine")) == 1,
         "an Interac transfer marked not received fails once, is audited with the note, and other payments are skipped");
+var lifecycleEmail = System.Reflection.DispatchProxy.Create<SaintHenriBasketball.Application.Services.Interfaces.IEmailService, LifecycleEmailRecorder>();
+var lifecycleConfig = new ConfigurationBuilder().AddInMemoryCollection(
+    new Dictionary<string, string?> { ["AppUrl"] = "https://sainthenribasketball.com" }).Build();
 AccountLifecycleService LifecycleFor(ApplicationDbContext db, RecordingCache? cache = null) => new(new UserRepository(db, NullLogger<UserRepository>.Instance),
-    new SessionRegistrationRepository(db), new ParticipationRepository(db), cache ?? new RecordingCache(), NullLogger<AccountLifecycleService>.Instance);
+    new SessionRegistrationRepository(db), new ParticipationRepository(db), cache ?? new RecordingCache(),
+    lifecycleEmail, lifecycleConfig, NullLogger<AccountLifecycleService>.Instance);
 await using (var db = Db()) {
     var hardDeleteRefused = false;
     db.Users.Remove(await db.Users.SingleAsync(u => u.Id == partialPlayer.Id));
@@ -1088,6 +1092,7 @@ await SeasonDashboardChecks.RunAsync(Db, Assert);
 await SignupFunnelChecks.RunAsync(Db, Assert);
 await InteracAutoMatchChecks.RunAsync(Db, Assert);
 await SessionCancellationEmailChecks.RunAsync(Db, Assert);
+await AdminConfirmEmailChecks.RunAsync(Db, Assert);
 await BookingConfirmationChecks.RunAsync(Db, Assert);
 await InvoicePdfChecks.RunAsync(Db, Assert);
 await PlanChoiceConfirmationEmailChecks.RunAsync(Db, Assert);

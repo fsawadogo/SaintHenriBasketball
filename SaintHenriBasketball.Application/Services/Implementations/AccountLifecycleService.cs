@@ -1,5 +1,6 @@
-using SaintHenriBasketball.Application.Helpers;
+﻿using SaintHenriBasketball.Application.Helpers;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Application.Services.Interfaces;
@@ -15,6 +16,8 @@ public class AccountLifecycleService : IAccountLifecycleService
     private readonly ISessionRegistrationRepository _registrations;
     private readonly IParticipationRepository _participation;
     private readonly ICacheService _cache;
+    private readonly IEmailService _email;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<AccountLifecycleService> _logger;
 
     public AccountLifecycleService(
@@ -22,8 +25,12 @@ public class AccountLifecycleService : IAccountLifecycleService
         ISessionRegistrationRepository registrations,
         IParticipationRepository participation,
         ICacheService cache,
+        IEmailService email,
+        IConfiguration configuration,
         ILogger<AccountLifecycleService> logger)
     {
+        _email = email;
+        _configuration = configuration;
         _cache = cache;
         _users = users;
         _registrations = registrations;
@@ -82,6 +89,38 @@ public class AccountLifecycleService : IAccountLifecycleService
         user.IsDeactivated = false;
         user.DeactivatedOn = null;
         await _users.UpdateAsync(user);
+    }
+
+    public async Task<bool> ConfirmEmailAsync(Guid userId)
+    {
+        var user = await _users.GetByIdAsync(userId) ?? throw new NotFoundException("User not found");
+        if (user.EmailConfirmed) return false;
+
+        user.EmailConfirmed = true;
+        // The token is spent either way: leaving a live one lets the old link confirm again later.
+        user.EmailConfirmationToken = "";
+        await _users.UpdateAsync(user);
+
+        _logger.LogInformation("Email confirmed by an admin for user {UserId}", userId);
+        return true;
+    }
+
+    public async Task<bool> ResendConfirmationAsync(Guid userId)
+    {
+        var user = await _users.GetByIdAsync(userId) ?? throw new NotFoundException("User not found");
+        if (user.EmailConfirmed) return false;
+        if (string.IsNullOrWhiteSpace(user.Email)) throw new ValidationException("This player has no email address.");
+
+        // A fresh token, so an old link that may have leaked cannot still be used.
+        user.EmailConfirmationToken = Guid.NewGuid().ToString("N");
+        await _users.UpdateAsync(user);
+
+        var appUrl = (_configuration["AppUrl"] ?? "https://sainthenribasketball.com").TrimEnd('/');
+        var link = $"{appUrl}/confirm-email?token={user.EmailConfirmationToken}&email={Uri.EscapeDataString(user.Email)}";
+        await _email.SendConfirmationEmailAsync(user.Email, link);
+
+        _logger.LogInformation("Confirmation email resent for user {UserId}", userId);
+        return true;
     }
 
     public Task<int> CountActiveAdminsAsync() => _users.CountActiveAdminsAsync();
