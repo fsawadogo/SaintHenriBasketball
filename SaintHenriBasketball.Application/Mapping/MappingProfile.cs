@@ -24,7 +24,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
             .ForMember(dest => dest.IsAdmin, opt => opt.MapFrom(src => src.IsAdmin))
             .ForMember(dest => dest.PaymentPlan, opt => opt.MapFrom(src => src.PaymentPlan))
-            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn));
+            .ForMember(dest => dest.CreatedOn, opt => opt.MapFrom(src => src.CreatedOn))
+            .ForMember(dest => dest.EmailConfirmed, opt => opt.MapFrom(src => src.EmailConfirmed));
 
         CreateMap<RegisterUserDto, ApplicationUser>()
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
