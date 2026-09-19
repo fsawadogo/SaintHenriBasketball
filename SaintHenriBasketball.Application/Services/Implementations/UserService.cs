@@ -2,6 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Net.Http;
 using System.Text;
 using SaintHenriBasketball.Application.Exceptions;
 using SaintHenriBasketball.Domain.Entities;
@@ -38,8 +39,10 @@ public class UserService : IUserService
         IEmailService emailService,
         ILogger<UserService> logger,
         IFeatureFlagService featureFlagService,
-        IReferralRepository referralRepository)
+        IReferralRepository referralRepository,
+        IHttpClientFactory httpClientFactory)
     {
+        _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _mapper = mapper;
         _userRepository = userRepository;
@@ -48,6 +51,10 @@ public class UserService : IUserService
         _featureFlagService = featureFlagService;
         _referralRepository = referralRepository;
     }
+
+    /// Through a factory rather than `new HttpClient()`: it makes the Google checks testable, and
+    /// avoids a fresh socket per sign-in.
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public async Task<UserResponseDto> RegisterAsync(RegisterUserDto registerDto)
     {
@@ -172,27 +179,69 @@ public class UserService : IUserService
         };
     }
 
+    public const string InvalidGoogleTokenMessage = "Invalid Google token";
+    public const string GoogleNotConfiguredMessage = "Google sign-in is not configured.";
+
     public async Task<UserResponseDto> GoogleLoginAsync(string accessToken)
     {
-        // Verify the access token by calling Google's userinfo endpoint
+        // A Google access token is a bearer credential that is NOT bound to whoever receives it: a
+        // token minted for any other OAuth client, for the same user, is a perfectly valid token.
+        // Asking userinfo "who is this?" therefore proves nothing about who is asking. Only the
+        // audience does — it names the client the token was issued to, and it must be this app.
+        var clientId = _configuration["Google:ClientId"];
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            // Fail closed: without a client id there is nothing to check the token against, and
+            // accepting it anyway is the whole vulnerability.
+            _logger.LogError("Google sign-in attempted with no Google:ClientId configured");
+            throw new ValidationException(GoogleNotConfiguredMessage);
+        }
+
         string? email, givenName, familyName;
         try
         {
-            using var httpClient = new HttpClient();
+            var httpClient = _httpClientFactory.CreateClient();
+
+            var tokenInfo = await httpClient.GetAsync(
+                $"https://oauth2.googleapis.com/tokeninfo?access_token={Uri.EscapeDataString(accessToken)}");
+            if (!tokenInfo.IsSuccessStatusCode) throw new ValidationException(InvalidGoogleTokenMessage);
+
+            using var tokenDoc = System.Text.Json.JsonDocument.Parse(await tokenInfo.Content.ReadAsStringAsync());
+            var tokenRoot = tokenDoc.RootElement;
+
+            var audience = tokenRoot.TryGetProperty("aud", out var aud) ? aud.GetString() : null;
+            if (!string.Equals(audience, clientId, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("Google sign-in refused: token was issued to {Audience}, not this app", audience);
+                throw new ValidationException(InvalidGoogleTokenMessage);
+            }
+
+            // Google will hand out a token for an address the account has not proven it owns.
+            // Trusting one would let someone sign in as a member by claiming their address.
+            var verified = tokenRoot.TryGetProperty("email_verified", out var ev)
+                && (ev.ValueKind == System.Text.Json.JsonValueKind.True
+                    || string.Equals(ev.GetString(), "true", StringComparison.OrdinalIgnoreCase));
+            if (!verified)
+            {
+                _logger.LogWarning("Google sign-in refused: the address on the token is not verified");
+                throw new ValidationException(InvalidGoogleTokenMessage);
+            }
+
+            email = tokenRoot.TryGetProperty("email", out var em) ? em.GetString() : null;
+
+            // Names only; the identity above is already settled.
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
             var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
             response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var root = doc.RootElement;
-            email = root.GetProperty("email").GetString();
             givenName = root.TryGetProperty("given_name", out var gn) ? gn.GetString() : "";
             familyName = root.TryGetProperty("family_name", out var fn) ? fn.GetString() : "";
         }
         catch (HttpRequestException)
         {
-            throw new ValidationException("Invalid Google token");
+            throw new ValidationException(InvalidGoogleTokenMessage);
         }
 
         if (string.IsNullOrEmpty(email))

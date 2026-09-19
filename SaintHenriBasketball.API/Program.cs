@@ -181,6 +181,7 @@ builder.Services.AddControllers(options =>
 
 // Add Resend email service
 builder.Services.AddOptions();
+builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<ResendClient>();
 builder.Services.Configure<ResendClientOptions>(o =>
 {

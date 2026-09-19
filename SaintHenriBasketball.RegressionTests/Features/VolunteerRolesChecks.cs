@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
@@ -143,7 +143,7 @@ internal static class VolunteerRolesChecks
                 new MemoryCacheService(new MemoryCache(new MemoryCacheOptions()), NullLogger<MemoryCacheService>.Instance),
                 new AuditLogRepository(ctx), NullLogger<FeatureFlagService>.Instance);
             var users = new UserService(config, mapper, new UserRepository(ctx, NullLogger<UserRepository>.Instance), null!,
-                NullLogger<UserService>.Instance, flags, new ReferralRepository(ctx));
+                NullLogger<UserService>.Instance, flags, new ReferralRepository(ctx), new StubHttpClientFactory());
             var token = await users.IssueTokenAsync(userId);
             return new JwtSecurityTokenHandler().ReadJwtToken(token).Claims.FirstOrDefault(c => c.Type == StaffAccess.ClaimType)?.Value;
         }
