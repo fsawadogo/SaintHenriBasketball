@@ -197,6 +197,72 @@ internal static class SeasonPlanChoiceEmailChecks
             armed = await Service(context).RunScheduledAsync();
         assert(armed.Outcome != SeasonPlanChoiceEmailService.AutoSendOffOutcome,
             "plan choice: switching automatic sending on lets the job through");
+
+        // --- The job catches up on a firing it missed ---
+        //
+        // This is the case that actually cost the club a send. The job used to ask for a season
+        // starting exactly seven days out, which gives it one firing — 10 AM, once — to be
+        // switched on and working. The 26 September season passed that mark with the flag off,
+        // and every run afterwards reported "No season starts on that day" while the season
+        // arrived: a silent miss that reads exactly like having nothing to do.
+        var late = new Season(today.AddDays(3), today.AddDays(80), 90m)
+            { Name = $"Catch-up {tag}", SeasonPassCapacity = 15 };
+        var lateSession = new Session(today.AddDays(3), 20, 10m, "10:00", "12:00", "Saint-Henri");
+        var missedPlayer = new ApplicationUser(
+            $"pc_late_{tag}", $"pc-late-{tag}@example.test", "test-only", "Late", $"Player{tag}", PaymentPlan.DropIn)
+            { EmailConfirmed = true };
+
+        await using (var context = db())
+        {
+            context.Seasons.Add(late);
+            context.Sessions.Add(lateSession);
+            context.Users.Add(missedPlayer);
+            await context.SaveChangesAsync();
+        }
+
+        PlanChoiceSendResultDto caughtUp;
+        await using (var context = db())
+            caughtUp = await Service(context).RunScheduledAsync();
+
+        assert(caughtUp.Outcome != SeasonPlanChoiceEmailService.NoSeasonOutcome && caughtUp.Sent >= 1,
+            "plan choice: a season three days out still gets its email — the job catches up on a firing it missed");
+        assert(recorder.Sent.Any(s => s.To == missedPlayer.Email),
+            "plan choice: and the player who would have been skipped entirely is the one who receives it");
+        assert(caughtUp.DaysUntilStart == 3,
+            "plan choice: the email says how long is really left, not the width of the window it was found in");
+
+        // Idempotency is what makes running every day safe rather than noisy.
+        var afterCatchUp = recorder.Sent.Count;
+        PlanChoiceSendResultDto again;
+        await using (var context = db())
+            again = await Service(context).RunScheduledAsync();
+        assert(again.Sent == 0 && recorder.Sent.Count == afterCatchUp,
+            "plan choice: tomorrow's run over the same window sends nobody a second copy");
+
+        // The window has a floor. A season already under way is not something to email about.
+        var started = new Season(today.AddDays(-2), today.AddDays(60), 90m)
+            { Name = $"Under way {tag}", SeasonPassCapacity = 15 };
+        await using (var context = db())
+        {
+            context.Seasons.Add(started);
+            // Close the catch-up season so it stops being the one the job finds.
+            var close = await context.Seasons.FirstAsync(s => s.Id == late.Id);
+            close.Status = SeasonStatus.Closed;
+            await context.SaveChangesAsync();
+        }
+
+        var beforeStarted = recorder.Sent.Count;
+        PlanChoiceSendResultDto underWay;
+        await using (var context = db())
+            underWay = await Service(context).RunScheduledAsync();
+
+        // Asserted on the season the job chose rather than on "nothing was sent": the checks share
+        // one database, so another feature's open season can sit in the window and legitimately
+        // send. What must never happen is this season being the one picked.
+        assert(underWay.Outcome == SeasonPlanChoiceEmailService.NoSeasonOutcome || underWay.DaysUntilStart > 0,
+            "plan choice: a season that has already started is past asking, so the job never picks one");
+        assert(!recorder.Sent.Skip(beforeStarted).Any(s => s.Html.Contains(started.Name!, StringComparison.Ordinal)),
+            "plan choice: and no player is told to choose a plan for a season already under way");
     }
 
     public class PlanChoiceEmailRecorder : DispatchProxy
