@@ -67,7 +67,36 @@ public class SeasonPlanChoiceEmailService : ISeasonPlanChoiceEmailService
         if (!await _flags.IsEnabledAsync(FeatureFlagKeys.SeasonPlanChoiceEmailAuto))
             return new PlanChoiceSendResultDto { Outcome = AutoSendOffOutcome };
 
-        return await RunForSeasonStartingInAsync(DefaultDaysAhead);
+        if (!await _flags.IsEnabledAsync(FeatureFlagKeys.SeasonPlanChoiceEmail))
+            return new PlanChoiceSendResultDto { Outcome = FlagOffOutcome };
+
+        // A window, not a single day.
+        //
+        // This used to ask for a season starting exactly a week out, which gives the club one
+        // firing — 10 AM, once — to be switched on, deployed, and working. Miss it and the job
+        // reports "No season starts on that day" every morning afterwards while the season comes
+        // and goes: a silent failure that looks identical to having nothing to do. That is what
+        // happened for the 26 September season.
+        //
+        // Running every day over a window is only safe because sending is idempotent: SendAsync
+        // records a ReminderLog per player per season, so the first run that finds the season
+        // sends, and every run after it sends nothing.
+        var today = SessionTimeHelper.ToLocal(DateTime.UtcNow).Date;
+
+        var seasons = await _seasons.GetAllAsync();
+        var season = seasons
+            .Where(s => s.Status != SeasonStatus.Closed
+                        && s.StartDate.Date > today
+                        && s.StartDate.Date <= today.AddDays(DefaultDaysAhead))
+            .OrderBy(s => s.StartDate)
+            .FirstOrDefault();
+
+        if (season == null)
+            return new PlanChoiceSendResultDto { DaysUntilStart = DefaultDaysAhead, Outcome = NoSeasonOutcome };
+
+        // The real number of days left, which is what the email tells the player — not the width
+        // of the window it was found in.
+        return await SendAsync(season, (season.StartDate.Date - today).Days, dryRun: false);
     }
 
     public async Task<PlanChoiceSendResultDto> RunForSeasonStartingInAsync(int daysAhead, bool dryRun = false)
