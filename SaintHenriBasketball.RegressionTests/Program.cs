@@ -1,4 +1,4 @@
-﻿using SaintHenriBasketball.Application.DTOs.AuditLog;
+using SaintHenriBasketball.Application.DTOs.AuditLog;
 using System.Net;
 using System.IdentityModel.Tokens.Jwt;
 using AutoMapper;
@@ -1094,6 +1094,7 @@ await InteracAutoMatchChecks.RunAsync(Db, Assert);
 await SessionCancellationEmailChecks.RunAsync(Db, Assert);
 await RegistrationAbuseChecks.RunAsync(Db, Assert);
 RegistrationHardeningChecks.Run(Assert);
+await RegistrationChallengeChecks.RunAsync(Assert);
 await HuntRemainderChecks.RunAsync(Db, Assert);
 await AuthEnumerationChecks.RunAsync(Db, Assert);
 await CancelledSessionPaymentChecks.RunAsync(Db, Assert);

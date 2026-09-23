@@ -84,13 +84,10 @@ public class UserService : IUserService
         return existing.Any(e => EmailCanonicalizer.Canonicalize(e) == canonical);
     }
 
-    /// False once the hour's confirmation emails are spent. Off unless the flag is on, so the
-    /// budget cannot quietly swallow a real signup on a club that never asked for it.
+    /// False once the hour's confirmation emails are spent. This protects the club's sender
+    /// reputation and is always enforced; security controls are not feature flags.
     private async Task<bool> HasConfirmationBudgetAsync()
     {
-        if (!await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.RegistrationHardening))
-            return true;
-
         var sent = await _emailBudget.CountSentSinceAsync(
             EmailType.EmailConfirmation, DateTime.UtcNow.AddHours(-1));
 
@@ -108,8 +105,7 @@ public class UserService : IUserService
         // so one inbox can wear a hundred different-looking addresses — which is how September's
         // flood turned a single mailbox into a hundred accounts, each one sending a stranger a
         // confirmation email from the club's domain.
-        if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.RegistrationHardening)
-            && await MailboxAlreadyRegisteredAsync(registerDto.Email))
+        if (await MailboxAlreadyRegisteredAsync(registerDto.Email))
         {
             // Deliberately the message above, word for word. Telling the difference apart is
             // telling an operator which spellings are already spent.

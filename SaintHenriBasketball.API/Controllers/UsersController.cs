@@ -28,7 +28,8 @@ public class UsersController(
     IMemoryCache memoryCache,
     IUserDirectoryService userDirectory,
     IStaffRoleService staffRoles,
-    ISeasonPlanService seasonPlan)
+    ISeasonPlanService seasonPlan,
+    IRegistrationChallengeService registrationChallenge)
     : ControllerBase
 {
     private readonly IUserService _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -42,7 +43,6 @@ public class UsersController(
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
-    [EnableRateLimiting("register")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserResponseDto>> Register([FromBody] RegisterUserDto registerDto)
@@ -58,6 +58,17 @@ public class UsersController(
             if (!string.IsNullOrWhiteSpace(registerDto.Website))
             {
                 _logger.LogWarning("Registration refused as automated: honeypot filled for {Email}", registerDto.Email);
+                return BadRequest(RegistrationRefusedMessage);
+            }
+
+            if (!await registrationChallenge.VerifyAsync(
+                    registerDto.TurnstileToken,
+                    HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    HttpContext.RequestAborted))
+            {
+                _logger.LogWarning(
+                    "Registration refused: browser challenge failed from {RemoteIp}",
+                    HttpContext.Connection.RemoteIpAddress);
                 return BadRequest(RegistrationRefusedMessage);
             }
 

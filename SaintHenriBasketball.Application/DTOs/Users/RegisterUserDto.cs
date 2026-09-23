@@ -18,4 +18,10 @@ public class RegisterUserDto
     /// request came from something filling in every field it found.
     /// </summary>
     public string? Website { get; set; }
+
+    /// <summary>
+    /// Short-lived, single-use Cloudflare Turnstile token. Required when Turnstile:SecretKey is
+    /// configured on the API.
+    /// </summary>
+    public string? TurnstileToken { get; set; }
 }
