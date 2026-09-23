@@ -263,6 +263,68 @@ internal static class SeasonPlanChoiceEmailChecks
             "plan choice: a season that has already started is past asking, so the job never picks one");
         assert(!recorder.Sent.Skip(beforeStarted).Any(s => s.Html.Contains(started.Name!, StringComparison.Ordinal)),
             "plan choice: and no player is told to choose a plan for a season already under way");
+
+        // --- The email counts spots the way the rest of the app does ---
+        //
+        // It used to count paid passes alone, while the countdown, the dashboard and the plan page
+        // all count spot holders: a player who picks a pass holds the seat before the money lands.
+        // So the email advertised seats the plan page would then refuse — in the one message whose
+        // entire purpose is getting people to claim one.
+        var counted = new Season(today.AddDays(5), today.AddDays(85), 90m)
+            { Name = $"Counting {tag}", SeasonPassCapacity = 10 };
+        var holder = new ApplicationUser(
+            $"pc_hold_{tag}", $"pc-hold-{tag}@example.test", "test-only", "Hilda", $"Holder{tag}", PaymentPlan.DropIn)
+            { EmailConfirmed = true };
+
+        await using (var context = db())
+        {
+            context.Seasons.Add(counted);
+            context.Users.Add(holder);
+            await context.SaveChangesAsync();
+            // Chose the pass; has not paid for it. Exactly the case the two counts disagreed on.
+            context.SeasonPlanChoices.Add(new SeasonPlanChoice(counted.Id, holder.Id, PaymentPlan.Season));
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = db())
+        {
+            var choices = new SeasonPlanChoiceRepository(context, NullLogger<SeasonPlanChoiceRepository>.Instance);
+            var paidOnly = await choices.CountPaidPassesAsync(counted.Id);
+            var holders = (await choices.GetSpotHolderIdsAsync(counted.Id, includeProfilePlan: true)).Count;
+
+            assert(paidOnly == 0 && holders >= 1,
+                "plan choice: an unpaid choice holds a spot without being a paid pass — the two counts really do differ");
+
+            var preview = await Service(context).RunForSeasonAsync(counted.Id, dryRun: true);
+            assert(preview.Outcome != SeasonPlanChoiceEmailService.FlagOffOutcome,
+                "plan choice: the counting check actually reached the send");
+        }
+
+        // The email's number must match the site's, not the paid-only one.
+        //
+        // Both sides are computed the same way on purpose. The checks share one database, where
+        // other features leave users carrying a season plan on their profile, and those count as
+        // holders here — so a hard-coded expectation would be asserting the fixture, not the rule.
+        // What is pinned is that the email agrees with GetSpotHolderIdsAsync, whatever it returns.
+        await using (var context = db())
+        {
+            var choices = new SeasonPlanChoiceRepository(context, NullLogger<SeasonPlanChoiceRepository>.Instance);
+            var holders = (await choices.GetSpotHolderIdsAsync(counted.Id, includeProfilePlan: true)).Count;
+            var paidOnly = await choices.CountPaidPassesAsync(counted.Id);
+
+            var html = await Service(context).PreviewAsync(counted.Id, EmailLanguage.English);
+
+            var siteSays = Math.Max(0, 10 - holders);
+            var paidOnlySays = Math.Max(0, 10 - paidOnly);
+
+            assert(html.Contains($"{siteSays} of 10 left", StringComparison.OrdinalIgnoreCase)
+                    || (siteSays == 0 && html.Contains("Sold out", StringComparison.OrdinalIgnoreCase)),
+                $"plan choice: the email shows {siteSays} spots — the same count the countdown and plan page use");
+
+            // The old behaviour, named so the check fails if anyone puts it back.
+            assert(paidOnlySays != siteSays && !html.Contains($"{paidOnlySays} of 10 left", StringComparison.OrdinalIgnoreCase),
+                "plan choice: and not the paid-passes-only count, which would advertise seats the plan page then refuses");
+        }
     }
 
     public class PlanChoiceEmailRecorder : DispatchProxy
