@@ -233,7 +233,11 @@ public class SeasonPlanChoiceEmailService : ISeasonPlanChoiceEmailService
 
     private async Task<SeasonPlanChoiceEmailModel> BuildModelAsync(Season season, int daysAhead)
     {
-        var sold = await _choices.CountPaidPassesAsync(season.Id);
+        // Spot holders, not paid passes. Counting only what has been paid for made this email
+        // advertise seats that the plan page would then refuse, because a player who has chosen a
+        // pass holds it before the money arrives — and an email whose whole purpose is to get
+        // people to claim a spot is the worst place to overstate how many are left.
+        var taken = (await _choices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan: true)).Count;
         var sessions = (await _sessions.GetUpcomingSessionsAsync())
             .Where(s => s.Status != SessionStatus.Cancelled
                         && s.SessionDate.Date >= season.StartDate.Date
@@ -252,7 +256,7 @@ public class SeasonPlanChoiceEmailService : ISeasonPlanChoiceEmailService
             // Drop-in is priced per session, so the first session of the season is the one that applies.
             DropInPrice = first?.DropInPrice,
             PassCapacity = season.SeasonPassCapacity,
-            PassesLeft = Math.Max(0, season.SeasonPassCapacity - sold),
+            PassesLeft = Math.Max(0, season.SeasonPassCapacity - taken),
             FirstSessionDate = first?.SessionDate,
             FirstSessionStart = first?.StartTime,
             FirstSessionEnd = first?.EndTime,
