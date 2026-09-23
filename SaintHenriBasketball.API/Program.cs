@@ -17,15 +17,60 @@ using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using System.Reflection;
 using SaintHenriBasketball.Application.FeatureFlags;
 using SaintHenriBasketball.Application.Services.Interfaces;
+using SaintHenriBasketball.Application.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var registrationPerIpPerHour = Math.Max(1, builder.Configuration.GetValue("RegistrationProtection:PerIpPerHour", 3));
+var registrationGlobalPerHour = Math.Max(1, builder.Configuration.GetValue("RegistrationProtection:GlobalPerHour", 5));
+var registrationGlobalPerDay = Math.Max(registrationGlobalPerHour, builder.Configuration.GetValue("RegistrationProtection:GlobalPerDay", 25));
+
+static bool IsRegistrationRequest(HttpContext context) =>
+    HttpMethods.IsPost(context.Request.Method)
+    && context.Request.Path.Value?.EndsWith("/Users/register", StringComparison.OrdinalIgnoreCase) == true;
 
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Rate limiting for auth endpoints
+// Rate limiting for auth endpoints. Registration is chained so rotating IP addresses cannot spend
+// the club's email quota: every request must fit the per-IP, club-wide hourly, and daily budgets.
 builder.Services.AddRateLimiter(options =>
 {
+    options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            IsRegistrationRequest(context)
+                ? RateLimitPartition.GetFixedWindowLimiter(
+                    "registration-global-hour",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = registrationGlobalPerHour,
+                        Window = TimeSpan.FromHours(1),
+                        QueueLimit = 0
+                    })
+                : RateLimitPartition.GetNoLimiter("non-registration-hour")),
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            IsRegistrationRequest(context)
+                ? RateLimitPartition.GetFixedWindowLimiter(
+                    "registration-global-day",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = registrationGlobalPerDay,
+                        Window = TimeSpan.FromDays(1),
+                        QueueLimit = 0
+                    })
+                : RateLimitPartition.GetNoLimiter("non-registration-day")),
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            IsRegistrationRequest(context)
+                ? RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = registrationPerIpPerHour,
+                        Window = TimeSpan.FromHours(1),
+                        QueueLimit = 0
+                    })
+                : RateLimitPartition.GetNoLimiter("non-registration-ip")));
+
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -35,20 +80,6 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
-    // Signing up is not something a person does repeatedly. The shared "auth" budget of ten a
-    // minute let a bot create a hundred accounts in a few days, each one sending a confirmation
-    // email from the club's domain to an address the bot chose — the club's mail reputation is
-    // the thing being spent here, so the budget is per hour, not per minute.
-    options.AddPolicy("register", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 3,
-                Window = TimeSpan.FromHours(1),
-                QueueLimit = 0
-            }));
-
     // The second factor needs a tighter budget than a password does. A TOTP code has a million
     // values and about three are live at once, so with the pending token valid for 15 minutes the
     // "auth" allowance of 10 a minute leaves the factor guessable. This does not.
@@ -210,6 +241,8 @@ builder.Services.AddControllers(options =>
 builder.Services.AddOptions();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<ResendClient>();
+builder.Services.AddHttpClient<IRegistrationChallengeService, TurnstileRegistrationChallengeService>(client =>
+    client.Timeout = TimeSpan.FromSeconds(8));
 builder.Services.Configure<ResendClientOptions>(o =>
 {
     o.ApiToken = builder.Configuration["Resend:ApiKey"]!;
