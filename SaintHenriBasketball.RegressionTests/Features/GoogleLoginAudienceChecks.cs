@@ -104,12 +104,18 @@ internal static class GoogleLoginAudienceChecks
             .When("tokeninfo", TokenInfo(OurClientId, member.Email!))
             .When("userinfo", UserInfo);
 
-        Exception? accepted;
+        Exception? accepted = null;
+        SaintHenriBasketball.Application.DTOs.Users.UserResponseDto? acceptedResponse = null;
         await using (var context = db())
-            accepted = await FailureAsync(() => Service(context, ours).GoogleLoginAsync("our-token"));
+        {
+            try { acceptedResponse = await Service(context, ours).GoogleLoginAsync("our-token"); }
+            catch (Exception ex) { accepted = ex; }
+        }
 
         assert(accepted is null,
             "google login: a token actually issued to this app, for a verified address, still signs in");
+        assert(acceptedResponse?.Id == member.Id,
+            "google login: the response includes the player id needed by payment references");
         assert(ours.Requested.Any(u => u.Contains("tokeninfo", StringComparison.OrdinalIgnoreCase)),
             "google login: the audience is checked before anything is trusted");
     }
