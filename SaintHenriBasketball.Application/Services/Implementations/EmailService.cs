@@ -280,21 +280,12 @@ public class EmailService : IEmailService
         if (!user.EmailNotificationsEnabled || !user.PaymentRemindersEnabled) return;
         try
         {
-            var amount = GetPaymentAmount(paymentPlan);
-
-            // The reference the player must quote on an Interac transfer for it to be matched to
-            // them. Their newest still-owing payment on this plan is the one being chased.
-            var reference = (await _paymentRepository.GetPaymentsByUserAsync(user.Id))
-                .Where(p => p.Plan == paymentPlan
-                            && p.Status != PaymentStatus.Completed
-                            && p.Status != PaymentStatus.Refunded
-                            && !string.IsNullOrWhiteSpace(p.Reference))
-                .OrderByDescending(p => p.CreatedAt)
-                .Select(p => p.Reference)
-                .FirstOrDefault();
+            var reminderPayment = await GetReminderPaymentAsync(user.Id, paymentPlan);
+            var amount = reminderPayment?.Amount ?? GetPaymentAmount(paymentPlan);
+            var reference = reminderPayment?.Reference;
 
             var content = EmailTemplates.Payments.GetPaymentReminderEmail(
-                user.FirstName, amount, user.PaymentPlan, customMessage, reference, user.PreferredLanguage);
+                user.FirstName, amount, paymentPlan, customMessage, reference, user.PreferredLanguage);
 
             await SendEmailAsync(
                 user.Email,
@@ -958,6 +949,12 @@ public class EmailService : IEmailService
         _ => throw new ArgumentException($"Invalid payment plan: {plan}")
     };
 
+    private async Task<Payment?> GetReminderPaymentAsync(Guid userId, PaymentPlan plan) =>
+        (await _paymentRepository.GetPaymentsByUserAsync(userId))
+            .Where(p => p.Plan == plan && p.Status == PaymentStatus.Pending)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefault();
+
     private static string GetPaymentPlanName(PaymentPlan plan) => plan switch
     {
         PaymentPlan.Season => "Forfait de saison",
@@ -1005,13 +1002,19 @@ public class EmailService : IEmailService
                     continue;
                 }
 
+                var reminderPayment = emailType == EmailType.PaymentReminder
+                    ? await GetReminderPaymentAsync(user.Id, user.PaymentPlan)
+                    : null;
+
                 string content = emailType switch
                 {
                     EmailType.PaymentReminder => EmailTemplates.Payments.GetPaymentReminderEmail(
                         $"{user.FirstName}",
-                        GetPaymentAmount(user.PaymentPlan),
+                        reminderPayment?.Amount ?? GetPaymentAmount(user.PaymentPlan),
                         user.PaymentPlan,
-                        customMessage),
+                        customMessage,
+                        reminderPayment?.Reference,
+                        user.PreferredLanguage),
 
 
                     EmailType.AttendanceReminder => EmailTemplates.Attendance.GetAttendanceReminderEmail(
