@@ -186,6 +186,7 @@ public class UserService : IUserService
 
         return new UserResponseDto
         {
+            Id = user.Id,
             Token = GenerateJwtToken(user),
             Username = user.Username,
             Email = user.Email,
@@ -226,6 +227,7 @@ public class UserService : IUserService
 
         return new UserResponseDto
         {
+            Id = user.Id,
             Token = GenerateJwtToken(user, twoFactorPending: requires2Fa, twoFactorEnrollment: requires2FaSetup),
             Requires2FaSetup = requires2FaSetup,
             Username = user.Username,
@@ -343,6 +345,7 @@ public class UserService : IUserService
 
         return new UserResponseDto
         {
+            Id = user.Id,
             Token = GenerateJwtToken(user, twoFactorPending: requires2Fa, twoFactorEnrollment: requires2FaSetup),
             Requires2FaSetup = requires2FaSetup,
             Username = user.Username,
