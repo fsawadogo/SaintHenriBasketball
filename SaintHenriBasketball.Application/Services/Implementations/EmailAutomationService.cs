@@ -289,8 +289,10 @@ public class EmailAutomationService : IEmailAutomationService
     {
         try
         {
-            // Get payment details
-            var payment = await _paymentService.GetPaymentAsync(paymentId);
+            // Read through the player ledger so a stale drop-in charge covered by their Season
+            // choice cannot produce a reminder.
+            var payment = (await _paymentService.GetUserPaymentsAsync(userId))
+                .SingleOrDefault(p => p.Id == paymentId);
             if (payment == null || payment.Status != PaymentStatus.Pending)
             {
                 _logger.LogInformation("Skipping payment reminder: Payment {PaymentId} not found or not pending", paymentId);
@@ -349,12 +351,16 @@ public class EmailAutomationService : IEmailAutomationService
 
             foreach (var payment in pendingPayments)
             {
-                // Skip null emails
-                if (string.IsNullOrEmpty(payment.UserEmail))
+                // Reading the player ledger applies Season coverage, so stale drop-in charges are
+                // excluded without rewriting the historical payment record.
+                var stillOwed = (await _paymentService.GetUserPaymentsAsync(payment.UserId))
+                    .Any(p => p.Id == payment.Id && p.Status == PaymentStatus.Pending);
+                if (!stillOwed || string.IsNullOrEmpty(payment.UserEmail))
                     continue;
 
                 userEmails.Add(payment.UserEmail);
             }
+            userEmails = userEmails.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             // Send bulk reminders
             if (userEmails.Any())
