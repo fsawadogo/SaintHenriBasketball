@@ -132,7 +132,21 @@ public class PaymentService : IPaymentService
            throw new NotFoundException($"User with ID {userId} not found");
 
        var payments = await _paymentRepository.GetPaymentsByUserAsync(userId);
-       return _mapper.Map<IEnumerable<PaymentDto>>(payments);
+       var perSeasonPlans = await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.SeasonPlanChoice);
+       var seasons = perSeasonPlans
+           ? (await _seasonRepository.GetAllAsync()).ToList()
+           : new List<Season>();
+       var visible = new List<Payment>(payments.Count);
+       foreach (var payment in payments)
+       {
+           var coveredPendingDropIn = payment is
+               { Plan: PaymentPlan.DropIn, Status: PaymentStatus.Pending, Session: not null }
+               && await IsDropInCoveredBySeasonAsync(user, payment.Session, perSeasonPlans, seasons);
+           if (!coveredPendingDropIn)
+               visible.Add(payment);
+       }
+
+       return _mapper.Map<IEnumerable<PaymentDto>>(visible);
    }
 
    public async Task<PaymentDto> UpdatePaymentStatusAsync(Guid id, PaymentStatus status)
@@ -299,6 +313,34 @@ public class PaymentService : IPaymentService
         await OnStatusSavedAsync(payment, previousStatus);
 
         return _mapper.Map<PaymentDto>(payment);
+   }
+
+   public async Task<bool> IsDropInCoveredBySeasonAsync(Guid userId, Guid sessionId)
+   {
+       var user = await _userRepository.GetByIdAsync(userId);
+       var session = await _sessionRepository.GetByIdAsync(sessionId);
+       if (user is null || session is null) return false;
+
+       var perSeasonPlans = await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.SeasonPlanChoice);
+       var seasons = perSeasonPlans
+           ? (await _seasonRepository.GetAllAsync()).ToList()
+           : new List<Season>();
+       return await IsDropInCoveredBySeasonAsync(user, session, perSeasonPlans, seasons);
+   }
+
+   private async Task<bool> IsDropInCoveredBySeasonAsync(
+       ApplicationUser user,
+       Session session,
+       bool perSeasonPlans,
+       IReadOnlyList<Season> seasons)
+   {
+       if (!perSeasonPlans)
+           return user.PaymentPlan == PaymentPlan.Season;
+
+       var season = SeasonForDate.Resolve(seasons, session.SessionDate);
+       if (season is null) return false;
+       var choice = await _seasonPlanChoiceRepository.GetAsync(season.Id, user.Id);
+       return choice?.Plan == PaymentPlan.Season;
    }
 
    public async Task<bool> VoidForCancelledSessionAsync(Guid paymentId)

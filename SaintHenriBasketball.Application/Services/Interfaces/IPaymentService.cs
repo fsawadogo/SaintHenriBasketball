@@ -21,6 +21,7 @@ public interface IPaymentService
     /// Marks a pending payment for a cancelled session as failed and returns its account credit, without the
     /// "payment failed" email. Returns false when the payment isn't pending.
     Task<bool> VoidForCancelledSessionAsync(Guid paymentId);
+    Task<bool> IsDropInCoveredBySeasonAsync(Guid userId, Guid sessionId);
     Task<PaymentDto> CreateDropInPaymentAsync(Guid userId, CreateDropInPaymentDto request);
     Task<PaymentDto> CreateSeasonPaymentAsync(Guid userId, CreateSeasonPaymentDto request);
     Task<PaymentDto> ConfirmInteracPaymentAsync(Guid paymentId, string reference);

@@ -1109,6 +1109,7 @@ await TreasurerDropInBySeasonChecks.RunAsync(Db, Assert);
 await SeasonPlanChoiceEmailChecks.RunAsync(Db, Assert);
 await EmailSetRedesignChecks.RunAsync(Db, Assert);
 await PaymentReminderPriceChecks.RunAsync(Db, Assert);
+await SeasonCoveredDropInChecks.RunAsync(Db, Assert);
 Console.WriteLine($"Regression checks complete. Isolated database retained: {database}");
 
 sealed class StubSmsHandler(HttpStatusCode status, string responseBody) : HttpMessageHandler
