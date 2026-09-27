@@ -830,10 +830,10 @@ public class PaymentService : IPaymentService
 
                if (perSeasonPlans)
                {
-                   // No choice recorded means drop-in — the stated default for everyone, and the
-                   // safe direction: an unasked player gets billed rather than playing for free.
                    var choice = await _seasonPlanChoiceRepository.GetAsync(sessionSeason!.Id, reg.UserId);
-                   if ((choice?.Plan ?? PaymentPlan.DropIn) != PaymentPlan.DropIn) continue;
+                   // A per-season choice takes precedence. Older accounts may not have a choice row,
+                   // so fall back to the player's profile plan instead of charging Season players.
+                   if ((choice?.Plan ?? user.PaymentPlan) != PaymentPlan.DropIn) continue;
                }
                else if (user.PaymentPlan != PaymentPlan.DropIn) continue;
 
