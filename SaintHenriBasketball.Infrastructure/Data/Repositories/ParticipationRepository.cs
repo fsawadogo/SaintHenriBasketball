@@ -94,6 +94,7 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         await using var tx = await LockAsync(sessionId);
         var session = await SessionAsync(sessionId);
         var registration = await ReserveCoreAsync(session, userId);
+        await SaveAttendanceCoreAsync(session, userId, true, null, null);
         await RefreshCountAsync(session);
         await tx.CommitAsync();
         return registration;
@@ -123,11 +124,20 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         var session = await SessionAsync(sessionId);
         if (attending) await ReserveCoreAsync(session, userId);
         else await CancelCoreAsync(sessionId, userId);
+        var record = await SaveAttendanceCoreAsync(session, userId, attending, notes, reason);
+        await RefreshCountAsync(session);
+        await tx.CommitAsync();
+        return record;
+    }
+
+    private async Task<SessionAttendance> SaveAttendanceCoreAsync(
+        Session session, Guid userId, bool attending, string? notes, string? reason)
+    {
         var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId) ?? throw new NotFoundException("User not found");
-        var record = await db.SessionAttendances.SingleOrDefaultAsync(a => a.SessionId == sessionId && a.UserId == userId);
+        var record = await db.SessionAttendances.SingleOrDefaultAsync(a => a.SessionId == session.Id && a.UserId == userId);
         if (record == null)
         {
-            record = new SessionAttendance { Id = Guid.NewGuid(), SessionId = sessionId, UserId = userId, CreatedOn = DateTime.UtcNow };
+            record = new SessionAttendance { Id = Guid.NewGuid(), SessionId = session.Id, UserId = userId, CreatedOn = DateTime.UtcNow };
             db.SessionAttendances.Add(record);
         }
         record.Session = session; record.User = user;
@@ -136,8 +146,6 @@ public class ParticipationRepository(ApplicationDbContext db) : IParticipationRe
         // RSVP is not physical check-in. Only the check-in workflow sets CheckInTime.
         if (!attending) record.CheckInTime = null;
         await db.SaveChangesAsync();
-        await RefreshCountAsync(session);
-        await tx.CommitAsync();
         return record;
     }
 

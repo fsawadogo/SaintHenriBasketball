@@ -67,6 +67,9 @@ var winner = results.Single(id => id != Guid.Empty);
 Assert(results.Count(id => id != Guid.Empty) == 1, "concurrent requests cannot overbook the last place");
 await using (var db = Db()) {
     var repo = new ParticipationRepository(db);
+    var bookedAttendance = await db.SessionAttendances.SingleAsync(a => a.SessionId == session.Id && a.UserId == winner);
+    Assert(bookedAttendance.IsAttending && bookedAttendance.CheckInTime == null,
+        "booking confirms attendance in one step without claiming physical check-in");
     await repo.ReserveAsync(session.Id, winner);
     var rsvp = await repo.SetAttendanceAsync(session.Id, winner, true, null, null);
     Assert(rsvp.CheckInTime == null, "attendance confirmation does not claim physical check-in");
