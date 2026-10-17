@@ -20,7 +20,7 @@ public static class EmailTemplateHelper
     private const string ColorWarning = "#eab308";
     private const string ColorDanger = "#ef4444";
     public const string SiteUrl = "https://sainthenribasketball.com";
-    private const string LogoUrl = "https://sainthenribasketball.com/brand/club-mark-192.png";
+    private const string LogoUrl = "https://sainthenribasketball.com/logo.png";
     private const string WhatsAppGroupUrl = "https://chat.whatsapp.com/JGAbUroUK9B6feJ6uDlwwD";
     private const string InstagramProfileUrl = "https://www.instagram.com/sainthenribasketball";
     private static readonly CultureInfo FrenchCulture = new("fr-CA");

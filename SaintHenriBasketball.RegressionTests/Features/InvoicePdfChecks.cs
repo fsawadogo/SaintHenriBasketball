@@ -36,8 +36,8 @@ internal static class InvoicePdfChecks
             assert(IsPdf(withoutLogo),
                 "invoice: a missing logo file still produces a receipt — it used to throw and the player got no attachment");
 
-            // --- With the club mark present ---
-            File.WriteAllBytes(Path.Combine(images, "club-mark.png"), OnePixelPng());
+            // --- With the classic club badge present ---
+            File.WriteAllBytes(Path.Combine(images, "logo.png"), OnePixelPng());
             var generator = new BillPdfGenerator(new FakeEnvironment(root));
 
             var french = generator.GenerateBill(plain);
