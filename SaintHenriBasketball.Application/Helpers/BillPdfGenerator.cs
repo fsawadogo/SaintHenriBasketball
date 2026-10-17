@@ -64,10 +64,7 @@ public class BillPdfGenerator
             ? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")
             : webHostEnvironment.WebRootPath;
 
-        // The club mark first; logo.png is the old orange badge, kept only as a fallback.
-        _logoPath = FirstExisting(
-            Path.Combine(root, "images", "club-mark.png"),
-            Path.Combine(root, "images", "logo.png"));
+        _logoPath = FirstExisting(Path.Combine(root, "images", "logo.png"));
     }
 
     private static string? FirstExisting(params string[] paths) => paths.FirstOrDefault(File.Exists);
