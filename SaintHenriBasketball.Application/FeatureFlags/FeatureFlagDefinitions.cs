@@ -183,5 +183,9 @@ public static class FeatureFlagDefinitions
             "Treat one mailbox as one account however the address is spelled, and stop sending confirmation emails once an hour's worth have gone out.",
             "Traiter une boîte de réception comme un seul compte, quelle que soit l'écriture de l'adresse, et cesser d'envoyer des courriels de confirmation une fois le quota horaire atteint.",
             IsPublic: false),
+        new FeatureFlagDefinition(FeatureFlagKeys.HomePageRedesign,
+            "Redesigned home page: an \"Every Saturday\" panel beside the headline, a larger photo carousel with its controls and thumbnails below the photo, and the upcoming sessions list.",
+            "Page d'accueil repensée : un encadré « Chaque samedi » à côté du titre, un carrousel de photos plus grand avec ses contrôles et vignettes sous la photo, et la liste des prochaines séances.",
+            IsPublic: true),
     };
 }
