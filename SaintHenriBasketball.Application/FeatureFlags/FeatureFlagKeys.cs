@@ -84,4 +84,8 @@ public static class FeatureFlagKeys
     // Registration hardening: one account per mailbox however the address is spelled, and a cap
     // on how many confirmation emails the club will send in an hour.
     public const string RegistrationHardening = "registration-hardening";
+
+    // Redesigned public home page: a weekly-details panel beside the headline and a larger photo
+    // carousel whose controls sit below the image.
+    public const string HomePageRedesign = "home-page-redesign";
 }
