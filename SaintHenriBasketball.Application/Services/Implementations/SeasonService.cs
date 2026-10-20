@@ -13,6 +13,7 @@ public class SeasonService : ISeasonService
 {
     private readonly ISeasonRepository _seasonRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ISeasonPlanChoiceRepository _seasonPlanChoices;
     private readonly IMapper _mapper;
     private readonly ILogger<SeasonService> _logger;
     private readonly IEmailService _emailService;
@@ -27,6 +28,7 @@ public class SeasonService : ISeasonService
     public SeasonService(
         ISeasonRepository seasonRepository,
         IUserRepository userRepository,
+        ISeasonPlanChoiceRepository seasonPlanChoices,
         IMapper mapper,
         IEmailService emailService,
         ILogger<SeasonService> logger,
@@ -34,6 +36,7 @@ public class SeasonService : ISeasonService
     {
         _seasonRepository = seasonRepository;
         _userRepository = userRepository;
+        _seasonPlanChoices = seasonPlanChoices;
         _mapper = mapper;
         _emailService = emailService;
         _logger = logger;
@@ -110,11 +113,16 @@ public class SeasonService : ISeasonService
             s.StartDate <= DateTime.UtcNow &&
             s.EndDate >= DateTime.UtcNow);
 
-        var seasonsDto = seasons.Select(season => {
+        var seasonsDto = new List<SeasonDto>();
+        foreach (var season in seasons)
+        {
             var dto = _mapper.Map<SeasonDto>(season);
             dto.IsCurrentSeason = season.Id == currentSeason?.Id;
-            return dto;
-        }).ToList();
+            var users = await GetSeasonPassUsersAsync(season, dto.IsCurrentSeason);
+            dto.RegisteredUsers = users;
+            dto.RegisteredUsersCount = users.Count;
+            seasonsDto.Add(dto);
+        }
 
         // Store in cache with a 1-hour expiration
         await _cacheService.SetAsync(AllSeasonsCacheKey, seasonsDto, TimeSpan.FromHours(1));
@@ -142,6 +150,9 @@ public class SeasonService : ISeasonService
 
         var seasonDto = _mapper.Map<SeasonDto>(season);
         seasonDto.IsCurrentSeason = true;
+        var users = await GetSeasonPassUsersAsync(season, includeProfilePlan: true);
+        seasonDto.RegisteredUsers = users;
+        seasonDto.RegisteredUsersCount = users.Count;
 
         // Store in cache with a 30-minute expiration
         await _cacheService.SetAsync(CurrentSeasonCacheKey, seasonDto, TimeSpan.FromMinutes(30));
@@ -292,19 +303,8 @@ public class SeasonService : ISeasonService
             throw new NotFoundException($"Season with ID {seasonId} not found");
         }
 
-        return season.Registrations
-            .Select(r => new SeasonUserDto
-            {
-                UserId = r.UserId,
-                FirstName = r.User.FirstName,
-                LastName = r.User.LastName,
-                RegisteredOn = r.RegisteredOn,
-                PaymentPlan = r.User.PaymentPlan,
-                Email = r.User.Email
-            })
-            .OrderBy(u => u.LastName)
-            .ThenBy(u => u.FirstName)
-            .ToList();
+        var current = await _seasonRepository.GetCurrentSeasonAsync();
+        return await GetSeasonPassUsersAsync(season, season.Id == current?.Id);
     }
 
     private async Task<SeasonDto?> GetSeasonDtoAsync(Guid seasonId)
@@ -318,21 +318,31 @@ public class SeasonService : ISeasonService
         var currentSeason = await _seasonRepository.GetCurrentSeasonAsync();
         var seasonDto = _mapper.Map<SeasonDto>(season);
         seasonDto.IsCurrentSeason = season.Id == currentSeason?.Id;
-        seasonDto.RegisteredUsersCount = season.Registrations.Count;
-        seasonDto.RegisteredUsers = season.Registrations
-            .Select(r => new SeasonUserDto
-            {
-                UserId = r.UserId,
-                FirstName = r.User.FirstName,
-                LastName = r.User.LastName,
-                RegisteredOn = r.RegisteredOn,
-                PaymentPlan = r.User.PaymentPlan,
-                Email = r.User.Email
-            })
-            .OrderBy(u => u.LastName)
-            .ThenBy(u => u.FirstName)
-            .ToList();
+        seasonDto.RegisteredUsers = await GetSeasonPassUsersAsync(season, seasonDto.IsCurrentSeason);
+        seasonDto.RegisteredUsersCount = seasonDto.RegisteredUsers.Count;
 
         return seasonDto;
+    }
+
+    private async Task<List<SeasonUserDto>> GetSeasonPassUsersAsync(Season season, bool includeProfilePlan)
+    {
+        var userIds = (await _seasonPlanChoices.GetSpotHolderIdsAsync(season.Id, includeProfilePlan)).ToList();
+        var users = await _userRepository.GetUsersByIdsAsync(userIds);
+        var registeredOn = season.Registrations.ToDictionary(r => r.UserId, r => (DateTime?)r.RegisteredOn);
+
+        return users
+            .Where(user => !user.IsAdmin && !user.IsDeactivated)
+            .Select(user => new SeasonUserDto
+            {
+                UserId = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                RegisteredOn = registeredOn.GetValueOrDefault(user.Id),
+                PaymentPlan = PaymentPlan.Season,
+                Email = user.Email
+            })
+            .OrderBy(user => user.LastName)
+            .ThenBy(user => user.FirstName)
+            .ToList();
     }
 }
